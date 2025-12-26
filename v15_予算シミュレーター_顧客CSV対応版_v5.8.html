@@ -327,6 +327,44 @@
         .history-actions .load-btn { background: #1565c0; color: #fff; }
         .history-actions .delete-btn { background: #f44336; color: #fff; }
 
+        /* トップナビゲーションタブ */
+        .main-nav {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+            background: #fff;
+            border-radius: 12px;
+            padding: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .main-nav-tab {
+            padding: 15px 50px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #666;
+            background: transparent;
+            border: none;
+        }
+        .main-nav-tab:hover { background: #f5f5f5; }
+        .main-nav-tab.active {
+            color: #fff;
+        }
+        .main-nav-tab.import-tab.active {
+            background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%);
+        }
+        .main-nav-tab.export-tab.active {
+            background: linear-gradient(135deg, #7b1fa2 0%, #4a148c 100%);
+        }
+        .main-nav-tab .tab-icon { font-size: 24px; }
+        .main-page { display: none; }
+        .main-page.active { display: block; }
+
         @media (max-width: 768px) {
             .summary-grid { grid-template-columns: repeat(3, 1fr); }
             .month-cols-grid { grid-template-columns: repeat(4, 1fr); }
@@ -338,72 +376,99 @@
         <h1>v15 予算シミュレーター（顧客CSV対応版 v5.8）</h1>
         <p class="subtitle">変換ロジック強化：顧客予算→ラクミー入力の変換タイプ（直接/合計/率/出力）を明示化</p>
 
-        <!-- ===== インポートセクション ===== -->
-        <div class="import-section" style="border-left:4px solid #2196f3;">
-            <h2 style="color:#1565c0;">📥 インポート</h2>
+        <!-- ===== メインナビゲーションタブ ===== -->
+        <div class="main-nav">
+            <button class="main-nav-tab import-tab active" onclick="showMainPage('import')">
+                <span class="tab-icon">📥</span>
+                <span>インポート</span>
+            </button>
+            <button class="main-nav-tab export-tab" onclick="showMainPage('export')">
+                <span class="tab-icon">📤</span>
+                <span>エクスポート</span>
+            </button>
+        </div>
 
-            <!-- ドラッグ＆ドロップエリア -->
-            <div id="dropZone" class="drop-zone" ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
-                <div class="drop-zone-content">
-                    <div style="font-size:40px;margin-bottom:10px;">📁</div>
-                    <div style="font-size:14px;font-weight:bold;margin-bottom:5px;">CSVファイルをここにドラッグ＆ドロップ</div>
-                    <div style="font-size:11px;color:#666;margin-bottom:10px;">または</div>
-                    <input type="file" id="csvFile" accept=".csv" multiple onchange="handleFileSelect(event)" style="display:none;">
-                    <button class="btn btn-primary" onclick="document.getElementById('csvFile').click()">ファイルを選択（複数可）</button>
-                </div>
-            </div>
+        <!-- ===== インポートページ ===== -->
+        <div id="page-import" class="main-page active">
+            <div class="import-section" style="border-left:4px solid #2196f3;">
+                <h2 style="color:#1565c0;font-size:18px;margin-bottom:20px;">📥 CSVファイルをインポート</h2>
 
-            <!-- 選択ファイル一覧（縦積み） -->
-            <div id="selectedFilesList" class="selected-files-section" style="display:none;">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                    <div style="font-weight:bold;font-size:13px;">選択ファイル一覧 (<span id="fileCount">0</span>件)</div>
-                    <div>
-                        <button class="btn btn-primary" onclick="document.getElementById('csvFile').click()" style="padding:5px 12px;font-size:10px;">＋追加</button>
-                        <button class="btn" style="background:#ff5722;color:#fff;padding:5px 12px;font-size:10px;" onclick="clearSelectedFiles()">全クリア</button>
+                <!-- ドラッグ＆ドロップエリア -->
+                <div id="dropZone" class="drop-zone" ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+                    <div class="drop-zone-content">
+                        <div style="font-size:50px;margin-bottom:15px;">📁</div>
+                        <div style="font-size:16px;font-weight:bold;margin-bottom:8px;">CSVファイルをここにドラッグ＆ドロップ</div>
+                        <div style="font-size:12px;color:#666;margin-bottom:15px;">または</div>
+                        <input type="file" id="csvFile" accept=".csv" multiple onchange="handleFileSelect(event)" style="display:none;">
+                        <button class="btn btn-primary" style="padding:12px 30px;font-size:14px;" onclick="document.getElementById('csvFile').click()">ファイルを選択（複数可）</button>
                     </div>
                 </div>
-                <div id="fileListContainer" class="file-list-vertical"></div>
-                <div style="margin-top:10px;">
-                    <button class="btn btn-success" onclick="importAllCSVs()" id="importBtn" style="width:100%;padding:12px;font-size:14px;">一括インポート実行</button>
+
+                <!-- 選択ファイル一覧（縦積み） -->
+                <div id="selectedFilesList" class="selected-files-section" style="display:none;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                        <div style="font-weight:bold;font-size:14px;">選択ファイル一覧 (<span id="fileCount">0</span>件)</div>
+                        <div>
+                            <button class="btn btn-primary" onclick="document.getElementById('csvFile').click()" style="padding:6px 15px;font-size:11px;">＋追加</button>
+                            <button class="btn" style="background:#ff5722;color:#fff;padding:6px 15px;font-size:11px;" onclick="clearSelectedFiles()">全クリア</button>
+                        </div>
+                    </div>
+                    <div id="fileListContainer" class="file-list-vertical"></div>
+                    <div style="margin-top:15px;">
+                        <button class="btn btn-success" onclick="importAllCSVs()" id="importBtn" style="width:100%;padding:15px;font-size:16px;">一括インポート実行</button>
+                    </div>
                 </div>
-            </div>
 
-            <div id="importStatus" style="margin-top:10px;"></div>
+                <div id="importStatus" style="margin-top:10px;"></div>
 
-            <!-- 取り込みデータ履歴ボタン -->
-            <div style="margin-top:15px;padding-top:15px;border-top:1px solid #ddd;">
-                <button class="btn" style="background:#1565c0;color:#fff;padding:12px 30px;width:100%;font-size:14px;" onclick="showDataHistoryPage()">
-                    📋 取り込みデータ履歴 (<span id="importedStoreCount">0</span>件)
-                </button>
+                <!-- 取り込みデータ履歴ボタン -->
+                <div style="margin-top:20px;padding-top:20px;border-top:2px solid #e0e0e0;">
+                    <button class="btn" style="background:linear-gradient(135deg, #1565c0 0%, #0d47a1 100%);color:#fff;padding:15px 30px;width:100%;font-size:16px;border-radius:8px;" onclick="showDataHistoryPage()">
+                        📋 取り込みデータ履歴を見る (<span id="importedStoreCount">0</span>件)
+                    </button>
+                </div>
             </div>
         </div>
 
-        <!-- ===== エクスポートセクション ===== -->
-        <div class="import-section" style="margin-top:15px;border-left:4px solid #9c27b0;">
-            <h2 style="color:#7b1fa2;">📤 エクスポート</h2>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));gap:10px;">
-                <button class="btn" style="background:#4caf50;color:#fff;padding:12px;" onclick="exportRakumyInputsCSV()">
-                    <div style="font-size:20px;">📊</div>
-                    <div>ラクミー入力値CSV</div>
-                </button>
-                <button class="btn" style="background:#2196f3;color:#fff;padding:12px;" onclick="exportBudgetListCSV()">
-                    <div style="font-size:20px;">📋</div>
-                    <div>予算一覧CSV</div>
-                </button>
-                <button class="btn" style="background:#9c27b0;color:#fff;padding:12px;" onclick="exportMQOutputCSV()">
-                    <div style="font-size:20px;">📈</div>
-                    <div>MQ出力CSV</div>
-                </button>
-                <button class="btn btn-info" style="padding:12px;" onclick="exportAllConfig()">
-                    <div style="font-size:20px;">⚙️</div>
-                    <div>設定JSON</div>
-                </button>
-            </div>
-            <div class="import-controls" style="margin-top:15px;padding-top:15px;border-top:1px solid #ddd;">
-                <input type="file" id="configFile" accept=".json" style="display:none" onchange="importAllConfig(event)">
-                <button class="btn btn-secondary" onclick="document.getElementById('configFile').click()">設定読込（JSON）</button>
-                <button class="btn btn-warning" onclick="runSimulationForCurrentStore()">再シミュレーション</button>
-                <button class="btn btn-danger" onclick="clearAllStores()">全データ削除</button>
+        <!-- ===== エクスポートページ ===== -->
+        <div id="page-export" class="main-page">
+            <div class="import-section" style="border-left:4px solid #9c27b0;">
+                <h2 style="color:#7b1fa2;font-size:18px;margin-bottom:20px;">📤 データをエクスポート</h2>
+
+                <!-- エクスポートボタングリッド -->
+                <div style="display:grid;grid-template-columns:repeat(2, 1fr);gap:15px;margin-bottom:20px;">
+                    <button class="btn" style="background:linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);color:#fff;padding:25px;border-radius:10px;font-size:14px;" onclick="exportRakumyInputsCSV()">
+                        <div style="font-size:32px;margin-bottom:10px;">📊</div>
+                        <div style="font-weight:bold;">ラクミー入力値CSV</div>
+                        <div style="font-size:11px;opacity:0.8;margin-top:5px;">費用予算設定用データ</div>
+                    </button>
+                    <button class="btn" style="background:linear-gradient(135deg, #2196f3 0%, #1565c0 100%);color:#fff;padding:25px;border-radius:10px;font-size:14px;" onclick="exportBudgetListCSV()">
+                        <div style="font-size:32px;margin-bottom:10px;">📋</div>
+                        <div style="font-weight:bold;">予算一覧CSV</div>
+                        <div style="font-size:11px;opacity:0.8;margin-top:5px;">詳細予算データ</div>
+                    </button>
+                    <button class="btn" style="background:linear-gradient(135deg, #9c27b0 0%, #6a1b9a 100%);color:#fff;padding:25px;border-radius:10px;font-size:14px;" onclick="exportMQOutputCSV()">
+                        <div style="font-size:32px;margin-bottom:10px;">📈</div>
+                        <div style="font-weight:bold;">MQ出力CSV</div>
+                        <div style="font-size:11px;opacity:0.8;margin-top:5px;">MQシミュレーション結果</div>
+                    </button>
+                    <button class="btn" style="background:linear-gradient(135deg, #607d8b 0%, #37474f 100%);color:#fff;padding:25px;border-radius:10px;font-size:14px;" onclick="exportAllConfig()">
+                        <div style="font-size:32px;margin-bottom:10px;">⚙️</div>
+                        <div style="font-weight:bold;">設定JSON</div>
+                        <div style="font-size:11px;opacity:0.8;margin-top:5px;">マッピング設定データ</div>
+                    </button>
+                </div>
+
+                <!-- その他の操作 -->
+                <div style="padding-top:20px;border-top:2px solid #e0e0e0;">
+                    <h3 style="font-size:14px;color:#666;margin-bottom:15px;">その他の操作</h3>
+                    <div class="import-controls" style="display:flex;gap:10px;flex-wrap:wrap;">
+                        <input type="file" id="configFile" accept=".json" style="display:none" onchange="importAllConfig(event)">
+                        <button class="btn btn-secondary" style="padding:12px 20px;" onclick="document.getElementById('configFile').click()">📂 設定読込（JSON）</button>
+                        <button class="btn btn-warning" style="padding:12px 20px;" onclick="runSimulationForCurrentStore()">🔄 再シミュレーション</button>
+                        <button class="btn btn-danger" style="padding:12px 20px;" onclick="clearAllStores()">🗑️ 全データ削除</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -757,6 +822,26 @@
             document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
             document.getElementById(tabId).classList.add('active');
             event.target.classList.add('active');
+        }
+
+        // メインページ（インポート/エクスポート）切り替え
+        function showMainPage(page) {
+            // タブのアクティブ状態を切り替え
+            document.querySelectorAll('.main-nav-tab').forEach(function(tab) {
+                tab.classList.remove('active');
+            });
+            // ページの表示を切り替え
+            document.querySelectorAll('.main-page').forEach(function(p) {
+                p.classList.remove('active');
+            });
+            // 選択したタブとページをアクティブに
+            if (page === 'import') {
+                document.querySelector('.import-tab').classList.add('active');
+                document.getElementById('page-import').classList.add('active');
+            } else if (page === 'export') {
+                document.querySelector('.export-tab').classList.add('active');
+                document.getElementById('page-export').classList.add('active');
+            }
         }
 
         // ドラッグ＆ドロップ処理
