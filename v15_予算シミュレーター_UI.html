@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>v15 予算シミュレーター - ラクミー</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+        }
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 15px 20px;
+        }
+        .header h1 { font-size: 16px; font-weight: normal; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .page-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .page-subtitle {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+        .main-grid {
+            display: grid;
+            grid-template-columns: 400px 60px 1fr;
+            gap: 0;
+            align-items: start;
+        }
+        .arrow-column {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding-top: 200px;
+        }
+        .arrow {
+            font-size: 40px;
+            color: #3498db;
+        }
+        .card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .card-header {
+            padding: 15px 20px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .card-header.input { background: #3498db; color: white; }
+        .card-header.output { background: #27ae60; color: white; }
+        .card-body { padding: 20px; }
+        .section-title {
+            font-size: 13px;
+            font-weight: bold;
+            color: #666;
+            margin: 15px 0 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #eee;
+        }
+        .section-title:first-child { margin-top: 0; }
+        .input-row {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #f5f5f5;
+        }
+        .input-row:last-child { border-bottom: none; }
+        .input-label {
+            flex: 1;
+            font-size: 13px;
+            color: #555;
+        }
+        .input-label .no {
+            color: #999;
+            font-size: 11px;
+            margin-right: 5px;
+        }
+        .input-field {
+            width: 120px;
+            text-align: right;
+        }
+        .input-field input {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            text-align: right;
+        }
+        .input-field input:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52,152,219,0.2);
+        }
+        .input-unit {
+            width: 50px;
+            font-size: 12px;
+            color: #999;
+            text-align: left;
+            padding-left: 8px;
+        }
+        .output-row {
+            display: flex;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #f5f5f5;
+        }
+        .output-row:last-child { border-bottom: none; }
+        .output-row.highlight {
+            background: #f8f9fa;
+            margin: 0 -20px;
+            padding: 12px 20px;
+        }
+        .output-row.total {
+            background: #e8f5e9;
+            margin: 0 -20px;
+            padding: 12px 20px;
+            font-weight: bold;
+        }
+        .output-row.profit {
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            color: white;
+            margin: 0 -20px;
+            padding: 15px 20px;
+        }
+        .output-row.profit.warning {
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+        }
+        .output-row.profit.danger {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        }
+        .output-label {
+            flex: 1;
+            font-size: 13px;
+        }
+        .output-label .sub {
+            color: #999;
+            font-size: 11px;
+        }
+        .output-value {
+            font-size: 16px;
+            font-weight: bold;
+            text-align: right;
+            min-width: 120px;
+        }
+        .output-unit {
+            width: 50px;
+            font-size: 12px;
+            color: #999;
+            text-align: left;
+            padding-left: 8px;
+        }
+        .output-row.profit .output-unit { color: rgba(255,255,255,0.8); }
+        .diff-badge {
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            margin-left: 10px;
+        }
+        .diff-badge.match { background: #d4edda; color: #155724; }
+        .diff-badge.close { background: #fff3cd; color: #856404; }
+        .diff-badge.diff { background: #f8d7da; color: #721c24; }
+        .formula {
+            font-size: 11px;
+            color: #999;
+            margin-top: 3px;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .summary-card {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .summary-card .label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        .summary-card .value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .summary-card .unit {
+            font-size: 12px;
+            color: #999;
+        }
+        .summary-card.bep { border-left: 4px solid #9b59b6; }
+        .summary-card.margin { border-left: 4px solid #3498db; }
+        .summary-card.safety { border-left: 4px solid #27ae60; }
+        .summary-card.profit { border-left: 4px solid #e74c3c; }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: center;
+        }
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .btn-primary { background: #3498db; color: white; }
+        .btn-secondary { background: #ecf0f1; color: #666; }
+        .customer-budget {
+            font-size: 11px;
+            color: #3498db;
+            margin-top: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>ラクミー 経営管理 | v15 予算シミュレーター</h1>
+    </div>
+
+    <div class="container">
+        <div class="page-title">顧客予算 → ラクミー自動計上値 シミュレーション</div>
+        <div class="page-subtitle">入力変数を設定すると、ラクミー内で自動演算される予算値をシミュレーションします</div>
+
+        <div class="main-grid">
+            <!-- 入力側 -->
+            <div class="card">
+                <div class="card-header input">入力変数（顧客予算値）</div>
+                <div class="card-body">
+                    <div class="section-title">KPI（月次予算設定）</div>
+                    <div class="input-row">
+                        <div class="input-label"><span class="no">No.57</span>目標客数</div>
+                        <div class="input-field"><input type="number" id="customers" value="3000" onchange="simulate()"></div>
+                        <div class="input-unit">人</div>
+                    </div>
+                    <div class="input-row">
+                        <div class="input-label"><span class="no">No.58</span>目標客単価</div>
+                        <div class="input-field"><input type="number" id="unitPrice" value="4567" onchange="simulate()"></div>
+                        <div class="input-unit">円</div>
+                    </div>
+
+                    <div class="section-title">変動費率（月次予算設定）</div>
+                    <div class="input-row">
+                        <div class="input-label"><span class="no">No.6-7</span>FD仕入費率</div>
+                        <div class="input-field"><input type="number" id="fdRate" value="32.0" step="0.1" onchange="simulate()"></div>
+                        <div class="input-unit">%</div>
+                    </div>
+                    <div class="input-row">
+                        <div class="input-label"><span class="no">No.13-14</span>PA人件費率</div>
+                        <div class="input-field"><input type="number" id="paRate" value="5.5" step="0.1" onchange="simulate()"></div>
+                        <div class="input-unit">%</div>
+                    </div>
+
+                    <div class="section-title">固定費（費用予算設定）</div>
+                    <div class="input-row">
+                        <div class="input-label"><span class="no">No.10</span>固定人件費</div>
+                        <div class="input-field"><input type="number" id="fixedLabor" value="4682" onchange="simulate()"></div>
+                        <div class="input-unit">千円</div>
+                    </div>
+                    <div class="input-row">
+                        <div class="input-label"><span class="no">No.21-45</span>経費合計</div>
+                        <div class="input-field"><input type="number" id="expenses" value="1741" onchange="simulate()"></div>
+                        <div class="input-unit">千円</div>
+                    </div>
+                    <div class="input-row">
+                        <div class="input-label"><span class="no">No.46</span>減価償却費</div>
+                        <div class="input-field"><input type="number" id="depreciation" value="96" onchange="simulate()"></div>
+                        <div class="input-unit">千円</div>
+                    </div>
+                    <div class="input-row">
+                        <div class="input-label"><span class="no">No.47,50</span>地代家賃</div>
+                        <div class="input-field"><input type="number" id="rent" value="556" onchange="simulate()"></div>
+                        <div class="input-unit">千円</div>
+                    </div>
+                    <div class="input-row">
+                        <div class="input-label"><span class="no">No.48-49</span>資材費</div>
+                        <div class="input-field"><input type="number" id="materials" value="16" onchange="simulate()"></div>
+                        <div class="input-unit">千円</div>
+                    </div>
+
+                    <div class="section-title">目標利益（月次予算設定）</div>
+                    <div class="input-row">
+                        <div class="input-label"><span class="no">No.55</span>目標月次利益</div>
+                        <div class="input-field"><input type="number" id="targetProfit" value="919" onchange="simulate()"></div>
+                        <div class="input-unit">千円</div>
+                    </div>
+
+                    <div class="section-title">顧客予算（比較用）</div>
+                    <div class="input-row">
+                        <div class="input-label">顧客予算 売上高</div>
+                        <div class="input-field"><input type="number" id="budgetSales" value="13700" onchange="simulate()"></div>
+                        <div class="input-unit">千円</div>
+                    </div>
+                    <div class="input-row">
+                        <div class="input-label">顧客予算 営業利益</div>
+                        <div class="input-field"><input type="number" id="budgetProfit" value="1475" onchange="simulate()"></div>
+                        <div class="input-unit">千円</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 矢印 -->
+            <div class="arrow-column">
+                <div class="arrow">→</div>
+            </div>
+
+            <!-- 出力側 -->
+            <div class="card">
+                <div class="card-header output">ラクミー自動計上値（MQ演算結果）</div>
+                <div class="card-body">
+                    <div class="section-title">売上予算（No.1, 5）</div>
+                    <div class="output-row highlight">
+                        <div class="output-label">
+                            売上予算
+                            <div class="formula">= 客数 × 客単価</div>
+                        </div>
+                        <div class="output-value" id="outSales">13,701</div>
+                        <div class="output-unit">千円</div>
+                        <span class="diff-badge match" id="diffSales">○一致</span>
+                    </div>
+
+                    <div class="section-title">原価予算（No.8）</div>
+                    <div class="output-row">
+                        <div class="output-label">
+                            原価予算（FD仕入費）
+                            <div class="formula">= 売上予算 × FD仕入費率</div>
+                        </div>
+                        <div class="output-value" id="outFoodCost">4,384</div>
+                        <div class="output-unit">千円</div>
+                    </div>
+
+                    <div class="section-title">人件費予算（No.20）</div>
+                    <div class="output-row">
+                        <div class="output-label">
+                            PA人件費
+                            <div class="formula">= 売上予算 × PA人件費率</div>
+                        </div>
+                        <div class="output-value" id="outPaCost">754</div>
+                        <div class="output-unit">千円</div>
+                    </div>
+                    <div class="output-row">
+                        <div class="output-label">固定人件費</div>
+                        <div class="output-value" id="outFixedLabor">4,682</div>
+                        <div class="output-unit">千円</div>
+                    </div>
+                    <div class="output-row highlight">
+                        <div class="output-label">
+                            人件費合計
+                            <div class="formula">= 固定人件費 + PA人件費</div>
+                        </div>
+                        <div class="output-value" id="outTotalLabor">5,436</div>
+                        <div class="output-unit">千円</div>
+                    </div>
+
+                    <div class="section-title">経費・固定費予算（No.51, 53）</div>
+                    <div class="output-row">
+                        <div class="output-label">経費合計（No.21-45）</div>
+                        <div class="output-value" id="outExpenses">1,741</div>
+                        <div class="output-unit">千円</div>
+                    </div>
+                    <div class="output-row">
+                        <div class="output-label">その他固定費（減価償却・地代家賃・資材費）</div>
+                        <div class="output-value" id="outOtherFixed">668</div>
+                        <div class="output-unit">千円</div>
+                    </div>
+                    <div class="output-row highlight">
+                        <div class="output-label">
+                            固定費合計
+                            <div class="formula">= 固定人件費 + 経費 + その他固定費</div>
+                        </div>
+                        <div class="output-value" id="outTotalFixed">7,091</div>
+                        <div class="output-unit">千円</div>
+                    </div>
+
+                    <div class="section-title">変動費予算（No.52）</div>
+                    <div class="output-row highlight">
+                        <div class="output-label">
+                            変動費合計
+                            <div class="formula">= 原価 + PA人件費</div>
+                        </div>
+                        <div class="output-value" id="outVariableCost">5,138</div>
+                        <div class="output-unit">千円</div>
+                    </div>
+
+                    <div class="section-title">利益予算（No.54, 56）</div>
+                    <div class="output-row">
+                        <div class="output-label">
+                            限界利益
+                            <div class="formula">= 売上予算 - 変動費合計</div>
+                        </div>
+                        <div class="output-value" id="outMarginProfit">8,563</div>
+                        <div class="output-unit">千円</div>
+                    </div>
+                    <div class="output-row profit" id="profitRow">
+                        <div class="output-label">
+                            営業利益予算
+                            <div class="formula" style="color:rgba(255,255,255,0.7)">= 限界利益 - 固定費合計</div>
+                        </div>
+                        <div class="output-value" id="outProfit">1,472</div>
+                        <div class="output-unit">千円</div>
+                        <span class="diff-badge" id="diffProfit" style="background:rgba(255,255,255,0.3);color:white;">○ほぼ一致</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- サマリー -->
+        <div class="summary-grid">
+            <div class="summary-card bep">
+                <div class="label">損益分岐点売上</div>
+                <div class="value" id="sumBep">11,346</div>
+                <div class="unit">千円</div>
+            </div>
+            <div class="summary-card margin">
+                <div class="label">限界利益率</div>
+                <div class="value" id="sumMarginRate">62.5</div>
+                <div class="unit">%</div>
+            </div>
+            <div class="summary-card safety">
+                <div class="label">安全余裕率</div>
+                <div class="value" id="sumSafety">17.2</div>
+                <div class="unit">%</div>
+            </div>
+            <div class="summary-card profit">
+                <div class="label">目標達成必要客数</div>
+                <div class="value" id="sumRequired">2,807</div>
+                <div class="unit">人</div>
+            </div>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn btn-primary" onclick="alert('予算設定を保存しました')">この設定で予算を保存</button>
+            <button class="btn btn-secondary" onclick="resetAll()">リセット</button>
+        </div>
+    </div>
+
+    <script>
+        function simulate() {
+            // 入力値取得
+            const customers = parseFloat(document.getElementById('customers').value) || 0;
+            const unitPrice = parseFloat(document.getElementById('unitPrice').value) || 0;
+            const fdRate = parseFloat(document.getElementById('fdRate').value) || 0;
+            const paRate = parseFloat(document.getElementById('paRate').value) || 0;
+            const fixedLabor = parseFloat(document.getElementById('fixedLabor').value) || 0;
+            const expenses = parseFloat(document.getElementById('expenses').value) || 0;
+            const depreciation = parseFloat(document.getElementById('depreciation').value) || 0;
+            const rent = parseFloat(document.getElementById('rent').value) || 0;
+            const materials = parseFloat(document.getElementById('materials').value) || 0;
+            const targetProfit = parseFloat(document.getElementById('targetProfit').value) || 0;
+            const budgetSales = parseFloat(document.getElementById('budgetSales').value) || 0;
+            const budgetProfit = parseFloat(document.getElementById('budgetProfit').value) || 0;
+
+            // ラクミー自動計上値の計算
+            const sales = customers * unitPrice / 1000;
+            const foodCost = sales * fdRate / 100;
+            const paCost = sales * paRate / 100;
+            const totalLabor = fixedLabor + paCost;
+            const otherFixed = depreciation + rent + materials;
+            const totalFixed = fixedLabor + expenses + otherFixed;
+            const variableCost = foodCost + paCost;
+            const marginProfit = sales - variableCost;
+            const operatingProfit = marginProfit - totalFixed;
+
+            // 損益分岐点
+            const marginRate = 100 - fdRate - paRate;
+            const bep = totalFixed / (marginRate / 100);
+            const safety = (sales - bep) / sales * 100;
+            const requiredSales = (totalFixed + targetProfit) / (marginRate / 100);
+            const requiredCustomers = requiredSales / unitPrice * 1000;
+
+            // 出力更新
+            document.getElementById('outSales').textContent = fmt(sales);
+            document.getElementById('outFoodCost').textContent = fmt(foodCost);
+            document.getElementById('outPaCost').textContent = fmt(paCost);
+            document.getElementById('outFixedLabor').textContent = fmt(fixedLabor);
+            document.getElementById('outTotalLabor').textContent = fmt(totalLabor);
+            document.getElementById('outExpenses').textContent = fmt(expenses);
+            document.getElementById('outOtherFixed').textContent = fmt(otherFixed);
+            document.getElementById('outTotalFixed').textContent = fmt(totalFixed);
+            document.getElementById('outVariableCost').textContent = fmt(variableCost);
+            document.getElementById('outMarginProfit').textContent = fmt(marginProfit);
+            document.getElementById('outProfit').textContent = fmt(operatingProfit);
+
+            // サマリー更新
+            document.getElementById('sumBep').textContent = fmt(bep);
+            document.getElementById('sumMarginRate').textContent = marginRate.toFixed(1);
+            document.getElementById('sumSafety').textContent = safety.toFixed(1);
+            document.getElementById('sumRequired').textContent = fmt(requiredCustomers);
+
+            // 差異判定
+            const salesDiff = Math.abs(sales - budgetSales) / budgetSales * 100;
+            const profitDiff = Math.abs(operatingProfit - budgetProfit) / budgetProfit * 100;
+
+            updateDiff('diffSales', salesDiff);
+            updateDiff('diffProfit', profitDiff);
+
+            // 利益行の色
+            const profitRow = document.getElementById('profitRow');
+            if (operatingProfit >= targetProfit) {
+                profitRow.className = 'output-row profit';
+            } else if (operatingProfit > 0) {
+                profitRow.className = 'output-row profit warning';
+            } else {
+                profitRow.className = 'output-row profit danger';
+            }
+        }
+
+        function fmt(n) {
+            return Math.round(n).toLocaleString();
+        }
+
+        function updateDiff(id, diff) {
+            const el = document.getElementById(id);
+            if (diff <= 0.5) {
+                el.textContent = '○一致';
+                el.className = 'diff-badge match';
+            } else if (diff <= 1) {
+                el.textContent = '○ほぼ一致';
+                el.className = 'diff-badge close';
+            } else {
+                el.textContent = '×差異あり';
+                el.className = 'diff-badge diff';
+            }
+            if (id === 'diffProfit') {
+                el.style.background = 'rgba(255,255,255,0.3)';
+                el.style.color = 'white';
+            }
+        }
+
+        function resetAll() {
+            document.getElementById('customers').value = 3000;
+            document.getElementById('unitPrice').value = 4567;
+            document.getElementById('fdRate').value = 32.0;
+            document.getElementById('paRate').value = 5.5;
+            document.getElementById('fixedLabor').value = 4682;
+            document.getElementById('expenses').value = 1741;
+            document.getElementById('depreciation').value = 96;
+            document.getElementById('rent').value = 556;
+            document.getElementById('materials').value = 16;
+            document.getElementById('targetProfit').value = 919;
+            document.getElementById('budgetSales').value = 13700;
+            document.getElementById('budgetProfit').value = 1475;
+            simulate();
+        }
+
+        simulate();
+    </script>
+</body>
+</html>
