@@ -458,3 +458,84 @@ FLコスト,PA人件費,xxxx,xxxx,...,xxxx,xxxxx,xxxx
 
 #### ファイル名規則
 `{種別}_{店舗名}_{YYYY-MM-DD}.csv`
+
+---
+
+## 12. 履歴管理機能
+
+### 12.1 概要
+インポートしたデータをlocalStorageに保存し、後から復元できる機能。
+
+### 12.2 保存データ構造
+```json
+{
+  "id": "1703593200000",
+  "title": "2024-12-26_21:30_店舗A, 店舗B",
+  "dateTime": "2024-12-26_21:30",
+  "storeNames": ["店舗A", "店舗B"],
+  "storeCount": 2,
+  "data": { /* allStoresData */ },
+  "savedAt": "2024-12-26T12:30:00.000Z"
+}
+```
+
+### 12.3 保存タイトル形式
+`{年}-{月}-{日}_{時}:{分}_{店舗名1}, {店舗名2}, ...`
+
+例: `2024-12-26_21:30_店舗A, 店舗B`
+
+### 12.4 機能一覧
+
+| 関数 | 説明 |
+|------|------|
+| `saveToHistory()` | 現在のデータを履歴に保存 |
+| `loadFromHistory(id)` | 履歴からデータを復元 |
+| `deleteFromHistory(id)` | 履歴を削除 |
+| `clearAllHistory()` | 全履歴をクリア |
+| `renderHistoryList()` | 履歴リストを描画 |
+| `loadHistory()` | localStorageから履歴を読み込み |
+| `initHistory()` | 初期化時に履歴を表示 |
+
+### 12.5 制限事項
+- 最大保存件数: 20件
+- 保存容量: localStorageの制限に依存（通常5MB）
+- 容量超過時はエラー通知
+
+### 12.6 UIコンポーネント
+```html
+<div class="history-section">
+  <h3>インポート履歴</h3>
+  <button>現在のデータを保存</button>
+  <button>履歴全削除</button>
+  <div class="history-list">
+    <!-- 履歴アイテム -->
+  </div>
+</div>
+```
+
+---
+
+## 13. 複数ファイルインポート
+
+### 13.1 概要
+複数のCSVファイルを一度に選択し、まとめてインポート・シミュレーションを実行。
+
+### 13.2 処理フロー
+1. 複数ファイル選択（input[type="file"] multiple属性）
+2. `selectedFiles`配列にファイルを格納
+3. 「インポート実行」ボタンクリック
+4. 各ファイルを順次処理:
+   - CSV解析
+   - シミュレーション実行
+   - 店舗データを`allStoresData`に保存
+5. 全店舗サマリー更新
+
+### 13.3 関連関数
+
+| 関数 | 説明 |
+|------|------|
+| `handleFileSelect(event)` | ファイル選択時の処理 |
+| `importAllCSVs()` | 全ファイルのインポート実行 |
+| `saveCurrentStoreData()` | 現在の店舗データを保存 |
+| `updateStoreSelector()` | 店舗セレクターを更新 |
+| `updateAllStoresSummary()` | 全店舗サマリーを更新 |

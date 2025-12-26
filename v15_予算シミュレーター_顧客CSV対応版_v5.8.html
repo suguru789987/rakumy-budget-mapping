@@ -143,6 +143,19 @@
         .store-card .metric-value { font-weight: bold; }
         .store-card.total { background: rgba(255,193,7,0.3); border: 2px solid #ffc107; }
 
+        /* 履歴セクション */
+        .history-section { background: #f8f9fa; border-radius: 8px; padding: 15px; margin-bottom: 15px; }
+        .history-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; max-height: 300px; overflow-y: auto; }
+        .history-item { background: #fff; border: 1px solid #ddd; border-radius: 6px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+        .history-item:hover { border-color: #1565c0; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .history-title { font-weight: bold; font-size: 12px; color: #1565c0; }
+        .history-meta { font-size: 10px; color: #666; }
+        .history-stores { font-size: 10px; color: #888; }
+        .history-actions { display: flex; gap: 5px; margin-top: 5px; }
+        .history-actions button { padding: 4px 10px; font-size: 10px; border: none; border-radius: 4px; cursor: pointer; }
+        .history-actions .load-btn { background: #1565c0; color: #fff; }
+        .history-actions .delete-btn { background: #f44336; color: #fff; }
+
         @media (max-width: 768px) {
             .summary-grid { grid-template-columns: repeat(3, 1fr); }
             .month-cols-grid { grid-template-columns: repeat(4, 1fr); }
@@ -175,6 +188,16 @@
                 <button class="btn btn-danger" onclick="clearAllStores()">全店舗クリア</button>
             </div>
             <div id="importStatus"></div>
+        </div>
+
+        <!-- 履歴セクション -->
+        <div class="history-section" id="historySection" style="display:none;">
+            <div style="display:flex; align-items:center; gap:15px; margin-bottom:10px;">
+                <h3 style="margin:0;">インポート履歴</h3>
+                <button class="btn" style="background:#4caf50;color:#fff;padding:5px 15px;" onclick="saveToHistory()">現在のデータを保存</button>
+                <button class="btn btn-danger" style="padding:5px 15px;" onclick="clearAllHistory()">履歴全削除</button>
+            </div>
+            <div class="history-list" id="historyList"></div>
         </div>
 
         <!-- 店舗セレクター -->
@@ -2318,9 +2341,198 @@
             document.getElementById('judgmentResults').innerHTML = judgeHtml;
         }
 
+        // =====================
+        // 履歴管理機能
+        // =====================
+        var HISTORY_KEY = 'rakumy_budget_history';
+
+        // 現在の日時をフォーマット
+        function formatDateTime() {
+            var now = new Date();
+            var y = now.getFullYear();
+            var m = ('0' + (now.getMonth() + 1)).slice(-2);
+            var d = ('0' + now.getDate()).slice(-2);
+            var h = ('0' + now.getHours()).slice(-2);
+            var min = ('0' + now.getMinutes()).slice(-2);
+            return y + '-' + m + '-' + d + '_' + h + ':' + min;
+        }
+
+        // 履歴を保存
+        function saveToHistory() {
+            if (Object.keys(allStoresData).length === 0) {
+                alert('保存するデータがありません。CSVをインポートしてください。');
+                return;
+            }
+
+            var history = loadHistory();
+            var storeNames = Object.keys(allStoresData).join(', ');
+            var dateTime = formatDateTime();
+            var title = dateTime + '_' + storeNames;
+
+            var newEntry = {
+                id: Date.now().toString(),
+                title: title,
+                dateTime: dateTime,
+                storeNames: Object.keys(allStoresData),
+                storeCount: Object.keys(allStoresData).length,
+                data: JSON.parse(JSON.stringify(allStoresData)), // Deep copy
+                savedAt: new Date().toISOString()
+            };
+
+            history.unshift(newEntry); // 最新を先頭に
+
+            // 最大20件まで保持
+            if (history.length > 20) {
+                history = history.slice(0, 20);
+            }
+
+            try {
+                localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+                showStatus('success', '履歴に保存しました: ' + title);
+                renderHistoryList();
+            } catch (e) {
+                alert('保存に失敗しました。ストレージ容量が不足している可能性があります。');
+                console.error(e);
+            }
+        }
+
+        // 履歴を読み込み
+        function loadHistory() {
+            try {
+                var data = localStorage.getItem(HISTORY_KEY);
+                return data ? JSON.parse(data) : [];
+            } catch (e) {
+                console.error('履歴の読み込みに失敗:', e);
+                return [];
+            }
+        }
+
+        // 履歴から復元
+        function loadFromHistory(id) {
+            var history = loadHistory();
+            var entry = history.find(function(h) { return h.id === id; });
+            if (!entry) {
+                alert('履歴が見つかりません');
+                return;
+            }
+
+            // 確認ダイアログ
+            if (Object.keys(allStoresData).length > 0) {
+                if (!confirm('現在のデータを置き換えますか？')) {
+                    return;
+                }
+            }
+
+            // データを復元
+            allStoresData = JSON.parse(JSON.stringify(entry.data)); // Deep copy
+
+            // 最初の店舗をアクティブに
+            var storeNames = Object.keys(allStoresData);
+            if (storeNames.length > 0) {
+                currentStoreName = storeNames[0];
+                var storeData = allStoresData[currentStoreName];
+                annualData = storeData.annualData || {};
+                calcResults = storeData.calcResults || {};
+                rakumyInputs = storeData.rakumyInputs || {};
+                mqOutputs = storeData.mqOutputs || {};
+                judgments = storeData.judgments || {};
+                matchedItems = storeData.matchedItems || [];
+                unmatchedItems = storeData.unmatchedItems || [];
+                activeMonths = storeData.activeMonths || [];
+                monthLabels = storeData.monthLabels || [];
+                storeName = currentStoreName;
+            }
+
+            // UI更新
+            updateStoreSelector();
+            updateAllStoresSummary();
+            renderAllTables();
+
+            showStatus('success', '履歴から復元しました: ' + entry.title);
+        }
+
+        // 履歴を削除
+        function deleteFromHistory(id) {
+            if (!confirm('この履歴を削除しますか？')) {
+                return;
+            }
+
+            var history = loadHistory();
+            history = history.filter(function(h) { return h.id !== id; });
+
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+            renderHistoryList();
+            showStatus('info', '履歴を削除しました');
+        }
+
+        // 全履歴をクリア
+        function clearAllHistory() {
+            if (!confirm('全ての履歴を削除しますか？この操作は取り消せません。')) {
+                return;
+            }
+
+            localStorage.removeItem(HISTORY_KEY);
+            renderHistoryList();
+            showStatus('info', '全履歴を削除しました');
+        }
+
+        // 履歴リストを描画
+        function renderHistoryList() {
+            var historySection = document.getElementById('historySection');
+            var historyList = document.getElementById('historyList');
+            var history = loadHistory();
+
+            if (history.length === 0) {
+                historySection.style.display = 'none';
+                return;
+            }
+
+            historySection.style.display = 'block';
+            var html = '';
+
+            history.forEach(function(entry) {
+                html += '<div class="history-item">';
+                html += '<div class="history-title">' + escapeHtml(entry.title) + '</div>';
+                html += '<div class="history-meta">';
+                html += '<span>保存日時: ' + new Date(entry.savedAt).toLocaleString('ja-JP') + '</span>';
+                html += '</div>';
+                html += '<div class="history-stores">';
+                html += '<span>店舗数: ' + entry.storeCount + '店舗</span>';
+                if (entry.storeNames && entry.storeNames.length > 0) {
+                    html += ' (' + entry.storeNames.slice(0, 3).join(', ');
+                    if (entry.storeNames.length > 3) html += ' 他' + (entry.storeNames.length - 3) + '店舗';
+                    html += ')';
+                }
+                html += '</div>';
+                html += '<div class="history-actions">';
+                html += '<button class="load-btn" onclick="loadFromHistory(\'' + entry.id + '\')">読み込み</button>';
+                html += '<button class="delete-btn" onclick="deleteFromHistory(\'' + entry.id + '\')">削除</button>';
+                html += '</div>';
+                html += '</div>';
+            });
+
+            historyList.innerHTML = html;
+        }
+
+        // HTMLエスケープ
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, '&amp;')
+                      .replace(/</g, '&lt;')
+                      .replace(/>/g, '&gt;')
+                      .replace(/"/g, '&quot;')
+                      .replace(/'/g, '&#39;');
+        }
+
+        // 履歴初期化
+        function initHistory() {
+            renderHistoryList();
+        }
+
         // 初期化
         document.addEventListener('DOMContentLoaded', function() {
             showStatus('info', 'CSVファイルを選択してください');
+            initHistory();
         });
     </script>
 </body>

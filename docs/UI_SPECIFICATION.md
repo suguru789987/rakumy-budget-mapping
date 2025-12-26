@@ -562,3 +562,105 @@ function fmtRate(val) {
 }
 // 例: 32.567 → "32.6"
 ```
+
+---
+
+## 12. 履歴セクション
+
+### 12.1 表示位置
+ツールバーの下、店舗セレクターの上に配置。
+
+### 12.2 表示条件
+- 履歴データがある場合のみ表示
+- `display: block` / `display: none`
+
+### 12.3 HTML構造
+```html
+<div class="history-section" id="historySection">
+  <div style="display:flex; align-items:center; gap:15px;">
+    <h3>インポート履歴</h3>
+    <button class="btn" style="background:#4caf50;color:#fff;">現在のデータを保存</button>
+    <button class="btn btn-danger">履歴全削除</button>
+  </div>
+  <div class="history-list" id="historyList">
+    <!-- 履歴アイテム -->
+  </div>
+</div>
+```
+
+### 12.4 履歴セクションスタイル
+```css
+.history-section {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 15px;
+}
+.history-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 10px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+```
+
+### 12.5 履歴アイテムスタイル
+```css
+.history-item {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.history-item:hover {
+  border-color: #1565c0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.history-title {
+  font-weight: bold;
+  font-size: 12px;
+  color: #1565c0;
+}
+.history-meta {
+  font-size: 10px;
+  color: #666;
+}
+.history-stores {
+  font-size: 10px;
+  color: #888;
+}
+.history-actions {
+  display: flex;
+  gap: 5px;
+  margin-top: 5px;
+}
+.history-actions .load-btn {
+  background: #1565c0;
+  color: #fff;
+}
+.history-actions .delete-btn {
+  background: #f44336;
+  color: #fff;
+}
+```
+
+### 12.6 履歴アイテム構造
+```html
+<div class="history-item">
+  <div class="history-title">2024-12-26_21:30_店舗A, 店舗B</div>
+  <div class="history-meta">
+    <span>保存日時: 2024/12/26 21:30:00</span>
+  </div>
+  <div class="history-stores">
+    <span>店舗数: 2店舗 (店舗A, 店舗B)</span>
+  </div>
+  <div class="history-actions">
+    <button class="load-btn">読み込み</button>
+    <button class="delete-btn">削除</button>
+  </div>
+</div>
+```
