@@ -443,6 +443,60 @@
                     <div><span class="info-label">未マッチ項目:</span> <span class="info-value" id="unmatchedCount">-</span></div>
                 </div>
             </div>
+
+            <!-- 店舗セレクター -->
+            <div class="store-selector" id="storeSelector" style="display:none;">
+                <label>表示店舗:</label>
+                <select id="storeSelect" onchange="switchStore(this.value)">
+                    <option value="">-- 店舗を選択 --</option>
+                </select>
+                <div class="store-list" id="storeList"></div>
+                <span style="margin-left:auto; font-size:10px; color:#666;">インポート済: <strong id="storeCount">0</strong>店舗</span>
+            </div>
+
+            <!-- マッピング設定セクション -->
+            <div class="section" style="margin-top:15px;">
+                <div class="section-header header-mapping">項目マッピング一覧</div>
+                <div class="section-body">
+                    <div class="unmatched-section" id="unmatchedSection" style="display:none;margin-bottom:15px;">
+                        <h3>未マッチ項目</h3>
+                        <div id="unmatchedList"></div>
+                        <div class="form-row" style="margin-top:15px;">
+                            <label>新規マッピング:</label>
+                            <input type="text" id="newCode" placeholder="項目コード">
+                            <input type="text" id="newName" placeholder="項目名">
+                            <input type="number" id="newV15No" placeholder="v15番号">
+                            <select id="newCategory">
+                                <option value="売上">売上</option>
+                                <option value="原価">原価</option>
+                                <option value="固定人件費">固定人件費</option>
+                                <option value="PA人件費">PA人件費</option>
+                                <option value="経費">経費</option>
+                                <option value="固定費">固定費</option>
+                                <option value="利益">利益</option>
+                            </select>
+                            <button class="btn btn-success" onclick="addMapping()">追加</button>
+                        </div>
+                    </div>
+                    <div id="mappingTable"></div>
+                </div>
+            </div>
+
+            <!-- 予算入力セクション -->
+            <div class="section" style="margin-top:15px;">
+                <div class="section-header header-input">【1】顧客予算入力（CSV取込値）</div>
+                <div class="section-body">
+                    <table class="annual-table" id="inputTable"></table>
+                </div>
+            </div>
+
+            <!-- 処理ログセクション -->
+            <div class="section" style="margin-top:15px;">
+                <div class="section-header" style="background:#455a64;color:#fff;">処理ログ</div>
+                <div class="section-body">
+                    <div id="preprocessLog" class="preprocess-log">CSVをインポートしてください</div>
+                </div>
+            </div>
         </div>
 
         <!-- ===== エクスポートページ ===== -->
@@ -478,16 +532,6 @@
 
         <!-- ===== 予算設定ページ ===== -->
         <div id="page-budget" class="main-page">
-            <!-- 店舗セレクター -->
-            <div class="store-selector" id="storeSelector" style="display:none;">
-                <label>表示店舗:</label>
-                <select id="storeSelect" onchange="switchStore(this.value)">
-                    <option value="">-- 店舗を選択 --</option>
-                </select>
-                <div class="store-list" id="storeList"></div>
-                <span style="margin-left:auto; font-size:10px; color:#666;">インポート済: <strong id="storeCount">0</strong>店舗</span>
-            </div>
-
             <!-- 全店舗サマリー -->
             <div class="all-stores-summary" id="allStoresSummary" style="display:none;">
                 <h3>全店舗サマリー</h3>
@@ -503,59 +547,15 @@
 
             <!-- サブタブ -->
             <div class="tabs">
-                <div class="tab active" onclick="showTab('tab-mapping')">マッピング設定</div>
-                <div class="tab" onclick="showTab('tab-input')">【1】予算入力</div>
-                <div class="tab" onclick="showTab('tab-calc')">【2】入力前演算</div>
+                <div class="tab active" onclick="showTab('tab-calc')">【2】入力前演算</div>
                 <div class="tab" onclick="showTab('tab-rakumy')">【3】ラクミー入力値</div>
                 <div class="tab" onclick="showTab('tab-output')">【4】MQ出力</div>
                 <div class="tab" onclick="showTab('tab-budget-list')">【5】予算一覧</div>
                 <div class="tab" onclick="showTab('tab-summary')">【6】サマリー</div>
             </div>
 
-        <!-- マッピング設定タブ -->
-        <div id="tab-mapping" class="tab-content active">
-            <div class="unmatched-section" id="unmatchedSection" style="display:none;">
-                <h3>未マッチ項目</h3>
-                <div id="unmatchedList"></div>
-                <div class="form-row" style="margin-top:15px;">
-                    <label>新規マッピング:</label>
-                    <input type="text" id="newCode" placeholder="項目コード">
-                    <input type="text" id="newName" placeholder="項目名">
-                    <input type="number" id="newV15No" placeholder="v15番号">
-                    <select id="newCategory">
-                        <option value="売上">売上</option>
-                        <option value="原価">原価</option>
-                        <option value="固定人件費">固定人件費</option>
-                        <option value="PA人件費">PA人件費</option>
-                        <option value="経費">経費</option>
-                        <option value="固定費">固定費</option>
-                        <option value="利益">利益</option>
-                    </select>
-                    <button class="btn btn-success" onclick="addMapping()">追加</button>
-                </div>
-            </div>
-            <div class="section">
-                <div class="section-header header-mapping">項目マッピング一覧</div>
-                <div class="section-body">
-                    <div id="mappingTable"></div>
-                    <h4 style="margin:20px 0 10px;">処理ログ</h4>
-                    <div id="preprocessLog" class="preprocess-log">CSVをインポートしてください</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 予算入力タブ -->
-        <div id="tab-input" class="tab-content">
-            <div class="section">
-                <div class="section-header header-input">【1】顧客予算入力（CSV取込値）</div>
-                <div class="section-body">
-                    <table class="annual-table" id="inputTable"></table>
-                </div>
-            </div>
-        </div>
-
         <!-- 入力前演算タブ -->
-        <div id="tab-calc" class="tab-content">
+        <div id="tab-calc" class="tab-content active">
             <div class="section">
                 <div class="section-header header-calc">【2】入力前演算結果</div>
                 <div class="section-body">
