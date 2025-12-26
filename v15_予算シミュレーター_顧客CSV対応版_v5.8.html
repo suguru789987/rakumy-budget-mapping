@@ -327,6 +327,72 @@
         .history-actions .load-btn { background: #1565c0; color: #fff; }
         .history-actions .delete-btn { background: #f44336; color: #fff; }
 
+        /* データ表示モーダル */
+        .data-view-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .data-view-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.6);
+        }
+        .data-view-container {
+            position: relative;
+            background: #fff;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 1200px;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 50px rgba(0,0,0,0.3);
+        }
+        .data-view-header {
+            background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%);
+            color: #fff;
+            padding: 15px 25px;
+            border-radius: 12px 12px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .data-view-header h3 { margin: 0; font-size: 16px; }
+        .data-view-body {
+            padding: 20px;
+            overflow: auto;
+            flex: 1;
+        }
+        .data-view-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+        .data-view-table th, .data-view-table td {
+            border: 1px solid #ddd;
+            padding: 8px 10px;
+            text-align: left;
+            white-space: nowrap;
+        }
+        .data-view-table th {
+            background: #e3f2fd;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+        }
+        .data-view-table tr:nth-child(even) { background: #f9f9f9; }
+        .data-view-table tr:hover { background: #e8f4fc; }
+
         /* トップナビゲーションタブ */
         .main-nav {
             display: flex;
@@ -585,6 +651,18 @@
             </div>
             <div class="data-history-content">
                 <div id="exportHistoryList" class="data-history-list"></div>
+            </div>
+        </div>
+
+        <!-- ===== データ表示モーダル ===== -->
+        <div id="dataViewModal" class="data-view-modal" style="display:none;">
+            <div class="data-view-overlay" onclick="hideDataViewModal()"></div>
+            <div class="data-view-container">
+                <div class="data-view-header">
+                    <h3 id="dataViewTitle">データ表示</h3>
+                    <button class="btn btn-secondary" onclick="hideDataViewModal()">✕ 閉じる</button>
+                </div>
+                <div class="data-view-body" id="dataViewContent"></div>
             </div>
         </div>
 
@@ -1332,6 +1410,7 @@
                 html += '    </div>';
                 html += '  </div>';
                 html += '  <div class="item-actions">';
+                html += '    <button class="btn-view" onclick="viewExportHistoryItem(\'' + entry.id + '\')">表示</button>';
                 html += '    <button class="btn-save" onclick="downloadExportHistoryItem(\'' + entry.id + '\')">ダウンロード</button>';
                 html += '    <button class="btn-delete" onclick="deleteExportHistoryItem(\'' + entry.id + '\')">削除</button>';
                 html += '  </div>';
@@ -1372,6 +1451,57 @@
             link.click();
         }
 
+        // 履歴データを表示
+        function viewExportHistoryItem(id) {
+            var history = loadExportHistory();
+            var entry = history.find(function(h) { return h.id === id; });
+            if (!entry) {
+                alert('データが見つかりません');
+                return;
+            }
+            showDataViewModal(entry);
+        }
+
+        // データ表示モーダルを表示
+        function showDataViewModal(entry) {
+            var modal = document.getElementById('dataViewModal');
+            var title = document.getElementById('dataViewTitle');
+            var content = document.getElementById('dataViewContent');
+
+            title.textContent = entry.title;
+
+            // CSVデータをテーブル形式で表示
+            var data = entry.data || '';
+            // BOMを除去
+            if (data.charCodeAt(0) === 0xFEFF) {
+                data = data.substring(1);
+            }
+            var lines = data.split('\n');
+            var html = '<table class="data-view-table">';
+            lines.forEach(function(line, idx) {
+                if (!line.trim()) return;
+                var cells = line.split(',');
+                var tag = idx === 0 ? 'th' : 'td';
+                html += '<tr>';
+                cells.forEach(function(cell) {
+                    html += '<' + tag + '>' + escapeHtml(cell) + '</' + tag + '>';
+                });
+                html += '</tr>';
+            });
+            html += '</table>';
+
+            content.innerHTML = html;
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+
+        // データ表示モーダルを閉じる
+        function hideDataViewModal() {
+            var modal = document.getElementById('dataViewModal');
+            modal.style.display = 'none';
+            document.body.style.overflow = '';
+        }
+
         // 履歴から削除
         function deleteExportHistoryItem(id) {
             if (!confirm('この出力データを削除しますか？')) return;
@@ -1382,6 +1512,134 @@
             renderExportHistoryList();
             updateExportHistoryCount();
             showStatus('info', '出力データを削除しました');
+        }
+
+        // ★ インポート完了時に全店舗のエクスポートデータを自動生成
+        function generateExportDataForAllStores() {
+            var storeNames = Object.keys(allStoresData);
+            if (storeNames.length === 0) return;
+
+            var now = new Date();
+            var y = now.getFullYear();
+            var m = ('0' + (now.getMonth() + 1)).slice(-2);
+            var d = ('0' + now.getDate()).slice(-2);
+            var h = ('0' + now.getHours()).slice(-2);
+            var min = ('0' + now.getMinutes()).slice(-2);
+            var sec = ('0' + now.getSeconds()).slice(-2);
+            var dateTimeStr = y + m + d + h + min + sec;
+            var dateTimeDisplay = y + '-' + m + '-' + d + ' ' + h + ':' + min + ':' + sec;
+
+            var history = loadExportHistory();
+
+            // 各店舗のデータを生成
+            storeNames.forEach(function(name) {
+                var storeData = allStoresData[name];
+                if (!storeData) return;
+
+                // ラクミー入力値データを生成
+                var rakumyData = generateRakumyInputData(name, storeData);
+                var mqData = generateMQOutputData(name, storeData);
+
+                // ラクミー入力値を履歴に追加
+                var rakumyEntry = {
+                    id: Date.now().toString() + '_rakumy_' + name,
+                    title: dateTimeStr + '_' + name + '_ラクミー入力値',
+                    exportType: 'ラクミー入力値CSV',
+                    storeNames: [name],
+                    storeCount: 1,
+                    dateTime: dateTimeDisplay,
+                    data: rakumyData,
+                    savedAt: now.toISOString()
+                };
+                history.unshift(rakumyEntry);
+
+                // MQ出力を履歴に追加
+                var mqEntry = {
+                    id: Date.now().toString() + '_mq_' + name,
+                    title: dateTimeStr + '_' + name + '_MQ出力',
+                    exportType: 'MQ出力CSV',
+                    storeNames: [name],
+                    storeCount: 1,
+                    dateTime: dateTimeDisplay,
+                    data: mqData,
+                    savedAt: now.toISOString()
+                };
+                history.unshift(mqEntry);
+            });
+
+            // 履歴を保存（最大100件）
+            if (history.length > 100) history = history.slice(0, 100);
+            saveExportHistory(history);
+            updateExportHistoryCount();
+        }
+
+        // ラクミー入力値CSVデータを生成
+        function generateRakumyInputData(storeName, storeData) {
+            var csv = [];
+            var BOM = '\uFEFF';
+            var months = storeData.activeMonths || [];
+            var labels = storeData.monthLabels || [];
+            var inputs = storeData.rakumyInputs || {};
+
+            // ヘッダー
+            var header = ['店舗名', '項目'];
+            labels.forEach(function(label) { header.push(label); });
+            header.push('年間合計');
+            csv.push(header.join(','));
+
+            // データ行
+            RAKUMY_ITEMS.forEach(function(item) {
+                var row = [storeName, item.name];
+                var total = 0;
+                months.forEach(function(m) {
+                    var val = inputs[m] && inputs[m][item.key] !== undefined ? inputs[m][item.key] : 0;
+                    row.push(val);
+                    total += parseFloat(val) || 0;
+                });
+                row.push(total);
+                csv.push(row.join(','));
+            });
+
+            return BOM + csv.join('\n');
+        }
+
+        // MQ出力CSVデータを生成
+        function generateMQOutputData(storeName, storeData) {
+            var csv = [];
+            var BOM = '\uFEFF';
+            var months = storeData.activeMonths || [];
+            var labels = storeData.monthLabels || [];
+            var outputs = storeData.mqOutputs || {};
+
+            // ヘッダー
+            var header = ['店舗名', '項目'];
+            labels.forEach(function(label) { header.push(label); });
+            header.push('年間合計');
+            csv.push(header.join(','));
+
+            // MQ項目
+            var mqItems = [
+                { key: 'sales', name: '売上' },
+                { key: 'variableCost', name: '変動費' },
+                { key: 'grossProfit', name: '粗利' },
+                { key: 'fixedCost', name: '固定費' },
+                { key: 'operatingProfit', name: '営業利益' },
+                { key: 'profitRate', name: '営業利益率(%)' }
+            ];
+
+            mqItems.forEach(function(item) {
+                var row = [storeName, item.name];
+                var total = 0;
+                months.forEach(function(m) {
+                    var val = outputs[m] && outputs[m][item.key] !== undefined ? outputs[m][item.key] : 0;
+                    row.push(item.key === 'profitRate' ? val.toFixed(1) : Math.round(val));
+                    if (item.key !== 'profitRate') total += parseFloat(val) || 0;
+                });
+                row.push(item.key === 'profitRate' ? '-' : Math.round(total));
+                csv.push(row.join(','));
+            });
+
+            return BOM + csv.join('\n');
         }
 
         // ★ 複数CSVインポート
@@ -1431,6 +1689,9 @@
 
                         document.getElementById('preprocessLog').innerHTML = preprocessLog.join('\n');
                         showStatus('success', importCount + '店舗インポート完了' + (errorCount > 0 ? '（' + errorCount + '件エラー）' : ''));
+
+                        // インポート完了後、自動的にエクスポートデータを生成
+                        generateExportDataForAllStores();
 
                         // インポート完了後、選択ファイルをクリア
                         clearSelectedFiles();
