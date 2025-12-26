@@ -225,6 +225,95 @@
         .data-item .delete-btn:hover { background: #e53935; }
         .empty-message { text-align: center; padding: 30px; color: #999; font-size: 14px; }
 
+        /* 取り込みデータ履歴一覧画面（フルスクリーン） */
+        .data-history-page {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #f0f2f5;
+            z-index: 1000;
+            overflow-y: auto;
+        }
+        .data-history-header {
+            background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%);
+            color: #fff;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .data-history-header h2 { margin: 0; font-size: 20px; }
+        .data-history-content {
+            padding: 20px 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .data-history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .history-data-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px;
+            background: #fff;
+            border-radius: 10px;
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: all 0.2s;
+        }
+        .history-data-item:hover {
+            border-color: #1565c0;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+            transform: translateY(-2px);
+        }
+        .history-data-item .item-info { flex: 1; }
+        .history-data-item .item-name {
+            font-weight: bold;
+            font-size: 16px;
+            color: #1565c0;
+            margin-bottom: 8px;
+        }
+        .history-data-item .item-meta {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            font-size: 12px;
+            color: #666;
+        }
+        .history-data-item .item-meta span {
+            background: #f5f5f5;
+            padding: 4px 12px;
+            border-radius: 15px;
+        }
+        .history-data-item .item-actions {
+            display: flex;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+        .history-data-item .item-actions button {
+            padding: 10px 20px;
+            font-size: 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        .history-data-item .btn-view { background: #2196f3; color: #fff; }
+        .history-data-item .btn-view:hover { background: #1976d2; }
+        .history-data-item .btn-save { background: #4caf50; color: #fff; }
+        .history-data-item .btn-save:hover { background: #43a047; }
+        .history-data-item .btn-delete { background: #f44336; color: #fff; }
+        .history-data-item .btn-delete:hover { background: #e53935; }
+
         /* 履歴セクション */
         .history-section { background: #f8f9fa; border-radius: 8px; padding: 15px; margin-bottom: 15px; }
         .history-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; max-height: 300px; overflow-y: auto; }
@@ -281,25 +370,12 @@
 
             <div id="importStatus" style="margin-top:10px;"></div>
 
-            <!-- 取り込みデータ一覧ボタン -->
-            <div style="margin-top:15px;text-align:center;">
-                <button class="btn" style="background:#1565c0;color:#fff;padding:10px 30px;" onclick="toggleImportedDataList()">
-                    取り込みデータ一覧 (<span id="importedStoreCount">0</span>件)
+            <!-- 取り込みデータ履歴ボタン -->
+            <div style="margin-top:15px;padding-top:15px;border-top:1px solid #ddd;">
+                <button class="btn" style="background:#1565c0;color:#fff;padding:12px 30px;width:100%;font-size:14px;" onclick="showDataHistoryPage()">
+                    📋 取り込みデータ履歴 (<span id="importedStoreCount">0</span>件)
                 </button>
             </div>
-        </div>
-
-        <!-- ===== 取り込みデータ一覧セクション ===== -->
-        <div class="import-section imported-data-section" id="importedDataSection" style="display:none;border-left:4px solid #4caf50;margin-top:15px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
-                <h2 style="color:#2e7d32;margin:0;">📋 取り込みデータ一覧</h2>
-                <div>
-                    <button class="btn" style="background:#4caf50;color:#fff;" onclick="saveAllToHistory()">全データを履歴に保存</button>
-                    <button class="btn btn-danger" onclick="clearAllStores()">全データ削除</button>
-                    <button class="btn btn-secondary" onclick="toggleImportedDataList()">閉じる</button>
-                </div>
-            </div>
-            <div id="importedDataList" class="imported-data-list"></div>
         </div>
 
         <!-- ===== エクスポートセクション ===== -->
@@ -323,43 +399,23 @@
                     <div>設定JSON</div>
                 </button>
             </div>
-
-            <!-- エクスポート対象データ一覧ボタン -->
-            <div style="margin-top:15px;text-align:center;">
-                <button class="btn" style="background:#7b1fa2;color:#fff;padding:10px 30px;" onclick="toggleExportDataList()">
-                    エクスポート対象データ一覧 (<span id="exportStoreCount">0</span>件)
-                </button>
-            </div>
-        </div>
-
-        <!-- ===== エクスポート対象データ一覧セクション ===== -->
-        <div class="import-section" id="exportDataSection" style="display:none;border-left:4px solid #e91e63;margin-top:15px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
-                <h2 style="color:#c2185b;margin:0;">📤 エクスポート対象データ</h2>
-                <div>
-                    <button class="btn btn-secondary" onclick="toggleExportDataList()">閉じる</button>
-                </div>
-            </div>
-            <div id="exportDataList" class="imported-data-list"></div>
-        </div>
-
-        <!-- ===== 設定セクション ===== -->
-        <div class="import-section" style="margin-top:15px;border-left:4px solid #607d8b;">
-            <h2 style="color:#455a64;">⚙️ 設定</h2>
-            <div class="import-controls">
+            <div class="import-controls" style="margin-top:15px;padding-top:15px;border-top:1px solid #ddd;">
                 <input type="file" id="configFile" accept=".json" style="display:none" onchange="importAllConfig(event)">
                 <button class="btn btn-secondary" onclick="document.getElementById('configFile').click()">設定読込（JSON）</button>
-                <button class="btn btn-warning" onclick="runSimulationForCurrentStore()">再シミュレーション実行</button>
+                <button class="btn btn-warning" onclick="runSimulationForCurrentStore()">再シミュレーション</button>
+                <button class="btn btn-danger" onclick="clearAllStores()">全データ削除</button>
             </div>
         </div>
 
-        <!-- ===== 履歴セクション ===== -->
-        <div class="history-section" id="historySection" style="display:none;margin-top:15px;">
-            <div style="display:flex; align-items:center; gap:15px; margin-bottom:10px;">
-                <h3 style="margin:0;">💾 保存履歴</h3>
-                <button class="btn btn-danger" style="padding:5px 15px;" onclick="clearAllHistory()">履歴全削除</button>
+        <!-- ===== 取り込みデータ履歴一覧画面 ===== -->
+        <div id="dataHistoryPage" class="data-history-page" style="display:none;">
+            <div class="data-history-header">
+                <h2>📋 取り込みデータ履歴一覧</h2>
+                <button class="btn btn-secondary" onclick="hideDataHistoryPage()">✕ 閉じる</button>
             </div>
-            <div class="history-list" id="historyList"></div>
+            <div class="data-history-content">
+                <div id="dataHistoryList" class="data-history-list"></div>
+            </div>
         </div>
 
         <!-- 店舗セレクター -->
@@ -805,38 +861,29 @@
         }
 
         // =====================
-        // 取り込みデータ一覧機能
+        // 取り込みデータ履歴一覧機能
         // =====================
 
-        // 取り込みデータ一覧の表示/非表示切り替え
-        function toggleImportedDataList() {
-            var section = document.getElementById('importedDataSection');
-            if (section.style.display === 'none') {
-                section.style.display = 'block';
-                renderImportedDataList();
-            } else {
-                section.style.display = 'none';
-            }
+        // 取り込みデータ履歴一覧画面を表示
+        function showDataHistoryPage() {
+            document.getElementById('dataHistoryPage').style.display = 'block';
+            document.body.style.overflow = 'hidden'; // スクロール無効化
+            renderDataHistoryList();
         }
 
-        // エクスポート対象データ一覧の表示/非表示切り替え
-        function toggleExportDataList() {
-            var section = document.getElementById('exportDataSection');
-            if (section.style.display === 'none') {
-                section.style.display = 'block';
-                renderExportDataList();
-            } else {
-                section.style.display = 'none';
-            }
+        // 取り込みデータ履歴一覧画面を非表示
+        function hideDataHistoryPage() {
+            document.getElementById('dataHistoryPage').style.display = 'none';
+            document.body.style.overflow = ''; // スクロール有効化
         }
 
-        // 取り込みデータ一覧を描画
-        function renderImportedDataList() {
-            var container = document.getElementById('importedDataList');
+        // 取り込みデータ履歴一覧を描画
+        function renderDataHistoryList() {
+            var container = document.getElementById('dataHistoryList');
             var storeNames = Object.keys(allStoresData);
 
             if (storeNames.length === 0) {
-                container.innerHTML = '<div class="empty-message">取り込みデータがありません。<br>CSVファイルをインポートしてください。</div>';
+                container.innerHTML = '<div class="empty-message" style="background:#fff;border-radius:10px;padding:50px;">取り込みデータがありません。<br><br>CSVファイルをインポートしてください。</div>';
                 return;
             }
 
@@ -845,27 +892,31 @@
                 var data = allStoresData[name];
                 var totalSales = 0;
                 var totalProfit = 0;
+                var monthCount = 0;
                 if (data.mqOutputs) {
                     for (var m = 0; m < 12; m++) {
                         if (data.mqOutputs[m]) {
                             totalSales += data.mqOutputs[m].sales || 0;
                             totalProfit += data.mqOutputs[m].operatingProfit || 0;
+                            monthCount++;
                         }
                     }
                 }
+                var profitRate = totalSales > 0 ? (totalProfit / totalSales * 100).toFixed(1) : 0;
 
-                html += '<div class="data-item">';
-                html += '  <div class="data-info">';
-                html += '    <div class="data-name">🏪 ' + escapeHtml(name) + '</div>';
-                html += '    <div class="data-meta">';
-                html += '      <span>年間売上: ' + fmt(totalSales) + '千円</span>';
-                html += '      <span>営業利益: ' + fmt(totalProfit) + '千円</span>';
+                html += '<div class="history-data-item">';
+                html += '  <div class="item-info">';
+                html += '    <div class="item-name">🏪 ' + escapeHtml(name) + '</div>';
+                html += '    <div class="item-meta">';
+                html += '      <span>📅 ' + monthCount + 'ヶ月分</span>';
+                html += '      <span>💰 年間売上: ' + fmt(totalSales) + '千円</span>';
+                html += '      <span>📈 営業利益: ' + fmt(totalProfit) + '千円 (' + profitRate + '%)</span>';
                 html += '    </div>';
                 html += '  </div>';
-                html += '  <div class="data-actions">';
-                html += '    <button class="view-btn" onclick="switchStore(\'' + escapeHtml(name) + '\')">表示</button>';
-                html += '    <button class="save-btn" onclick="saveStoreToHistory(\'' + escapeHtml(name) + '\')">保存</button>';
-                html += '    <button class="delete-btn" onclick="deleteStore(\'' + escapeHtml(name) + '\')">削除</button>';
+                html += '  <div class="item-actions">';
+                html += '    <button class="btn-view" onclick="viewAndCloseHistory(\'' + escapeJs(name) + '\')">表示</button>';
+                html += '    <button class="btn-save" onclick="saveStoreWithDateTime(\'' + escapeJs(name) + '\')">保存</button>';
+                html += '    <button class="btn-delete" onclick="deleteStoreFromHistory(\'' + escapeJs(name) + '\')">削除</button>';
                 html += '  </div>';
                 html += '</div>';
             });
@@ -873,84 +924,64 @@
             container.innerHTML = html;
         }
 
-        // エクスポート対象データ一覧を描画
-        function renderExportDataList() {
-            var container = document.getElementById('exportDataList');
-            var storeNames = Object.keys(allStoresData);
-
-            if (storeNames.length === 0) {
-                container.innerHTML = '<div class="empty-message">エクスポート可能なデータがありません。<br>CSVファイルをインポートしてください。</div>';
-                return;
-            }
-
-            var html = '';
-            storeNames.forEach(function(name) {
-                var data = allStoresData[name];
-                var totalSales = 0;
-                if (data.mqOutputs) {
-                    for (var m = 0; m < 12; m++) {
-                        if (data.mqOutputs[m]) {
-                            totalSales += data.mqOutputs[m].sales || 0;
-                        }
-                    }
-                }
-
-                html += '<div class="data-item">';
-                html += '  <div class="data-info">';
-                html += '    <div class="data-name">📤 ' + escapeHtml(name) + '</div>';
-                html += '    <div class="data-meta">';
-                html += '      <span>年間売上: ' + fmt(totalSales) + '千円</span>';
-                html += '    </div>';
-                html += '  </div>';
-                html += '  <div class="data-actions">';
-                html += '    <button class="view-btn" onclick="switchStore(\'' + escapeHtml(name) + '\');toggleExportDataList();">選択して閉じる</button>';
-                html += '  </div>';
-                html += '</div>';
-            });
-
-            container.innerHTML = html;
+        // JavaScript用エスケープ
+        function escapeJs(str) {
+            return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
         }
 
-        // 個別店舗を履歴に保存
-        function saveStoreToHistory(name) {
+        // 表示して履歴画面を閉じる
+        function viewAndCloseHistory(name) {
+            hideDataHistoryPage();
+            switchStore(name);
+        }
+
+        // 年月日時刻_店名 形式で保存
+        function saveStoreWithDateTime(name) {
             if (!allStoresData[name]) {
                 alert('店舗データが見つかりません');
                 return;
             }
 
+            var now = new Date();
+            var y = now.getFullYear();
+            var m = ('0' + (now.getMonth() + 1)).slice(-2);
+            var d = ('0' + now.getDate()).slice(-2);
+            var h = ('0' + now.getHours()).slice(-2);
+            var min = ('0' + now.getMinutes()).slice(-2);
+            var sec = ('0' + now.getSeconds()).slice(-2);
+            var saveName = y + m + d + h + min + sec + '_' + name;
+
             var history = loadHistory();
-            var dateTime = formatDateTime();
-            var title = dateTime + '_' + name;
 
             var newEntry = {
                 id: Date.now().toString(),
-                title: title,
-                dateTime: dateTime,
+                title: saveName,
+                dateTime: y + '-' + m + '-' + d + ' ' + h + ':' + min + ':' + sec,
                 storeNames: [name],
                 storeCount: 1,
                 data: { [name]: JSON.parse(JSON.stringify(allStoresData[name])) },
-                savedAt: new Date().toISOString()
+                savedAt: now.toISOString()
             };
 
             history.unshift(newEntry);
-            if (history.length > 20) history = history.slice(0, 20);
+            if (history.length > 50) history = history.slice(0, 50);
 
             try {
                 localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
-                showStatus('success', '「' + name + '」を履歴に保存しました');
+                showStatus('success', '保存しました: ' + saveName);
                 renderHistoryList();
+                alert('保存完了: ' + saveName);
             } catch (e) {
-                alert('保存に失敗しました');
+                alert('保存に失敗しました。ストレージ容量が不足している可能性があります。');
             }
         }
 
-        // 個別店舗を削除
-        function deleteStore(name) {
+        // 履歴画面から店舗を削除
+        function deleteStoreFromHistory(name) {
             if (!confirm('「' + name + '」のデータを削除しますか？')) return;
 
             delete allStoresData[name];
 
-            // 現在表示中の店舗が削除された場合
             if (currentStoreName === name) {
                 var remaining = Object.keys(allStoresData);
                 if (remaining.length > 0) {
@@ -962,20 +993,14 @@
 
             updateStoreSelector();
             updateDataCounts();
-            renderImportedDataList();
+            renderDataHistoryList();
             showStatus('info', '「' + name + '」を削除しました');
-        }
-
-        // 全データを履歴に保存
-        function saveAllToHistory() {
-            saveToHistory();
         }
 
         // データ件数を更新
         function updateDataCounts() {
             var count = Object.keys(allStoresData).length;
             document.getElementById('importedStoreCount').textContent = count;
-            document.getElementById('exportStoreCount').textContent = count;
         }
 
         // ★ 複数CSVインポート
