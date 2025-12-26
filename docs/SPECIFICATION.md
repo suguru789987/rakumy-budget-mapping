@@ -334,3 +334,127 @@ operatingProfitRate = operatingProfit / sales × 100
 
 ### 10.2 ファイル名
 `budget_config_v5.8_YYYY-MM-DD.json`
+
+---
+
+## 11. CSVエクスポート機能
+
+### 11.1 ラクミー入力値CSVエクスポート
+
+#### 関数
+`exportRakumyInputsCSV()`
+
+#### 出力ファイル名
+`ラクミー入力値_店舗名_YYYY-MM-DD.csv`
+
+#### CSV構造
+```
+セクション,項目名,変換タイプ,4月,5月,...,3月,合計,平均
+
+【費用予算設定（固定費用）- 29項目】
+費用予算設定,地代家賃,sum,450,450,...,450,5400,450
+費用予算設定,固定人件費,sum,単月設定,単月設定,...,単月設定,-,-
+...
+
+【単月費用予算（固定費用）- 月別差異項目のみ】
+単月費用予算,固定人件費,sum,5050,5050,...,4682,59496,4958
+...
+
+【予算設定（変動費用）- MQパラメータ】
+予算設定,FD仕入費率,rate,31%,31%,...,31%,-,31%
+予算設定,PA人件費率,rate,1%,1%,...,1%,-,1%
+予算設定,目標客単価,input,4500,4500,...,4501,54002,4500
+...
+```
+
+#### 表示ルール
+| 条件 | 費用予算設定 | 単月費用予算 |
+|------|-------------|-------------|
+| 全月同一 | 年間デフォルト値 | 非表示 |
+| 月別差異 | 「単月設定」表示 | 実際の月別値 |
+
+#### %表示
+- 小数点なし整数表示（例：31%、40%、60%）
+
+---
+
+### 11.2 予算一覧CSVエクスポート
+
+#### 関数
+`exportBudgetListCSV()`
+
+#### 出力ファイル名
+`予算一覧_店舗名_YYYY-MM-DD.csv`
+
+#### CSV構造
+```
+セクション,項目名,4月,5月,...,3月,合計,平均
+
+目標設定,月次目標利益,xxx,xxx,...,xxx,xxxx,xxx
+目標設定,目標FD仕入費率,31%,31%,...,31%,-,31%
+目標設定,目標PA人件費率,1%,1%,...,1%,-,1%
+目標設定,目標客単価,4500,4500,...,4500,54000,4500
+
+売上,売上 計,xxxx,xxxx,...,xxxx,xxxxx,xxxx
+売上,フード売上 計,xxxx,xxxx,...,xxxx,xxxxx,xxxx
+売上,ドリンク売上 計,xxxx,xxxx,...,xxxx,xxxxx,xxxx
+売上,その他売上 計,xxxx,xxxx,...,xxxx,xxxxx,xxxx
+
+FLコスト,FLコスト 計,xxxx,xxxx,...,xxxx,xxxxx,xxxx
+FLコスト,FD仕入 計,xxxx,xxxx,...,xxxx,xxxxx,xxxx
+FLコスト,人件費 計,xxxx,xxxx,...,xxxx,xxxxx,xxxx
+FLコスト,固定人件費,xxxx,xxxx,...,xxxx,xxxxx,xxxx
+FLコスト,PA人件費,xxxx,xxxx,...,xxxx,xxxxx,xxxx
+
+その他経費,その他経費 計,xxxx,xxxx,...,xxxx,xxxxx,xxxx
+その他経費,地代家賃,xxx,xxx,...,xxx,xxxx,xxx
+...
+
+営業利益,営業利益,xxxx,xxxx,...,xxxx,xxxxx,xxxx
+```
+
+---
+
+### 11.3 MQ出力CSVエクスポート
+
+#### 関数
+`exportMQOutputCSV()`
+
+#### 出力ファイル名
+`MQ出力_店舗名_YYYY-MM-DD.csv`
+
+#### CSV構造
+```
+項目,4月,5月,...,3月,合計,平均
+
+客数,xxxx,xxxx,...,xxxx,xxxxx,xxxx
+客単価,xxxx,xxxx,...,xxxx,xxxxx,xxxx
+売上,xxxx,xxxx,...,xxxx,xxxxx,xxxx
+変動費,xxxx,xxxx,...,xxxx,xxxxx,xxxx
+変動費率,xx%,xx%,...,xx%,-,xx%
+粗利,xxxx,xxxx,...,xxxx,xxxxx,xxxx
+粗利率,xx%,xx%,...,xx%,-,xx%
+固定費,xxxx,xxxx,...,xxxx,xxxxx,xxxx
+営業利益,xxxx,xxxx,...,xxxx,xxxxx,xxxx
+営業利益率,xx%,xx%,...,xx%,-,xx%
+
+【顧客予算との比較】
+顧客予算売上,xxxx,xxxx,...,xxxx,xxxxx,xxxx
+売上差異（MQ-予算）,+xxx,+xxx,...,+xxx,+xxxx,-
+顧客予算営業利益,xxxx,xxxx,...,xxxx,xxxxx,xxxx
+営業利益差異（MQ-予算）,+xxx,+xxx,...,+xxx,+xxxx,-
+```
+
+---
+
+### 11.4 共通仕様
+
+#### 文字コード
+- UTF-8 with BOM（Excel対応）
+
+#### 数値フォーマット
+- 金額: 千円単位、整数、カンマなし
+- 率: 整数%表示（小数点なし）
+
+#### ファイル名規則
+`{種別}_{店舗名}_{YYYY-MM-DD}.csv`

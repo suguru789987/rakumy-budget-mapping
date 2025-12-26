@@ -47,21 +47,44 @@
 
 ## 3. ツールバー
 
-### 3.1 CSVファイル選択
-- 種類: `<input type="file" accept=".csv">`
-- ID: `csvFile`
-- イベント: `onchange="importCSV()"`
+### 3.1 インポートセクション（1行目）
 
-### 3.2 設定エクスポートボタン
-- クラス: `btn btn-success`
-- テキスト: 「設定エクスポート」
-- イベント: `onclick="exportAllConfig()"`
+| 要素 | 種類 | ID/クラス | イベント |
+|------|------|-----------|----------|
+| CSVファイル選択 | `<input type="file">` | csvFile | `handleFileSelect(event)` |
+| インポート実行 | `<button>` | btn-success | `importAllCSVs()` |
+| シミュレーション実行 | `<button>` | btn-warning | `runSimulationForCurrentStore()` |
 
-### 3.3 設定インポートボタン
-- クラス: `btn btn-info`
-- テキスト: 「設定インポート」
-- 種類: `<input type="file" accept=".json">`
-- イベント: `onchange="importAllConfig(event)"`
+### 3.2 エクスポートセクション（2行目）
+
+| ボタン | 背景色 | 関数 | 出力形式 |
+|--------|--------|------|----------|
+| ラクミー入力値CSV | #4caf50（緑） | `exportRakumyInputsCSV()` | CSV |
+| 予算一覧CSV | #2196f3（青） | `exportBudgetListCSV()` | CSV |
+| MQ出力CSV | #9c27b0（紫） | `exportMQOutputCSV()` | CSV |
+| 設定JSON | btn-info | `exportAllConfig()` | JSON |
+| 設定読込 | btn-secondary | `importAllConfig(event)` | JSON |
+| 全店舗クリア | btn-danger | `clearAllStores()` | - |
+
+### 3.3 ツールバーHTML構造
+```html
+<div class="import-controls">
+    <input type="file" id="csvFile" accept=".csv" multiple>
+    <button class="btn btn-primary">CSVファイル選択</button>
+    <span id="fileName">ファイル未選択</span>
+    <button class="btn btn-success">インポート実行</button>
+    <button class="btn btn-warning">シミュレーション実行</button>
+</div>
+<div class="import-controls" style="margin-top:10px;">
+    <span style="font-weight:bold;">エクスポート:</span>
+    <button style="background:#4caf50;color:#fff;">ラクミー入力値CSV</button>
+    <button style="background:#2196f3;color:#fff;">予算一覧CSV</button>
+    <button style="background:#9c27b0;color:#fff;">MQ出力CSV</button>
+    <button class="btn btn-info">設定JSON</button>
+    <button class="btn btn-secondary">設定読込</button>
+    <button class="btn btn-danger">全店舗クリア</button>
+</div>
+```
 
 ---
 
