@@ -504,6 +504,24 @@
             <div class="import-section" style="border-left:4px solid #9c27b0;">
                 <h2 style="color:#7b1fa2;font-size:18px;margin-bottom:20px;">📤 データをエクスポート</h2>
 
+                <!-- 店舗選択セクション -->
+                <div style="background:#f5f5f5;padding:15px;border-radius:8px;margin-bottom:20px;">
+                    <h3 style="font-size:14px;color:#333;margin-bottom:12px;">出力対象店舗</h3>
+                    <div style="display:flex;gap:15px;align-items:center;flex-wrap:wrap;">
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <label style="font-weight:bold;font-size:12px;">店舗選択:</label>
+                            <select id="exportStoreSelect" style="padding:8px 12px;border:2px solid #9c27b0;border-radius:4px;font-size:12px;min-width:200px;" onchange="updateExportStoreSelection()">
+                                <option value="">-- 店舗を選択 --</option>
+                            </select>
+                        </div>
+                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;">
+                            <input type="checkbox" id="exportAllStores" onchange="toggleExportAllStores()">
+                            <span style="font-weight:bold;">全店舗を選択</span>
+                        </label>
+                        <span id="exportSelectedCount" style="font-size:11px;color:#666;margin-left:auto;">選択中: 0店舗</span>
+                    </div>
+                </div>
+
                 <!-- エクスポートボタングリッド -->
                 <div style="display:grid;grid-template-columns:repeat(2, 1fr);gap:15px;">
                     <button class="btn" style="background:linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);color:#fff;padding:25px;border-radius:10px;font-size:14px;" onclick="exportRakumyInputsCSV()">
@@ -527,6 +545,24 @@
                         <div style="font-size:11px;opacity:0.8;margin-top:5px;">マッピング設定データ</div>
                     </button>
                 </div>
+
+                <!-- 出力データ履歴ボタン -->
+                <div style="margin-top:20px;padding-top:20px;border-top:2px solid #e0e0e0;">
+                    <button class="btn" style="background:linear-gradient(135deg, #7b1fa2 0%, #4a148c 100%);color:#fff;padding:15px 30px;width:100%;font-size:16px;border-radius:8px;" onclick="showExportHistoryPage()">
+                        📋 出力データ履歴一覧 (<span id="exportHistoryCount">0</span>件)
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== 出力データ履歴一覧画面（オーバーレイ） ===== -->
+        <div id="exportHistoryPage" class="data-history-page" style="display:none;">
+            <div class="data-history-header" style="background:linear-gradient(135deg, #7b1fa2 0%, #4a148c 100%);">
+                <h2>📋 出力データ履歴一覧</h2>
+                <button class="btn btn-secondary" onclick="hideExportHistoryPage()">✕ 閉じる</button>
+            </div>
+            <div class="data-history-content">
+                <div id="exportHistoryList" class="data-history-list"></div>
             </div>
         </div>
 
@@ -1088,6 +1124,242 @@
         function updateDataCounts() {
             var count = Object.keys(allStoresData).length;
             document.getElementById('importedStoreCount').textContent = count;
+            updateExportStoreSelect(); // エクスポート用店舗リストも更新
+        }
+
+        // ===== エクスポート履歴管理 =====
+        var EXPORT_HISTORY_KEY = 'rakumy_export_history';
+        var exportHistory = [];
+
+        // 出力データ履歴一覧画面を表示
+        function showExportHistoryPage() {
+            document.getElementById('exportHistoryPage').style.display = 'block';
+            document.body.style.overflow = 'hidden';
+            renderExportHistoryList();
+        }
+
+        // 出力データ履歴一覧画面を非表示
+        function hideExportHistoryPage() {
+            document.getElementById('exportHistoryPage').style.display = 'none';
+            document.body.style.overflow = '';
+        }
+
+        // エクスポート用店舗選択リストを更新
+        function updateExportStoreSelect() {
+            var select = document.getElementById('exportStoreSelect');
+            if (!select) return;
+
+            var storeNames = Object.keys(allStoresData);
+            var currentValue = select.value;
+
+            select.innerHTML = '<option value="">-- 店舗を選択 --</option>';
+            storeNames.forEach(function(name) {
+                var opt = document.createElement('option');
+                opt.value = name;
+                opt.textContent = name;
+                select.appendChild(opt);
+            });
+
+            if (storeNames.indexOf(currentValue) >= 0) {
+                select.value = currentValue;
+            }
+
+            updateExportSelectedCount();
+        }
+
+        // 店舗選択変更時
+        function updateExportStoreSelection() {
+            document.getElementById('exportAllStores').checked = false;
+            updateExportSelectedCount();
+        }
+
+        // 全店舗選択トグル
+        function toggleExportAllStores() {
+            var checkbox = document.getElementById('exportAllStores');
+            var select = document.getElementById('exportStoreSelect');
+            if (checkbox.checked) {
+                select.value = '';
+            }
+            updateExportSelectedCount();
+        }
+
+        // 選択店舗数を更新
+        function updateExportSelectedCount() {
+            var checkbox = document.getElementById('exportAllStores');
+            var select = document.getElementById('exportStoreSelect');
+            var countSpan = document.getElementById('exportSelectedCount');
+
+            var count = 0;
+            if (checkbox && checkbox.checked) {
+                count = Object.keys(allStoresData).length;
+            } else if (select && select.value) {
+                count = 1;
+            }
+
+            if (countSpan) {
+                countSpan.textContent = '選択中: ' + count + '店舗';
+            }
+        }
+
+        // エクスポート対象店舗を取得
+        function getExportTargetStores() {
+            var checkbox = document.getElementById('exportAllStores');
+            var select = document.getElementById('exportStoreSelect');
+
+            if (checkbox && checkbox.checked) {
+                return Object.keys(allStoresData);
+            } else if (select && select.value) {
+                return [select.value];
+            } else if (currentStoreName) {
+                return [currentStoreName];
+            }
+            return Object.keys(allStoresData);
+        }
+
+        // エクスポート履歴を読み込み
+        function loadExportHistory() {
+            try {
+                var data = localStorage.getItem(EXPORT_HISTORY_KEY);
+                return data ? JSON.parse(data) : [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        // エクスポート履歴を保存
+        function saveExportHistory(history) {
+            try {
+                localStorage.setItem(EXPORT_HISTORY_KEY, JSON.stringify(history));
+            } catch (e) {
+                console.error('Export history save failed:', e);
+            }
+        }
+
+        // エクスポート履歴に追加
+        function addToExportHistory(exportType, storeNames, data) {
+            var now = new Date();
+            var y = now.getFullYear();
+            var m = ('0' + (now.getMonth() + 1)).slice(-2);
+            var d = ('0' + now.getDate()).slice(-2);
+            var h = ('0' + now.getHours()).slice(-2);
+            var min = ('0' + now.getMinutes()).slice(-2);
+            var sec = ('0' + now.getSeconds()).slice(-2);
+
+            var storeName = storeNames.length === 1 ? storeNames[0] : storeNames.length + '店舗';
+            var saveName = y + m + d + h + min + sec + '_' + storeName + '_' + exportType;
+
+            var history = loadExportHistory();
+
+            var entry = {
+                id: Date.now().toString(),
+                title: saveName,
+                exportType: exportType,
+                storeNames: storeNames,
+                storeCount: storeNames.length,
+                dateTime: y + '-' + m + '-' + d + ' ' + h + ':' + min + ':' + sec,
+                data: data,
+                savedAt: now.toISOString()
+            };
+
+            history.unshift(entry);
+            if (history.length > 100) history = history.slice(0, 100);
+
+            saveExportHistory(history);
+            updateExportHistoryCount();
+            return saveName;
+        }
+
+        // 出力データ履歴件数を更新
+        function updateExportHistoryCount() {
+            var history = loadExportHistory();
+            var countSpan = document.getElementById('exportHistoryCount');
+            if (countSpan) {
+                countSpan.textContent = history.length;
+            }
+        }
+
+        // 出力データ履歴一覧を描画
+        function renderExportHistoryList() {
+            var container = document.getElementById('exportHistoryList');
+            var history = loadExportHistory();
+
+            if (history.length === 0) {
+                container.innerHTML = '<div class="empty-message" style="background:#fff;border-radius:10px;padding:50px;">出力データ履歴がありません。<br><br>CSVをエクスポートすると履歴に保存されます。</div>';
+                return;
+            }
+
+            var exportTypeLabels = {
+                'ラクミー入力値CSV': '📊 ラクミー入力値',
+                '予算一覧CSV': '📋 予算一覧',
+                'MQ出力CSV': '📈 MQ出力',
+                '設定JSON': '⚙️ 設定'
+            };
+
+            var html = '';
+            history.forEach(function(entry) {
+                var typeLabel = exportTypeLabels[entry.exportType] || entry.exportType;
+                var storeInfo = entry.storeCount === 1 ? entry.storeNames[0] : entry.storeCount + '店舗';
+
+                html += '<div class="history-data-item">';
+                html += '  <div class="item-info">';
+                html += '    <div class="item-name">' + typeLabel + '</div>';
+                html += '    <div class="item-meta">';
+                html += '      <span>🏪 ' + escapeHtml(storeInfo) + '</span>';
+                html += '      <span>📅 ' + entry.dateTime + '</span>';
+                html += '      <span style="font-size:10px;color:#999;">' + escapeHtml(entry.title) + '</span>';
+                html += '    </div>';
+                html += '  </div>';
+                html += '  <div class="item-actions">';
+                html += '    <button class="btn-save" onclick="downloadExportHistoryItem(\'' + entry.id + '\')">ダウンロード</button>';
+                html += '    <button class="btn-delete" onclick="deleteExportHistoryItem(\'' + entry.id + '\')">削除</button>';
+                html += '  </div>';
+                html += '</div>';
+            });
+
+            container.innerHTML = html;
+        }
+
+        // 履歴からダウンロード
+        function downloadExportHistoryItem(id) {
+            var history = loadExportHistory();
+            var entry = history.find(function(h) { return h.id === id; });
+            if (!entry) {
+                alert('データが見つかりません');
+                return;
+            }
+
+            var filename = entry.title;
+            var data = entry.data;
+            var mimeType = 'text/csv;charset=utf-8;';
+            var ext = '.csv';
+
+            if (entry.exportType === '設定JSON') {
+                mimeType = 'application/json;charset=utf-8;';
+                ext = '.json';
+                data = JSON.stringify(entry.data, null, 2);
+            }
+
+            if (!filename.endsWith(ext)) {
+                filename += ext;
+            }
+
+            var blob = new Blob([data], { type: mimeType });
+            var link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+        }
+
+        // 履歴から削除
+        function deleteExportHistoryItem(id) {
+            if (!confirm('この出力データを削除しますか？')) return;
+
+            var history = loadExportHistory();
+            history = history.filter(function(h) { return h.id !== id; });
+            saveExportHistory(history);
+            renderExportHistoryList();
+            updateExportHistoryCount();
+            showStatus('info', '出力データを削除しました');
         }
 
         // ★ 複数CSVインポート
@@ -3085,6 +3357,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             showStatus('info', 'CSVファイルを選択してください');
             initHistory();
+            updateExportHistoryCount();
         });
     </script>
 </body>
