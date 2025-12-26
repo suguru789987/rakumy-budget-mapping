@@ -1,0 +1,1998 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>v15 予算シミュレーター（顧客CSV対応版 v5.8 変換ロジック強化）</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif; background: #f0f2f5; padding: 15px; font-size: 11px; }
+        .container { max-width: 1900px; margin: 0 auto; }
+        h1 { text-align: center; color: #333; margin-bottom: 5px; font-size: 20px; }
+        .subtitle { text-align: center; color: #666; margin-bottom: 15px; font-size: 12px; }
+
+        .import-section { background: #fff; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .import-section h2 { font-size: 14px; margin-bottom: 10px; color: #333; }
+        .import-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; }
+        .btn-primary { background: #007bff; color: #fff; }
+        .btn-success { background: #28a745; color: #fff; }
+        .btn-warning { background: #ffc107; color: #333; }
+        .btn-info { background: #17a2b8; color: #fff; }
+        .btn-secondary { background: #6c757d; color: #fff; }
+        .btn-danger { background: #dc3545; color: #fff; }
+        .btn:hover { opacity: 0.85; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .info-bar { display: flex; gap: 20px; align-items: center; padding: 12px 15px; background: #e8f5e9; border-radius: 6px; margin-bottom: 15px; border-left: 4px solid #4caf50; flex-wrap: wrap; }
+        .info-label { font-weight: bold; color: #333; }
+        .info-value { font-size: 14px; font-weight: bold; color: #1b5e20; }
+
+        .column-detection { background: #fff; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid #17a2b8; }
+        .column-detection h3 { font-size: 13px; margin-bottom: 10px; color: #0c5460; }
+        .month-cols-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 8px; }
+        .month-col-card { padding: 8px; background: #f8f9fa; border-radius: 4px; text-align: center; font-size: 10px; border: 2px solid transparent; }
+        .month-col-card.ok { border-color: #28a745; background: #d4edda; }
+        .month-col-card.warn { border-color: #ffc107; background: #fff3cd; }
+        .month-col-card.error { border-color: #dc3545; background: #f8d7da; }
+        .month-name { font-weight: bold; font-size: 12px; }
+        .col-info { color: #666; margin-top: 3px; }
+        .sub-header { color: #007bff; font-weight: bold; }
+
+        .section { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 15px; overflow: hidden; }
+        .section-header { padding: 12px 15px; font-weight: bold; font-size: 13px; }
+        .section-body { padding: 15px; overflow-x: auto; }
+
+        .header-mapping { background: #e1bee7; color: #6a1b9a; }
+        .header-input { background: #fff3cd; color: #856404; }
+        .header-calc { background: #d1ecf1; color: #0c5460; }
+        .header-rakumy { background: #cce5ff; color: #004085; }
+        .header-output { background: #d4edda; color: #155724; }
+        .header-summary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; }
+
+        .annual-table { width: 100%; border-collapse: collapse; font-size: 10px; }
+        .annual-table th, .annual-table td { padding: 5px 6px; text-align: right; border: 1px solid #e0e0e0; white-space: nowrap; }
+        .annual-table th { background: #f5f5f5; font-weight: bold; text-align: center; }
+        .annual-table th:first-child { text-align: left; min-width: 150px; }
+        .annual-table td:first-child { text-align: left; font-weight: bold; }
+        .annual-table .month-header { background: #e3f2fd; }
+        .annual-table .total-col { background: #fff8e1; font-weight: bold; }
+        .annual-table .avg-col { background: #f3e5f5; }
+
+        .input-cell { background: #fffde7; }
+        .calc-cell { background: #e0f7fa; }
+        .rakumy-cell { background: #e3f2fd; }
+        .output-cell { background: #e8f5e9; }
+
+        .annual-badge { background: #4caf50; color: #fff; padding: 2px 6px; border-radius: 3px; font-size: 9px; }
+        .monthly-badge { background: #ff9800; color: #fff; padding: 2px 6px; border-radius: 3px; font-size: 9px; }
+
+        /* 変換タイプバッジ */
+        .type-direct { background: #2196f3; color: #fff; padding: 2px 5px; border-radius: 3px; font-size: 8px; margin-left: 5px; }
+        .type-sum { background: #9c27b0; color: #fff; padding: 2px 5px; border-radius: 3px; font-size: 8px; margin-left: 5px; }
+        .type-rate { background: #e91e63; color: #fff; padding: 2px 5px; border-radius: 3px; font-size: 8px; margin-left: 5px; }
+        .type-input { background: #4caf50; color: #fff; padding: 2px 5px; border-radius: 3px; font-size: 8px; margin-left: 5px; }
+        .type-output { background: #607d8b; color: #fff; padding: 2px 5px; border-radius: 3px; font-size: 8px; margin-left: 5px; }
+
+        /* ラクミーカテゴリ */
+        .rakumy-category { margin-bottom: 20px; }
+        .rakumy-category h4 { font-size: 12px; padding: 8px 12px; margin-bottom: 10px; border-radius: 4px; }
+        .rakumy-category.cost h4 { background: #e8f5e9; color: #2e7d32; border-left: 4px solid #4caf50; }
+        .rakumy-category.budget h4 { background: #e3f2fd; color: #1565c0; border-left: 4px solid #2196f3; }
+        .rakumy-category.monthly h4 { background: #fff3e0; color: #e65100; border-left: 4px solid #ff9800; }
+
+        .transform-legend { display: flex; gap: 15px; padding: 10px; background: #f5f5f5; border-radius: 4px; margin-bottom: 15px; flex-wrap: wrap; font-size: 10px; }
+        .transform-legend span { display: flex; align-items: center; gap: 5px; }
+
+        .summary-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 15px; }
+        .summary-card { background: rgba(255,255,255,0.15); padding: 15px; border-radius: 8px; text-align: center; }
+        .summary-label { font-size: 11px; opacity: 0.9; margin-bottom: 5px; }
+        .summary-value { font-size: 22px; font-weight: bold; }
+        .summary-sub { font-size: 10px; opacity: 0.8; margin-top: 3px; }
+
+        .status-bar { padding: 10px 15px; border-radius: 4px; margin-top: 10px; font-size: 11px; }
+        .status-success { background: #d4edda; color: #155724; }
+        .status-error { background: #f8d7da; color: #721c24; }
+        .status-info { background: #d1ecf1; color: #0c5460; }
+
+        .tabs { display: flex; border-bottom: 2px solid #ddd; margin-bottom: 0; flex-wrap: wrap; }
+        .tab { padding: 10px 15px; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; font-size: 11px; font-weight: bold; }
+        .tab:hover { background: #f5f5f5; }
+        .tab.active { border-bottom-color: #007bff; color: #007bff; background: #fff; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .mapping-table { width: 100%; border-collapse: collapse; font-size: 10px; margin-bottom: 15px; }
+        .mapping-table th, .mapping-table td { padding: 6px 8px; border: 1px solid #ddd; text-align: left; }
+        .mapping-table th { background: #f0f0f0; }
+
+        .unmatched-section { background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 2px solid #ffc107; }
+        .unmatched-section h3 { color: #856404; margin-bottom: 10px; }
+
+        .form-row { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+        .form-row label { min-width: 100px; font-weight: bold; }
+        .form-row input, .form-row select { padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 11px; }
+
+        .preprocess-log { background: #1e1e1e; color: #d4d4d4; padding: 10px; border-radius: 4px; font-family: 'Consolas', 'Monaco', monospace; font-size: 9px; max-height: 400px; overflow-y: auto; white-space: pre-wrap; }
+        .log-info { color: #4ec9b0; }
+        .log-warn { color: #dcdcaa; }
+        .log-error { color: #f48771; }
+        .log-success { color: #6a9955; }
+        .log-data { color: #ce9178; }
+        .log-month { color: #569cd6; }
+
+        .sample-values { margin-top: 10px; padding: 10px; background: #f0f0f0; border-radius: 4px; }
+        .sample-values h4 { margin-bottom: 8px; }
+        .sample-table { font-size: 9px; }
+        .sample-table th, .sample-table td { padding: 3px 6px; }
+
+        .store-selector { display: flex; gap: 10px; align-items: center; margin-bottom: 15px; padding: 12px 15px; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); flex-wrap: wrap; }
+        .store-selector label { font-weight: bold; color: #333; }
+        .store-selector select { padding: 8px 12px; border: 2px solid #007bff; border-radius: 4px; font-size: 12px; font-weight: bold; min-width: 200px; }
+        .store-list { display: flex; gap: 8px; flex-wrap: wrap; margin-left: 20px; }
+        .store-chip { padding: 4px 10px; background: #e3f2fd; border-radius: 15px; font-size: 10px; color: #1565c0; border: 1px solid #90caf9; cursor: pointer; }
+        .store-chip.active { background: #1565c0; color: #fff; }
+        .store-chip .remove { margin-left: 5px; color: #f44336; cursor: pointer; font-weight: bold; }
+
+        .all-stores-summary { background: linear-gradient(135deg, #1a237e 0%, #0d47a1 100%); color: #fff; padding: 20px; border-radius: 8px; margin-bottom: 15px; }
+        .all-stores-summary h3 { margin-bottom: 15px; font-size: 16px; }
+        .all-stores-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
+        .store-card { background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px; }
+        .store-card h4 { margin-bottom: 10px; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.3); padding-bottom: 5px; }
+        .store-card .metric { display: flex; justify-content: space-between; padding: 3px 0; font-size: 11px; }
+        .store-card .metric-value { font-weight: bold; }
+        .store-card.total { background: rgba(255,193,7,0.3); border: 2px solid #ffc107; }
+
+        @media (max-width: 768px) {
+            .summary-grid { grid-template-columns: repeat(3, 1fr); }
+            .month-cols-grid { grid-template-columns: repeat(4, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>v15 予算シミュレーター（顧客CSV対応版 v5.8）</h1>
+        <p class="subtitle">変換ロジック強化：顧客予算→ラクミー入力の変換タイプ（直接/合計/率/出力）を明示化</p>
+
+        <!-- CSVインポート -->
+        <div class="import-section">
+            <h2>顧客予算CSVインポート（複数店舗対応）</h2>
+            <div class="import-controls">
+                <input type="file" id="csvFile" accept=".csv" multiple style="display:none" onchange="handleFileSelect(event)">
+                <button class="btn btn-primary" onclick="document.getElementById('csvFile').click()">CSVファイル選択（複数可）</button>
+                <span id="fileName">ファイル未選択</span>
+                <button class="btn btn-success" onclick="importAllCSVs()" id="importBtn" disabled>インポート実行</button>
+                <button class="btn btn-warning" onclick="runSimulationForCurrentStore()">シミュレーション実行</button>
+                <button class="btn btn-info" onclick="exportAllConfig()">設定出力</button>
+                <input type="file" id="configFile" accept=".json" style="display:none" onchange="importAllConfig(event)">
+                <button class="btn btn-secondary" onclick="document.getElementById('configFile').click()">設定読込</button>
+                <button class="btn btn-danger" onclick="clearAllStores()">全店舗クリア</button>
+            </div>
+            <div id="importStatus"></div>
+        </div>
+
+        <!-- 店舗セレクター -->
+        <div class="store-selector" id="storeSelector" style="display:none;">
+            <label>表示店舗:</label>
+            <select id="storeSelect" onchange="switchStore(this.value)">
+                <option value="">-- 店舗を選択 --</option>
+            </select>
+            <div class="store-list" id="storeList"></div>
+            <span style="margin-left:auto; font-size:10px; color:#666;">インポート済: <strong id="storeCount">0</strong>店舗</span>
+        </div>
+
+        <!-- 全店舗サマリー -->
+        <div class="all-stores-summary" id="allStoresSummary" style="display:none;">
+            <h3>全店舗サマリー</h3>
+            <div class="all-stores-grid" id="allStoresGrid"></div>
+        </div>
+
+        <!-- 月列検出結果 -->
+        <div class="column-detection" id="columnDetection" style="display:none;">
+            <h3>月別「予算」列検出結果（3行目:月名 + 4行目:サブヘッダー の照合）</h3>
+            <div class="month-cols-grid" id="monthColsGrid"></div>
+            <div class="sample-values" id="sampleValues"></div>
+        </div>
+
+        <!-- 検出結果表示 -->
+        <div class="info-bar">
+            <div><span class="info-label">店舗名:</span> <span class="info-value" id="detectedStore">-</span></div>
+            <div><span class="info-label">検出月数:</span> <span class="info-value" id="detectedMonthCount">-</span></div>
+            <div><span class="info-label">マッチ項目:</span> <span class="info-value" id="detectedItemCount">-</span></div>
+            <div><span class="info-label">未マッチ項目:</span> <span class="info-value" id="unmatchedCount">-</span></div>
+        </div>
+
+        <!-- タブ -->
+        <div class="tabs">
+            <div class="tab active" onclick="showTab('tab-mapping')">マッピング設定</div>
+            <div class="tab" onclick="showTab('tab-input')">【1】予算入力</div>
+            <div class="tab" onclick="showTab('tab-calc')">【2】入力前演算</div>
+            <div class="tab" onclick="showTab('tab-rakumy')">【3】ラクミー入力値</div>
+            <div class="tab" onclick="showTab('tab-output')">【4】MQ出力</div>
+            <div class="tab" onclick="showTab('tab-budget-list')">【5】予算一覧</div>
+            <div class="tab" onclick="showTab('tab-summary')">【6】サマリー</div>
+        </div>
+
+        <!-- マッピング設定タブ -->
+        <div id="tab-mapping" class="tab-content active">
+            <div class="unmatched-section" id="unmatchedSection" style="display:none;">
+                <h3>未マッチ項目</h3>
+                <div id="unmatchedList"></div>
+                <div class="form-row" style="margin-top:15px;">
+                    <label>新規マッピング:</label>
+                    <input type="text" id="newCode" placeholder="項目コード">
+                    <input type="text" id="newName" placeholder="項目名">
+                    <input type="number" id="newV15No" placeholder="v15番号">
+                    <select id="newCategory">
+                        <option value="売上">売上</option>
+                        <option value="原価">原価</option>
+                        <option value="固定人件費">固定人件費</option>
+                        <option value="PA人件費">PA人件費</option>
+                        <option value="経費">経費</option>
+                        <option value="固定費">固定費</option>
+                        <option value="利益">利益</option>
+                    </select>
+                    <button class="btn btn-success" onclick="addMapping()">追加</button>
+                </div>
+            </div>
+            <div class="section">
+                <div class="section-header header-mapping">項目マッピング一覧</div>
+                <div class="section-body">
+                    <div id="mappingTable"></div>
+                    <h4 style="margin:20px 0 10px;">処理ログ</h4>
+                    <div id="preprocessLog" class="preprocess-log">CSVをインポートしてください</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 予算入力タブ -->
+        <div id="tab-input" class="tab-content">
+            <div class="section">
+                <div class="section-header header-input">【1】顧客予算入力（CSV取込値）</div>
+                <div class="section-body">
+                    <table class="annual-table" id="inputTable"></table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 入力前演算タブ -->
+        <div id="tab-calc" class="tab-content">
+            <div class="section">
+                <div class="section-header header-calc">【2】入力前演算結果</div>
+                <div class="section-body">
+                    <table class="annual-table" id="calcTable"></table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ラクミー入力値タブ -->
+        <div id="tab-rakumy" class="tab-content">
+            <div class="section">
+                <div class="section-header header-rakumy">【3】ラクミー入力値</div>
+                <div class="section-body">
+                    <!-- 変換タイプ凡例 -->
+                    <div class="transform-legend">
+                        <span>変換タイプ:</span>
+                        <span><span class="type-direct">直接</span> 顧客予算をそのまま転記</span>
+                        <span><span class="type-sum">合計</span> 複数項目を合算</span>
+                        <span><span class="type-rate">率</span> 売上に対する率を計算</span>
+                        <span><span class="type-input">入力</span> ユーザー入力値</span>
+                        <span><span class="type-output">出力</span> MQ計算で算出（入力不可）</span>
+                    </div>
+
+                    <!-- 費用予算設定（固定費用）- 29項目 -->
+                    <div class="rakumy-category cost">
+                        <h4>費用予算設定（固定費用）- 29項目（年間デフォルト）</h4>
+                        <table class="annual-table" id="rakumyCostTable"></table>
+                    </div>
+
+                    <!-- 単月費用予算（固定費用）- 28項目 -->
+                    <div class="rakumy-category monthly">
+                        <h4>単月費用予算（固定費用）- 28項目（月別調整用、地代家賃除く）</h4>
+                        <table class="annual-table" id="rakumyMonthlyTable"></table>
+                    </div>
+
+                    <!-- 予算設定（変動費用）- MQパラメータ -->
+                    <div class="rakumy-category budget">
+                        <h4>予算設定（変動費用）</h4>
+                        <table class="annual-table" id="rakumyBudgetTable"></table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MQ出力タブ -->
+        <div id="tab-output" class="tab-content">
+            <div class="section">
+                <div class="section-header header-output">【4】MQシミュレーション出力</div>
+                <div class="section-body">
+                    <table class="annual-table" id="outputTable"></table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 予算一覧タブ -->
+        <div id="tab-budget-list" class="tab-content">
+            <div class="section">
+                <div class="section-header" style="background:linear-gradient(135deg, #1a237e 0%, #4a148c 100%);color:#fff;">【5】予算一覧（シミュレーション結果）</div>
+                <div class="section-body">
+                    <table class="annual-table" id="budgetListTable"></table>
+                </div>
+            </div>
+        </div>
+
+        <!-- サマリータブ -->
+        <div id="tab-summary" class="tab-content">
+            <div class="section">
+                <div class="section-header header-summary">【6】サマリー</div>
+                <div class="section-body" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; padding: 20px;">
+                    <div class="summary-grid" id="summaryGrid"></div>
+                </div>
+            </div>
+            <div class="section">
+                <div class="section-header" style="background:#f5f5f5;">費用設定判定結果</div>
+                <div class="section-body" id="judgmentResults"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 定数
+        var CALENDAR_MONTHS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+        var FISCAL_ORDER = ['4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月', '1月', '2月', '3月'];
+
+        // グローバル変数
+        var activeMonths = [];
+        var monthLabels = [];
+        var budgetColumnPositions = []; // 各月の「予算」列位置
+        var monthDetectionResults = []; // 月検出結果（表示用）
+        var firstDataCol = 5;
+        var preprocessLog = [];
+        var storeName = '';
+        var annualData = {};
+        var calcResults = {};
+        var rakumyInputs = {};
+        var mqOutputs = {};
+        var judgments = {};
+        var matchedItems = [];
+        var unmatchedItems = [];
+        var csvLines = []; // デバッグ用
+
+        // ★ 複数店舗対応
+        var allStoresData = {}; // { storeName: { annualData, calcResults, rakumyInputs, mqOutputs, judgments, matchedItems, unmatchedItems, activeMonths, monthLabels } }
+        var currentStoreName = '';
+        var selectedFiles = []; // 選択されたファイル群
+
+        // 設定データ
+        var CUSTOMER_CODE_MAP = {
+            '810': { v15No: 2, name: '店舗売上高（フード）', category: '売上' },
+            '811': { v15No: 3, name: 'ドリンク売上', category: '売上' },
+            '812': { v15No: 4, name: 'その他売上高', category: '売上' },
+            '999': { v15No: 5, name: '売上高合計（税抜）', category: '売上' },
+            '461': { v15No: 6, name: '食材仕入高', category: '原価' },
+            '462': { v15No: 7, name: 'ドリンク仕入高', category: '原価' },
+            '501': { v15No: 10, name: '給料手当', category: '固定人件費' },
+            '509': { v15No: 13, name: '雑給（PA）', category: 'PA人件費' },
+            '503': { v15No: 14, name: 'ヘルプ人件費', category: 'PA人件費' },
+            '504': { v15No: 15, name: '法定福利費', category: '固定人件費' },
+            '508': { v15No: 16, name: '通勤交通費', category: '固定人件費' },
+            '506': { v15No: 17, name: '賞与引当金繰入', category: '固定人件費' },
+            '553': { v15No: 18, name: '社宅家賃', category: '固定人件費' },
+            '2105': { v15No: 19, name: '休業手当', category: '固定人件費' },
+            '510': { v15No: 21, name: '販売促進費', category: '経費' },
+            '541': { v15No: 22, name: 'メニューコピー', category: '経費' },
+            '516': { v15No: 23, name: '調査費', category: '経費' },
+            '514': { v15No: 24, name: '衛生費', category: '経費' },
+            '542': { v15No: 25, name: 'サービス費', category: '経費' },
+            '520': { v15No: 26, name: '電気代', category: '経費' },
+            '521': { v15No: 27, name: 'ガス代', category: '経費' },
+            '522': { v15No: 28, name: '水道代', category: '経費' },
+            '523': { v15No: 29, name: '消耗品費', category: '経費' },
+            '526': { v15No: 30, name: '保守修繕費', category: '経費' },
+            '527': { v15No: 31, name: '租税公課', category: '経費' },
+            '529': { v15No: 32, name: '接待交際費', category: '経費' },
+            '530': { v15No: 33, name: '旅費交通費', category: '経費' },
+            '531': { v15No: 34, name: '通信費', category: '経費' },
+            '5321': { v15No: 35, name: 'クレジット手数料', category: '経費' },
+            '532': { v15No: 36, name: '支払手数料', category: '経費' },
+            '533': { v15No: 37, name: '会議費', category: '経費' },
+            '534': { v15No: 38, name: '諸会費', category: '経費' },
+            '536': { v15No: 39, name: '図書教育費', category: '経費' },
+            '546': { v15No: 40, name: '研修費', category: '経費' },
+            '537': { v15No: 41, name: '業態研究費', category: '経費' },
+            '518': { v15No: 42, name: '採用費', category: '経費' },
+            '550': { v15No: 43, name: 'IT費', category: '経費' },
+            '2128': { v15No: 44, name: '外注費', category: '経費' },
+            '539': { v15No: 45, name: '雑費', category: '経費' },
+            '528': { v15No: 46, name: '減価償却費', category: '固定費' },
+            '554': { v15No: 47, name: '家賃', category: '固定費' },
+            '552': { v15No: 48, name: '警備料', category: '固定費' },
+            '5241': { v15No: 49, name: 'リース料', category: '固定費' },
+            '524': { v15No: 50, name: '賃借料', category: '固定費' },
+            '9640': { v15No: 60, name: '店舗営業利益', category: '利益' }
+        };
+
+        // ★ 計算ルール（顧客予算 → ラクミー入力への変換）
+        var CALC_RULES = {
+            // === 原価系（率計算） ===
+            'FD仕入費': { type: 'sum', items: [6, 7], desc: '食材原価+ドリンク原価' },
+            'FD仕入費率': { type: 'rate', numerator: 'FD仕入費', denominator: 'item:5', desc: 'FD仕入費÷売上高×100' },
+
+            // === 人件費系（合計・率計算） ===
+            '固定人件費合計': { type: 'sum', items: [10, 15, 16, 17, 18, 19], desc: '給料手当+法定福利費+通勤交通費+賞与引当金+社宅家賃+休業手当' },
+            'PA人件費合計': { type: 'sum', items: [13, 14], desc: '雑給PA+ヘルプ人件費' },
+            'PA人件費率': { type: 'rate', numerator: 'PA人件費合計', denominator: 'item:5', desc: 'PA人件費÷売上高×100' },
+
+            // === 固定費系（合計） ===
+            '地代家賃合計': { type: 'sum', items: [47, 50], desc: '家賃+賃借料' },
+            '資材費合計': { type: 'sum', items: [48, 49], desc: '警備料+リース料' },
+
+            // === 経費系（合計） ===
+            '水道光熱費合計': { type: 'sum', items: [26, 27, 28], desc: '電気代+ガス代+水道代' },
+            '販管費合計': { type: 'sum', items: [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45], desc: '全経費合計' },
+
+            // === 売上比率（率計算） ===
+            'フード売上比率': { type: 'rate', numerator: 'item:2', denominator: 'item:5', desc: 'フード売上÷売上高×100' },
+            'ドリンク売上比率': { type: 'rate', numerator: 'item:3', denominator: 'item:5', desc: 'ドリンク売上÷売上高×100' },
+            'その他売上比率': { type: 'rate', numerator: 'item:4', denominator: 'item:5', desc: 'その他売上÷売上高×100' },
+            // ランチ・ディナー比率（顧客データにない場合はデフォルト値）
+            'ランチ売上比率': { type: 'default', value: 40, desc: 'デフォルト40%' },
+            'ディナー売上比率': { type: 'default', value: 60, desc: 'デフォルト60%' },
+
+            // === 固定費合計（MQ計算用） ===
+            '固定費合計': { type: 'sum', items: [46, 47, 48, 49, 50, 10, 15, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45], desc: '全固定費' }
+        };
+
+        var ITEMS = {
+            2: { name: 'フード売上', category: '売上' },
+            3: { name: 'ドリンク売上', category: '売上' },
+            4: { name: 'その他売上', category: '売上' },
+            5: { name: '売上高合計', category: '売上' },
+            6: { name: '食材原価', category: '原価' },
+            7: { name: 'ドリンク原価', category: '原価' },
+            10: { name: '給料手当', category: '固定人件費' },
+            13: { name: '雑給（PA）', category: 'PA人件費' },
+            14: { name: 'ヘルプ人件費', category: 'PA人件費' },
+            15: { name: '法定福利費', category: '固定人件費' },
+            16: { name: '通勤交通費', category: '固定人件費' },
+            17: { name: '賞与引当金繰入', category: '固定人件費' },
+            18: { name: '社宅家賃', category: '固定人件費' },
+            19: { name: '休業手当', category: '固定人件費' },
+            21: { name: '販売促進費', category: '経費' },
+            22: { name: 'メニューコピー', category: '経費' },
+            23: { name: '調査費', category: '経費' },
+            24: { name: '衛生費', category: '経費' },
+            25: { name: 'サービス費', category: '経費' },
+            26: { name: '電気代', category: '経費' },
+            27: { name: 'ガス代', category: '経費' },
+            28: { name: '水道代', category: '経費' },
+            29: { name: '消耗品費', category: '経費' },
+            30: { name: '保守修繕費', category: '経費' },
+            31: { name: '租税公課', category: '経費' },
+            32: { name: '接待交際費', category: '経費' },
+            33: { name: '旅費交通費', category: '経費' },
+            34: { name: '通信費', category: '経費' },
+            35: { name: 'クレジット手数料', category: '経費' },
+            36: { name: '支払手数料', category: '経費' },
+            37: { name: '会議費', category: '経費' },
+            38: { name: '諸会費', category: '経費' },
+            39: { name: '図書教育費', category: '経費' },
+            40: { name: '研修費', category: '経費' },
+            41: { name: '業態研究費', category: '経費' },
+            42: { name: '採用費', category: '経費' },
+            43: { name: 'IT費', category: '経費' },
+            44: { name: '外注費', category: '経費' },
+            45: { name: '雑費', category: '経費' },
+            46: { name: '減価償却費', category: '固定費' },
+            47: { name: '家賃', category: '固定費' },
+            48: { name: '警備料', category: '固定費' },
+            49: { name: 'リース料', category: '固定費' },
+            50: { name: '賃借料', category: '固定費' },
+            60: { name: '店舗営業利益', category: '利益' }
+        };
+
+        // ユーティリティ
+        function fmt(n) { return n !== undefined && n !== null ? Math.round(n).toLocaleString('ja-JP') : '-'; }
+        function fmtRate(n) { return n !== undefined && n !== null ? n.toFixed(1) : '-'; }
+
+        function addLog(msg, type) {
+            var cssClass = 'log-' + (type || 'info');
+            var prefix = { info: '[INFO] ', warn: '[WARN] ', error: '[ERROR] ', success: '[OK] ', data: '  → ', month: '[月] ' }[type] || '';
+            preprocessLog.push('<span class="' + cssClass + '">' + prefix + escapeHtml(msg) + '</span>');
+        }
+
+        function escapeHtml(str) {
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        function showTab(tabId) {
+            document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+            document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function handleFileSelect(event) {
+            selectedFiles = Array.from(event.target.files);
+            if (selectedFiles.length > 0) {
+                var names = selectedFiles.map(function(f) { return f.name; }).join(', ');
+                document.getElementById('fileName').textContent = selectedFiles.length + '件: ' + names.substring(0, 50) + (names.length > 50 ? '...' : '');
+                document.getElementById('importBtn').disabled = false;
+            }
+        }
+
+        // ★ 複数CSVインポート
+        function importAllCSVs() {
+            if (selectedFiles.length === 0) return;
+
+            var importCount = 0;
+            var errorCount = 0;
+
+            selectedFiles.forEach(function(file, index) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        preprocessLog = [];
+                        addLog('CSVファイル ' + (index + 1) + '/' + selectedFiles.length + ': ' + file.name, 'info');
+                        parseCustomerCSV(e.target.result);
+
+                        // シミュレーション実行
+                        runSimulation();
+
+                        // 店舗データを保存
+                        saveCurrentStoreData();
+                        importCount++;
+
+                        addLog('店舗「' + storeName + '」のインポート＆シミュレーション完了', 'success');
+                    } catch (err) {
+                        addLog('エラー: ' + err.message, 'error');
+                        errorCount++;
+                    }
+
+                    // 全ファイル処理完了
+                    if (importCount + errorCount === selectedFiles.length) {
+                        updateStoreSelector();
+                        renderAllStoresSummary();
+
+                        // 最初の店舗を選択
+                        var storeNames = Object.keys(allStoresData);
+                        if (storeNames.length > 0 && !currentStoreName) {
+                            switchStore(storeNames[0]);
+                        }
+
+                        document.getElementById('preprocessLog').innerHTML = preprocessLog.join('\n');
+                        showStatus('success', importCount + '店舗インポート完了' + (errorCount > 0 ? '（' + errorCount + '件エラー）' : ''));
+                    }
+                };
+                reader.readAsText(file, 'UTF-8');
+            });
+        }
+
+        // ★ 現在の店舗データを保存
+        function saveCurrentStoreData() {
+            if (!storeName) return;
+
+            allStoresData[storeName] = {
+                annualData: JSON.parse(JSON.stringify(annualData)),
+                calcResults: JSON.parse(JSON.stringify(calcResults)),
+                rakumyInputs: JSON.parse(JSON.stringify(rakumyInputs)),
+                mqOutputs: JSON.parse(JSON.stringify(mqOutputs)),
+                judgments: JSON.parse(JSON.stringify(judgments)),
+                matchedItems: JSON.parse(JSON.stringify(matchedItems)),
+                unmatchedItems: JSON.parse(JSON.stringify(unmatchedItems)),
+                activeMonths: activeMonths.slice(),
+                monthLabels: monthLabels.slice(),
+                budgetColumnPositions: JSON.parse(JSON.stringify(budgetColumnPositions)),
+                monthDetectionResults: JSON.parse(JSON.stringify(monthDetectionResults))
+            };
+        }
+
+        // ★ 店舗切り替え
+        function switchStore(name) {
+            if (!name || !allStoresData[name]) return;
+
+            currentStoreName = name;
+            var data = allStoresData[name];
+
+            // グローバル変数を復元
+            storeName = name;
+            annualData = data.annualData;
+            calcResults = data.calcResults;
+            rakumyInputs = data.rakumyInputs;
+            mqOutputs = data.mqOutputs;
+            judgments = data.judgments;
+            matchedItems = data.matchedItems;
+            unmatchedItems = data.unmatchedItems;
+            activeMonths = data.activeMonths;
+            monthLabels = data.monthLabels;
+            budgetColumnPositions = data.budgetColumnPositions;
+            monthDetectionResults = data.monthDetectionResults;
+
+            // UI更新
+            document.getElementById('storeSelect').value = name;
+            document.getElementById('detectedStore').textContent = name;
+            document.getElementById('detectedMonthCount').textContent = activeMonths.length + 'ヶ月';
+            document.getElementById('detectedItemCount').textContent = matchedItems.length + '項目';
+            document.getElementById('unmatchedCount').textContent = unmatchedItems.length + '項目';
+
+            // 店舗チップのアクティブ状態更新
+            document.querySelectorAll('.store-chip').forEach(function(chip) {
+                chip.classList.toggle('active', chip.dataset.store === name);
+            });
+
+            // テーブル再描画
+            renderMappingTable();
+            renderUnmatchedItems();
+            renderMonthColsGrid();
+            renderAllTables();
+
+            showStatus('info', '店舗「' + name + '」を表示中');
+        }
+
+        // ★ 店舗セレクター更新
+        function updateStoreSelector() {
+            var storeNames = Object.keys(allStoresData);
+
+            document.getElementById('storeSelector').style.display = storeNames.length > 0 ? 'flex' : 'none';
+            document.getElementById('storeCount').textContent = storeNames.length;
+
+            // ドロップダウン更新
+            var select = document.getElementById('storeSelect');
+            select.innerHTML = '<option value="">-- 店舗を選択 --</option>';
+            storeNames.forEach(function(name) {
+                var opt = document.createElement('option');
+                opt.value = name;
+                opt.textContent = name;
+                select.appendChild(opt);
+            });
+            if (currentStoreName) select.value = currentStoreName;
+
+            // 店舗チップ更新
+            var listEl = document.getElementById('storeList');
+            listEl.innerHTML = '';
+            storeNames.forEach(function(name) {
+                var chip = document.createElement('span');
+                chip.className = 'store-chip' + (name === currentStoreName ? ' active' : '');
+                chip.dataset.store = name;
+                chip.innerHTML = name + '<span class="remove" onclick="removeStore(\'' + name.replace(/'/g, "\\'") + '\', event)">&times;</span>';
+                chip.onclick = function() { switchStore(name); };
+                listEl.appendChild(chip);
+            });
+        }
+
+        // ★ 店舗削除
+        function removeStore(name, event) {
+            event.stopPropagation();
+            if (!confirm('「' + name + '」を削除しますか？')) return;
+
+            delete allStoresData[name];
+
+            if (currentStoreName === name) {
+                currentStoreName = '';
+                var remaining = Object.keys(allStoresData);
+                if (remaining.length > 0) {
+                    switchStore(remaining[0]);
+                }
+            }
+
+            updateStoreSelector();
+            renderAllStoresSummary();
+        }
+
+        // ★ 全店舗クリア
+        function clearAllStores() {
+            if (!confirm('全店舗データをクリアしますか？')) return;
+
+            allStoresData = {};
+            currentStoreName = '';
+            storeName = '';
+            annualData = {};
+            calcResults = {};
+            rakumyInputs = {};
+            mqOutputs = {};
+
+            updateStoreSelector();
+            document.getElementById('allStoresSummary').style.display = 'none';
+            document.getElementById('detectedStore').textContent = '-';
+            document.getElementById('detectedMonthCount').textContent = '-';
+            document.getElementById('detectedItemCount').textContent = '-';
+            document.getElementById('unmatchedCount').textContent = '-';
+
+            showStatus('info', '全店舗データをクリアしました');
+        }
+
+        // ★ 現在の店舗でシミュレーション実行
+        function runSimulationForCurrentStore() {
+            if (!currentStoreName) {
+                showStatus('error', '店舗を選択してください');
+                return;
+            }
+            runSimulation();
+            saveCurrentStoreData(); // 結果を保存
+            renderAllStoresSummary();
+        }
+
+        // ★ 全店舗サマリー描画
+        function renderAllStoresSummary() {
+            var storeNames = Object.keys(allStoresData);
+            if (storeNames.length === 0) {
+                document.getElementById('allStoresSummary').style.display = 'none';
+                return;
+            }
+
+            document.getElementById('allStoresSummary').style.display = 'block';
+
+            var totalSales = 0, totalProfit = 0, totalCustomers = 0;
+            var cardsHtml = '';
+
+            storeNames.forEach(function(name) {
+                var data = allStoresData[name];
+                var storeSales = 0, storeProfit = 0, storeCustomers = 0;
+
+                if (data.mqOutputs) {
+                    for (var m in data.mqOutputs) {
+                        storeSales += data.mqOutputs[m].sales || 0;
+                        storeProfit += data.mqOutputs[m].operatingProfit || 0;
+                        storeCustomers += data.mqOutputs[m].customers || 0;
+                    }
+                }
+
+                totalSales += storeSales;
+                totalProfit += storeProfit;
+                totalCustomers += storeCustomers;
+
+                var profitRate = storeSales > 0 ? (storeProfit / storeSales * 100) : 0;
+
+                cardsHtml += '<div class="store-card' + (name === currentStoreName ? ' active' : '') + '" onclick="switchStore(\'' + name.replace(/'/g, "\\'") + '\')">';
+                cardsHtml += '<h4>' + name + '</h4>';
+                cardsHtml += '<div class="metric"><span>年間売上</span><span class="metric-value">' + fmt(storeSales) + ' 千円</span></div>';
+                cardsHtml += '<div class="metric"><span>年間営業利益</span><span class="metric-value">' + fmt(storeProfit) + ' 千円</span></div>';
+                cardsHtml += '<div class="metric"><span>営業利益率</span><span class="metric-value">' + fmtRate(profitRate) + '%</span></div>';
+                cardsHtml += '<div class="metric"><span>年間客数</span><span class="metric-value">' + fmt(storeCustomers) + ' 人</span></div>';
+                cardsHtml += '</div>';
+            });
+
+            // 合計カード
+            var totalProfitRate = totalSales > 0 ? (totalProfit / totalSales * 100) : 0;
+            cardsHtml += '<div class="store-card total">';
+            cardsHtml += '<h4>全店舗合計</h4>';
+            cardsHtml += '<div class="metric"><span>年間売上合計</span><span class="metric-value">' + fmt(totalSales) + ' 千円</span></div>';
+            cardsHtml += '<div class="metric"><span>年間営業利益合計</span><span class="metric-value">' + fmt(totalProfit) + ' 千円</span></div>';
+            cardsHtml += '<div class="metric"><span>平均営業利益率</span><span class="metric-value">' + fmtRate(totalProfitRate) + '%</span></div>';
+            cardsHtml += '<div class="metric"><span>年間客数合計</span><span class="metric-value">' + fmt(totalCustomers) + ' 人</span></div>';
+            cardsHtml += '</div>';
+
+            document.getElementById('allStoresGrid').innerHTML = cardsHtml;
+        }
+
+        function showStatus(type, msg) {
+            var el = document.getElementById('importStatus');
+            el.className = 'status-bar status-' + type;
+            el.textContent = msg;
+            el.style.display = 'block';
+        }
+
+        // CSVパーサー
+        function parseCSVLine(line) {
+            var result = [];
+            var current = '';
+            var inQuotes = false;
+            for (var i = 0; i < line.length; i++) {
+                var char = line[i];
+                if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                    result.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            result.push(current.trim());
+            return result;
+        }
+
+        function parseCustomNumber(str) {
+            if (!str || str === '-' || str === '' || str === '#N/A' || str === '#DIV/0!') return 0;
+            var s = String(str).trim().replace(/"/g, '');
+            var isNegative = s.charAt(0) === '(' && s.charAt(s.length - 1) === ')';
+            if (isNegative) s = s.substring(1, s.length - 1);
+            s = s.replace(/[\s,]/g, '').replace(/%/g, '');
+            var num = parseFloat(s);
+            if (isNaN(num)) return 0;
+            return isNegative ? -num : num;
+        }
+
+        function extractItemCode(fullCode) {
+            var str = String(fullCode).trim();
+            if (str.length >= 6) return str.substring(3);
+            return str;
+        }
+
+        function isNumericOrEmpty(str) {
+            if (!str || str.trim() === '') return true;
+            var s = str.trim();
+            if (s === '#N/A' || s === '#DIV/0!' || s === '#REF!' || s === '#VALUE!' || s === '-') return true;
+            var cleaned = s.replace(/[,\s"()%]/g, '');
+            return !isNaN(parseFloat(cleaned));
+        }
+
+        function extractItemNameFromCols(cols, endCol) {
+            var nameParts = [];
+            var scanEnd = Math.min(endCol, cols.length);
+            for (var i = 1; i < scanEnd; i++) {
+                var val = cols[i] ? cols[i].trim() : '';
+                if (val && val.length > 0 && !isNumericOrEmpty(val)) {
+                    nameParts.push({ col: i, value: val });
+                }
+            }
+            var primaryName = nameParts.length > 0 ? nameParts[nameParts.length - 1].value : '';
+            var hierarchy = nameParts.map(function(p) { return p.value; }).join(' > ');
+            return { name: primaryName, hierarchy: hierarchy };
+        }
+
+        // ★ 月別「予算」列の正確な検出
+        function detectBudgetColumns(lines) {
+            if (lines.length < 4) return [];
+
+            var row2 = parseCSVLine(lines[2]); // 月名行（3行目）
+            var row3 = parseCSVLine(lines[3]); // サブヘッダー行（4行目）
+
+            addLog('=== 月別「予算」列の検出開始 ===', 'info');
+            addLog('3行目（月名行）列数: ' + row2.length, 'data');
+            addLog('4行目（サブヘッダー行）列数: ' + row3.length, 'data');
+
+            // まず、すべての月名の位置を検出
+            var monthNamePositions = [];
+            for (var i = 0; i < row2.length; i++) {
+                var cell = row2[i].trim();
+                if (CALENDAR_MONTHS.indexOf(cell) >= 0) {
+                    monthNamePositions.push({ month: cell, col: i });
+                }
+            }
+
+            addLog('月名検出: ' + monthNamePositions.length + '個', 'info');
+
+            // 各月について、「予算」列を探す
+            var results = [];
+            monthDetectionResults = [];
+
+            for (var mi = 0; mi < monthNamePositions.length; mi++) {
+                var monthInfo = monthNamePositions[mi];
+                var month = monthInfo.month;
+                var monthCol = monthInfo.col;
+
+                // この月の範囲（次の月の手前まで）
+                var nextMonthCol = (mi < monthNamePositions.length - 1) ? monthNamePositions[mi + 1].col : row3.length;
+
+                // 4行目でこの月の範囲内の「予算」を探す
+                var budgetCol = -1;
+                var subHeaderAtMonthCol = row3[monthCol] ? row3[monthCol].trim() : '';
+
+                // まず月名の列のサブヘッダーをチェック
+                if (subHeaderAtMonthCol === '予算') {
+                    budgetCol = monthCol;
+                    addLog(month + ': 列' + monthCol + ' (サブヘッダー: ' + subHeaderAtMonthCol + ') → OK', 'success');
+                } else {
+                    // 月名の列が「予算」でない場合、その月の範囲内で「予算」を探す
+                    addLog(month + ': 列' + monthCol + ' のサブヘッダーは「' + subHeaderAtMonthCol + '」（予算ではない）', 'warn');
+
+                    for (var j = monthCol; j < nextMonthCol && j < row3.length; j++) {
+                        var subHeader = row3[j] ? row3[j].trim() : '';
+                        if (subHeader === '予算') {
+                            budgetCol = j;
+                            addLog(month + ': 列' + j + ' で「予算」を発見', 'success');
+                            break;
+                        }
+                    }
+
+                    if (budgetCol === -1) {
+                        // 「予算」が見つからない場合、月名の列をそのまま使用
+                        budgetCol = monthCol;
+                        addLog(month + ': 「予算」列が見つからず、月名列(' + monthCol + ')を使用', 'warn');
+                    }
+                }
+
+                var finalSubHeader = row3[budgetCol] ? row3[budgetCol].trim() : '';
+                var status = finalSubHeader === '予算' ? 'ok' : (finalSubHeader ? 'warn' : 'error');
+
+                results.push({
+                    month: month,
+                    budgetCol: budgetCol,
+                    subHeader: finalSubHeader,
+                    status: status
+                });
+
+                monthDetectionResults.push({
+                    month: month,
+                    budgetCol: budgetCol,
+                    monthNameCol: monthCol,
+                    subHeader: finalSubHeader,
+                    status: status
+                });
+            }
+
+            return results;
+        }
+
+        // 月列検出結果の表示
+        function renderMonthColsGrid() {
+            document.getElementById('columnDetection').style.display = 'block';
+            var grid = document.getElementById('monthColsGrid');
+
+            var html = '';
+            monthDetectionResults.forEach(function(r) {
+                html += '<div class="month-col-card ' + r.status + '">';
+                html += '<div class="month-name">' + r.month + '</div>';
+                html += '<div class="col-info">列' + r.budgetCol + '</div>';
+                html += '<div class="sub-header">' + (r.subHeader || '(空)') + '</div>';
+                html += '</div>';
+            });
+
+            grid.innerHTML = html;
+
+            // サンプル値の表示
+            if (csvLines.length > 5) {
+                var sampleHtml = '<h4>売上高合計(999)のサンプル値</h4><table class="mapping-table sample-table"><tr><th>月</th>';
+                monthDetectionResults.forEach(function(r) {
+                    sampleHtml += '<th>' + r.month + '</th>';
+                });
+                sampleHtml += '</tr><tr><td>列位置</td>';
+                monthDetectionResults.forEach(function(r) {
+                    sampleHtml += '<td>列' + r.budgetCol + '</td>';
+                });
+                sampleHtml += '</tr><tr><td>値</td>';
+
+                // 売上高合計の行を探す
+                var sampleRow = null;
+                for (var i = 4; i < csvLines.length; i++) {
+                    var cols = parseCSVLine(csvLines[i]);
+                    var code = extractItemCode(cols[0] || '');
+                    if (code === '999') {
+                        sampleRow = cols;
+                        break;
+                    }
+                }
+
+                if (sampleRow) {
+                    monthDetectionResults.forEach(function(r) {
+                        var val = sampleRow[r.budgetCol] || '';
+                        var parsed = parseCustomNumber(val);
+                        sampleHtml += '<td>' + fmt(parsed) + '</td>';
+                    });
+                } else {
+                    monthDetectionResults.forEach(function() {
+                        sampleHtml += '<td>-</td>';
+                    });
+                }
+
+                sampleHtml += '</tr></table>';
+                document.getElementById('sampleValues').innerHTML = sampleHtml;
+            }
+        }
+
+        // マッピング追加
+        function addMapping() {
+            var code = document.getElementById('newCode').value.trim();
+            var name = document.getElementById('newName').value.trim();
+            var v15No = parseInt(document.getElementById('newV15No').value);
+            var category = document.getElementById('newCategory').value;
+
+            if (!code || !name || isNaN(v15No)) {
+                alert('すべての項目を入力してください');
+                return;
+            }
+
+            CUSTOMER_CODE_MAP[code] = { v15No: v15No, name: name, category: category };
+            ITEMS[v15No] = { name: name, category: category };
+
+            document.getElementById('newCode').value = '';
+            document.getElementById('newName').value = '';
+            document.getElementById('newV15No').value = '';
+
+            showStatus('success', 'マッピング追加: ' + code + ' → [' + v15No + '] ' + name);
+
+            if (document.getElementById('csvFile').files[0]) {
+                importCSV();
+            }
+        }
+
+        function quickAddMapping(code, name) {
+            document.getElementById('newCode').value = code;
+            document.getElementById('newName').value = name;
+            var usedNos = Object.values(CUSTOMER_CODE_MAP).map(function(m) { return m.v15No; });
+            for (var i = 51; i <= 100; i++) {
+                if (usedNos.indexOf(i) < 0) {
+                    document.getElementById('newV15No').value = i;
+                    break;
+                }
+            }
+        }
+
+        function deleteMapping(code) {
+            if (confirm('削除しますか？')) {
+                delete CUSTOMER_CODE_MAP[code];
+                renderMappingTable();
+            }
+        }
+
+        function renderMappingTable() {
+            var html = '<table class="mapping-table">';
+            html += '<tr><th>コード</th><th>項目名</th><th>→</th><th>v15 No</th><th>v15項目名</th><th>カテゴリ</th><th></th></tr>';
+            matchedItems.forEach(function(item) {
+                html += '<tr><td>' + item.code + '</td><td>' + item.name + '</td><td style="color:#28a745;">→</td>';
+                html += '<td>' + item.v15No + '</td><td>' + item.v15Name + '</td><td>' + item.category + '</td>';
+                html += '<td><button class="btn btn-danger" style="padding:2px 6px;font-size:9px;" onclick="deleteMapping(\'' + item.code + '\')">削除</button></td></tr>';
+            });
+            html += '</table>';
+            document.getElementById('mappingTable').innerHTML = html;
+        }
+
+        function renderUnmatchedItems() {
+            var section = document.getElementById('unmatchedSection');
+            if (unmatchedItems.length === 0) {
+                section.style.display = 'none';
+                return;
+            }
+            section.style.display = 'block';
+            var html = '<table class="mapping-table"><tr><th>コード</th><th>項目名</th><th>サンプル値</th><th></th></tr>';
+            unmatchedItems.forEach(function(item) {
+                html += '<tr><td>' + item.code + '</td><td>' + (item.name || '(なし)') + '</td>';
+                html += '<td>' + fmt(item.sampleValue) + '</td>';
+                html += '<td><button class="btn btn-info" style="padding:2px 6px;font-size:9px;" onclick="quickAddMapping(\'' + item.code + '\', \'' + (item.name || '').replace(/'/g, "\\'") + '\')">追加</button></td></tr>';
+            });
+            html += '</table>';
+            document.getElementById('unmatchedList').innerHTML = html;
+        }
+
+        // 設定エクスポート/インポート
+        function exportAllConfig() {
+            var config = {
+                version: '5.8',
+                mapping: CUSTOMER_CODE_MAP,
+                calcRules: CALC_RULES,
+                rakumyItems: RAKUMY_ITEMS,
+                items: ITEMS,
+                allStoresData: allStoresData // 全店舗データも保存
+            };
+            var blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+            var link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'budget_config_v5.8_' + new Date().toISOString().slice(0,10) + '.json';
+            link.click();
+        }
+
+        function importAllConfig(event) {
+            var file = event.target.files[0];
+            if (!file) return;
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    var config = JSON.parse(e.target.result);
+                    if (config.mapping) CUSTOMER_CODE_MAP = config.mapping;
+                    if (config.calcRules) CALC_RULES = config.calcRules;
+                    if (config.rakumyItems) RAKUMY_ITEMS = config.rakumyItems;
+                    if (config.items) ITEMS = config.items;
+
+                    // 全店舗データの復元
+                    if (config.allStoresData) {
+                        allStoresData = config.allStoresData;
+                        updateStoreSelector();
+                        renderAllStoresSummary();
+
+                        var storeNames = Object.keys(allStoresData);
+                        if (storeNames.length > 0) {
+                            switchStore(storeNames[0]);
+                        }
+                        showStatus('success', '設定を読み込みました（' + storeNames.length + '店舗）');
+                    } else {
+                        showStatus('success', '設定を読み込みました');
+                    }
+                } catch (err) {
+                    showStatus('error', 'エラー: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // CSVインポート
+        function importCSV() {
+            var file = document.getElementById('csvFile').files[0];
+            if (!file) return;
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    preprocessLog = [];
+                    addLog('CSVファイル: ' + file.name, 'info');
+                    parseCustomerCSV(e.target.result);
+                    document.getElementById('preprocessLog').innerHTML = preprocessLog.join('\n');
+                    renderMappingTable();
+                    renderUnmatchedItems();
+                    renderMonthColsGrid();
+                    showStatus('success', 'インポート完了: ' + storeName + '（' + matchedItems.length + '項目マッチ）');
+                    runSimulation();
+                } catch (err) {
+                    addLog('エラー: ' + err.message, 'error');
+                    console.error(err);
+                    document.getElementById('preprocessLog').innerHTML = preprocessLog.join('\n');
+                    showStatus('error', 'エラー: ' + err.message);
+                }
+            };
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        function parseCustomerCSV(csv) {
+            var lines = csv.split(/\r?\n/).filter(function(l) { return l.trim(); });
+            csvLines = lines; // デバッグ用に保存
+            if (lines.length < 5) throw new Error('CSVの行数が不足');
+
+            addLog('総行数: ' + lines.length, 'info');
+
+            // 1行目: 店舗情報
+            var firstRow = parseCSVLine(lines[0]);
+            storeName = '';
+            for (var i = 1; i < Math.min(firstRow.length, 5); i++) {
+                var cell = firstRow[i].trim();
+                if (cell && cell.length > 0 && !/^\d+$/.test(cell)) {
+                    storeName = cell;
+                    break;
+                }
+            }
+            if (!storeName) storeName = '店舗名不明';
+            document.getElementById('detectedStore').textContent = storeName;
+            addLog('店舗名: ' + storeName, 'success');
+
+            // ★ 月別「予算」列の正確な検出
+            var budgetResults = detectBudgetColumns(lines);
+
+            if (budgetResults.length === 0) throw new Error('月の「予算」列が検出できません');
+
+            // 会計年度順にソート
+            budgetColumnPositions = [];
+            activeMonths = [];
+            monthLabels = [];
+
+            for (var j = 0; j < FISCAL_ORDER.length; j++) {
+                var m = FISCAL_ORDER[j];
+                for (var k = 0; k < budgetResults.length; k++) {
+                    if (budgetResults[k].month === m) {
+                        budgetColumnPositions.push(budgetResults[k]);
+                        activeMonths.push(budgetColumnPositions.length - 1);
+                        monthLabels.push(m);
+                        break;
+                    }
+                }
+            }
+
+            addLog('', '');
+            addLog('会計年度順: ' + monthLabels.join(' → '), 'month');
+            addLog('予算列位置: ' + budgetColumnPositions.map(function(p) { return p.month + ':列' + p.budgetCol; }).join(', '), 'data');
+
+            document.getElementById('detectedMonthCount').textContent = activeMonths.length + 'ヶ月';
+
+            // 項目名検出用の最初のデータ列
+            firstDataCol = Math.min.apply(null, budgetColumnPositions.map(function(p) { return p.budgetCol; }));
+
+            // ★ Phase 1: 全行をスキャンして「ヘッダー行」（項目名あり、コードなし）を収集
+            addLog('', '');
+            addLog('=== Phase 1: ヘッダー行の収集 ===', 'info');
+
+            var headerRowNames = {}; // lineIdx -> itemName
+            var lastSeenItemName = '';
+
+            for (var lineIdx = 4; lineIdx < lines.length; lineIdx++) {
+                var cols = parseCSVLine(lines[lineIdx]);
+                if (cols.length < 3) continue;
+
+                var fullCode = cols[0].trim();
+                var hasValidCode = fullCode && /^\d{6,}$/.test(fullCode); // 6桁以上の数字
+
+                // 項目名を探索（列1〜firstDataCol）
+                var nameInfo = extractItemNameFromCols(cols, firstDataCol);
+
+                if (!hasValidCode && nameInfo.name) {
+                    // ヘッダー行：コードなし、項目名あり
+                    headerRowNames[lineIdx] = nameInfo.name;
+                    lastSeenItemName = nameInfo.name;
+                    addLog('行' + lineIdx + ': ヘッダー行「' + nameInfo.name + '」', 'data');
+                }
+            }
+
+            addLog('ヘッダー行: ' + Object.keys(headerRowNames).length + '件', 'info');
+
+            // ★ Phase 2: データ行の解析（項目名が空なら直前の行から継承）
+            annualData = {};
+            matchedItems = [];
+            unmatchedItems = [];
+            var processedCodes = {};
+
+            addLog('', '');
+            addLog('=== Phase 2: データ行の解析 ===', 'info');
+
+            for (var lineIdx = 4; lineIdx < lines.length; lineIdx++) {
+                var cols = parseCSVLine(lines[lineIdx]);
+                if (cols.length < 6) continue;
+
+                var fullCode = cols[0].trim();
+
+                // ヘッダー行の場合はスキップ
+                if (headerRowNames[lineIdx]) {
+                    continue;
+                }
+
+                if (!fullCode || /^[^\d]/.test(fullCode)) continue;
+
+                var itemCode = extractItemCode(fullCode);
+                if (processedCodes[itemCode]) continue;
+                processedCodes[itemCode] = true;
+
+                var nameInfo = extractItemNameFromCols(cols, firstDataCol);
+
+                // ★ 項目名が空の場合、直前1〜3行を遡って項目名を探す
+                var finalItemName = nameInfo.name;
+                var inheritedFrom = '';
+                if (!finalItemName) {
+                    // 直前の行から項目名を探す（最大3行まで遡る）
+                    for (var lookBack = 1; lookBack <= 3 && lineIdx - lookBack >= 4; lookBack++) {
+                        var prevLineIdx = lineIdx - lookBack;
+                        if (headerRowNames[prevLineIdx]) {
+                            finalItemName = headerRowNames[prevLineIdx];
+                            inheritedFrom = '(継承:行' + prevLineIdx + ')';
+                            addLog('コード' + itemCode + ': 直前' + lookBack + '行目から継承「' + finalItemName + '」', 'success');
+                            break;
+                        }
+                    }
+                }
+
+                var mapping = CUSTOMER_CODE_MAP[itemCode];
+
+                if (mapping) {
+                    var v15No = mapping.v15No;
+                    annualData[v15No] = annualData[v15No] || {};
+
+                    for (var mi = 0; mi < budgetColumnPositions.length; mi++) {
+                        var budgetCol = budgetColumnPositions[mi].budgetCol;
+                        var rawValue = cols[budgetCol] || '';
+                        var value = parseCustomNumber(rawValue);
+                        annualData[v15No][mi] = (annualData[v15No][mi] || 0) + value;
+                    }
+
+                    // ★ マッピング済みの場合、CUSTOMER_CODE_MAPの名前を優先（継承名より信頼性が高い）
+                    var displayName = finalItemName || mapping.name;
+                    if (inheritedFrom && displayName !== mapping.name) {
+                        // 継承名とマッピング名が異なる場合、マッピング名を使用
+                        displayName = mapping.name;
+                        addLog('コード' + itemCode + ': マッピング定義名を使用「' + displayName + '」(継承「' + finalItemName + '」は不採用)', 'warn');
+                    }
+
+                    matchedItems.push({
+                        code: itemCode,
+                        name: displayName,
+                        hierarchy: nameInfo.hierarchy || displayName,
+                        v15No: v15No,
+                        v15Name: mapping.name,
+                        category: mapping.category
+                    });
+                } else {
+                    var hasValue = false;
+                    var sampleValue = 0;
+                    for (var mi = 0; mi < budgetColumnPositions.length; mi++) {
+                        var val = parseCustomNumber(cols[budgetColumnPositions[mi].budgetCol] || '');
+                        if (val !== 0) {
+                            hasValue = true;
+                            if (mi === 0) sampleValue = val;
+                        }
+                    }
+                    if (hasValue) {
+                        unmatchedItems.push({
+                            code: itemCode,
+                            name: finalItemName + inheritedFrom,
+                            sampleValue: sampleValue
+                        });
+                    }
+                }
+            }
+
+            addLog('マッチ: ' + matchedItems.length + '項目、未マッチ: ' + unmatchedItems.length + '項目', 'info');
+            document.getElementById('detectedItemCount').textContent = matchedItems.length + '項目';
+            document.getElementById('unmatchedCount').textContent = unmatchedItems.length + '項目';
+        }
+
+        // シミュレーション
+        function runSimulation() {
+            if (activeMonths.length === 0) return;
+            executeCalcRules();
+            judgeSettings();
+            generateRakumyInputs();
+            runMQSimulation();
+            renderAllTables();
+            showStatus('success', 'シミュレーション完了');
+        }
+
+        function executeCalcRules() {
+            calcResults = {};
+            for (var m = 0; m < activeMonths.length; m++) {
+                calcResults[m] = {};
+                for (var iter = 0; iter < 3; iter++) {
+                    for (var ruleName in CALC_RULES) {
+                        var rule = CALC_RULES[ruleName];
+                        try {
+                            calcResults[m][ruleName] = evaluateRule(rule, m);
+                        } catch (e) {}
+                    }
+                }
+            }
+        }
+
+        function evaluateRule(rule, mi) {
+            var get = function(no) { return annualData[no] ? (annualData[no][mi] || 0) : 0; };
+            if (rule.type === 'sum') {
+                var sum = 0;
+                for (var i = 0; i < rule.items.length; i++) sum += get(rule.items[i]);
+                return sum;
+            } else if (rule.type === 'rate') {
+                var num = parseSourceValue(rule.numerator, mi);
+                var denom = parseSourceValue(rule.denominator, mi);
+                return denom > 0 ? (num / denom * 100) : 0;
+            } else if (rule.type === 'default') {
+                return rule.value || 0;
+            }
+            return 0;
+        }
+
+        function parseSourceValue(source, mi) {
+            if (typeof source === 'string') {
+                if (source.startsWith('item:')) {
+                    var no = parseInt(source.substring(5));
+                    return annualData[no] ? (annualData[no][mi] || 0) : 0;
+                }
+                return calcResults[mi][source] || 0;
+            }
+            return 0;
+        }
+
+        function judgeSettings() {
+            judgments = {};
+            [10, 15, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50].forEach(function(itemNo) {
+                var values = activeMonths.map(function(mi) { return annualData[itemNo] ? (annualData[itemNo][mi] || 0) : 0; });
+                var allSame = values.every(function(v) { return Math.abs(v - values[0]) < 0.01; });
+                judgments[itemNo] = { isAnnual: allSame };
+            });
+        }
+
+        // ★ ラクミー入力値の生成（変換タイプを明示）
+        // transformType: 'direct'=直接転記, 'sum'=合計, 'rate'=率計算, 'calc'=逆算
+        // category: 'cost'=費用予算設定（固定費用）, 'budget'=予算設定（変動費用）, 'monthly'=単月費用予算
+        var RAKUMY_ITEMS = {
+            // === 費用予算設定（固定費用）- 29項目すべて ===
+            rent: { name: '地代家賃', source: 'calc:地代家賃合計', type: 'sum', category: 'cost', desc: '家賃+賃借料' },
+            fixedLabor: { name: '固定人件費', source: 'calc:固定人件費合計', type: 'sum', category: 'cost', desc: '給料+法定福利+通勤+賞与+社宅+休業' },
+            depreciation: { name: '減価償却費', source: 'item:46', type: 'direct', category: 'cost', desc: '' },
+            material: { name: '資材費', source: 'calc:資材費合計', type: 'sum', category: 'cost', desc: '警備料+リース料' },
+            promotion: { name: '販売促進費', source: 'item:21', type: 'direct', category: 'cost', desc: '' },
+            menuCopy: { name: 'メニューコピー', source: 'item:22', type: 'direct', category: 'cost', desc: '' },
+            survey: { name: '調査費', source: 'item:23', type: 'direct', category: 'cost', desc: '' },
+            sanitary: { name: '衛生費', source: 'item:24', type: 'direct', category: 'cost', desc: '' },
+            service: { name: 'サービス費', source: 'item:25', type: 'direct', category: 'cost', desc: '' },
+            electricity: { name: '電気代', source: 'item:26', type: 'direct', category: 'cost', desc: '' },
+            gas: { name: 'ガス代', source: 'item:27', type: 'direct', category: 'cost', desc: '' },
+            water: { name: '水道代', source: 'item:28', type: 'direct', category: 'cost', desc: '' },
+            consumables: { name: '消耗品費', source: 'item:29', type: 'direct', category: 'cost', desc: '' },
+            maintenance: { name: '保守修繕費', source: 'item:30', type: 'direct', category: 'cost', desc: '' },
+            taxes: { name: '租税公課', source: 'item:31', type: 'direct', category: 'cost', desc: '' },
+            entertainment: { name: '接待交際費', source: 'item:32', type: 'direct', category: 'cost', desc: '' },
+            travel: { name: '旅費交通費', source: 'item:33', type: 'direct', category: 'cost', desc: '' },
+            communication: { name: '通信費', source: 'item:34', type: 'direct', category: 'cost', desc: '' },
+            creditFee: { name: 'クレジット手数料', source: 'item:35', type: 'direct', category: 'cost', desc: '' },
+            paymentFee: { name: '支払手数料', source: 'item:36', type: 'direct', category: 'cost', desc: '' },
+            meeting: { name: '会議費', source: 'item:37', type: 'direct', category: 'cost', desc: '' },
+            membership: { name: '諸会費', source: 'item:38', type: 'direct', category: 'cost', desc: '' },
+            education: { name: '図書教育費', source: 'item:39', type: 'direct', category: 'cost', desc: '' },
+            training: { name: '研修費', source: 'item:40', type: 'direct', category: 'cost', desc: '' },
+            research: { name: '業態研究費', source: 'item:41', type: 'direct', category: 'cost', desc: '' },
+            recruitment: { name: '採用費', source: 'item:42', type: 'direct', category: 'cost', desc: '' },
+            it: { name: 'IT費', source: 'item:43', type: 'direct', category: 'cost', desc: '' },
+            outsource: { name: '外注費', source: 'item:44', type: 'direct', category: 'cost', desc: '' },
+            misc: { name: '雑費', source: 'item:45', type: 'direct', category: 'cost', desc: '' },
+
+            // === 予算設定（変動費用）- MQパラメータ ===
+            fdRate: { name: 'FD仕入費率', source: 'calc:FD仕入費率', type: 'rate', category: 'budget', desc: 'FD仕入費÷売上×100' },
+            paRate: { name: 'PA人件費率', source: 'calc:PA人件費率', type: 'rate', category: 'budget', desc: 'PA人件費÷売上×100' },
+            targetUnitPrice: { name: '目標客単価（税抜）', source: 'derived', type: 'input', category: 'budget', desc: 'ユーザー入力値' },
+            targetCustomers: { name: '目標客数', source: 'derived', type: 'calc', category: 'budget', desc: '自動計算' },
+            lunchRatio: { name: 'ランチ売上比率', source: 'calc:ランチ売上比率', type: 'rate', category: 'budget', desc: 'ランチ売上÷売上×100' },
+            dinnerRatio: { name: 'ディナー売上比率', source: 'calc:ディナー売上比率', type: 'rate', category: 'budget', desc: 'ディナー売上÷売上×100' },
+            foodRatio: { name: 'フード売上比率', source: 'calc:フード売上比率', type: 'rate', category: 'budget', desc: 'フード売上÷売上×100' },
+            drinkRatio: { name: 'ドリンク売上比率', source: 'calc:ドリンク売上比率', type: 'rate', category: 'budget', desc: 'ドリンク売上÷売上×100' },
+            otherRatio: { name: 'その他売上比率', source: 'calc:その他売上比率', type: 'rate', category: 'budget', desc: 'その他売上÷売上×100' },
+
+            // === 単月費用予算（固定費用）- 28項目（地代家賃を除く）===
+            m_fixedLabor: { name: '固定人件費', source: 'calc:固定人件費合計', type: 'sum', category: 'monthly', desc: '給料+法定福利+通勤+賞与+社宅+休業' },
+            m_depreciation: { name: '減価償却費', source: 'item:46', type: 'direct', category: 'monthly', desc: '' },
+            m_material: { name: '資材費', source: 'calc:資材費合計', type: 'sum', category: 'monthly', desc: '警備料+リース料' },
+            m_promotion: { name: '販売促進費', source: 'item:21', type: 'direct', category: 'monthly', desc: '' },
+            m_menuCopy: { name: 'メニューコピー', source: 'item:22', type: 'direct', category: 'monthly', desc: '' },
+            m_survey: { name: '調査費', source: 'item:23', type: 'direct', category: 'monthly', desc: '' },
+            m_sanitary: { name: '衛生費', source: 'item:24', type: 'direct', category: 'monthly', desc: '' },
+            m_service: { name: 'サービス費', source: 'item:25', type: 'direct', category: 'monthly', desc: '' },
+            m_electricity: { name: '電気代', source: 'item:26', type: 'direct', category: 'monthly', desc: '' },
+            m_gas: { name: 'ガス代', source: 'item:27', type: 'direct', category: 'monthly', desc: '' },
+            m_water: { name: '水道代', source: 'item:28', type: 'direct', category: 'monthly', desc: '' },
+            m_consumables: { name: '消耗品費', source: 'item:29', type: 'direct', category: 'monthly', desc: '' },
+            m_maintenance: { name: '保守修繕費', source: 'item:30', type: 'direct', category: 'monthly', desc: '' },
+            m_taxes: { name: '租税公課', source: 'item:31', type: 'direct', category: 'monthly', desc: '' },
+            m_entertainment: { name: '接待交際費', source: 'item:32', type: 'direct', category: 'monthly', desc: '' },
+            m_travel: { name: '旅費交通費', source: 'item:33', type: 'direct', category: 'monthly', desc: '' },
+            m_communication: { name: '通信費', source: 'item:34', type: 'direct', category: 'monthly', desc: '' },
+            m_creditFee: { name: 'クレジット手数料', source: 'item:35', type: 'direct', category: 'monthly', desc: '' },
+            m_paymentFee: { name: '支払手数料', source: 'item:36', type: 'direct', category: 'monthly', desc: '' },
+            m_meeting: { name: '会議費', source: 'item:37', type: 'direct', category: 'monthly', desc: '' },
+            m_membership: { name: '諸会費', source: 'item:38', type: 'direct', category: 'monthly', desc: '' },
+            m_education: { name: '図書教育費', source: 'item:39', type: 'direct', category: 'monthly', desc: '' },
+            m_training: { name: '研修費', source: 'item:40', type: 'direct', category: 'monthly', desc: '' },
+            m_research: { name: '業態研究費', source: 'item:41', type: 'direct', category: 'monthly', desc: '' },
+            m_recruitment: { name: '採用費', source: 'item:42', type: 'direct', category: 'monthly', desc: '' },
+            m_it: { name: 'IT費', source: 'item:43', type: 'direct', category: 'monthly', desc: '' },
+            m_outsource: { name: '外注費', source: 'item:44', type: 'direct', category: 'monthly', desc: '' },
+            m_misc: { name: '雑費', source: 'item:45', type: 'direct', category: 'monthly', desc: '' }
+        };
+
+        // デフォルト想定客単価（円）- これを基に客数を逆算
+        var DEFAULT_UNIT_PRICE = 4500;
+
+        function generateRakumyInputs() {
+            rakumyInputs = {};
+            for (var m = 0; m < activeMonths.length; m++) {
+                var get = function(no) { return annualData[no] ? (annualData[no][m] || 0) : 0; };
+                var getCalc = function(name) { return calcResults[m][name] || 0; };
+                var sales = get(5); // 売上高合計（千円）
+
+                // ★ 目標客数・客単価の計算ロジック改善
+                // 売上（千円）から客数を逆算: 客数 = 売上 × 1000 ÷ 想定客単価
+                var estimatedCustomers = sales > 0 ? Math.round(sales * 1000 / DEFAULT_UNIT_PRICE) : 3000;
+                // 客単価は売上から客数で逆算: 客単価 = 売上 × 1000 ÷ 客数
+                var estimatedUnitPrice = estimatedCustomers > 0 ? Math.round(sales * 1000 / estimatedCustomers) : DEFAULT_UNIT_PRICE;
+
+                rakumyInputs[m] = {
+                    // 費用予算設定（固定費用）- 29項目
+                    rent: getCalc('地代家賃合計'),
+                    fixedLabor: getCalc('固定人件費合計'),
+                    depreciation: get(46),
+                    material: getCalc('資材費合計'),
+                    promotion: get(21), menuCopy: get(22), survey: get(23), sanitary: get(24), service: get(25),
+                    electricity: get(26), gas: get(27), water: get(28), consumables: get(29), maintenance: get(30),
+                    taxes: get(31), entertainment: get(32), travel: get(33), communication: get(34),
+                    creditFee: get(35), paymentFee: get(36), meeting: get(37), membership: get(38),
+                    education: get(39), training: get(40), research: get(41), recruitment: get(42),
+                    it: get(43), outsource: get(44), misc: get(45),
+
+                    // 予算設定（変動費用）- MQパラメータ
+                    fdRate: getCalc('FD仕入費率'),
+                    paRate: getCalc('PA人件費率'),
+                    targetUnitPrice: estimatedUnitPrice,
+                    targetCustomers: estimatedCustomers,
+                    lunchRatio: getCalc('ランチ売上比率'),
+                    dinnerRatio: getCalc('ディナー売上比率'),
+                    foodRatio: getCalc('フード売上比率'),
+                    drinkRatio: getCalc('ドリンク売上比率'),
+                    otherRatio: getCalc('その他売上比率'),
+
+                    // 単月費用予算（固定費用）- 28項目（地代家賃除く）
+                    m_fixedLabor: getCalc('固定人件費合計'),
+                    m_depreciation: get(46),
+                    m_material: getCalc('資材費合計'),
+                    m_promotion: get(21), m_menuCopy: get(22), m_survey: get(23), m_sanitary: get(24), m_service: get(25),
+                    m_electricity: get(26), m_gas: get(27), m_water: get(28), m_consumables: get(29), m_maintenance: get(30),
+                    m_taxes: get(31), m_entertainment: get(32), m_travel: get(33), m_communication: get(34),
+                    m_creditFee: get(35), m_paymentFee: get(36), m_meeting: get(37), m_membership: get(38),
+                    m_education: get(39), m_training: get(40), m_research: get(41), m_recruitment: get(42),
+                    m_it: get(43), m_outsource: get(44), m_misc: get(45),
+
+                    // 参考値（顧客予算の売上）
+                    budgetSales: sales
+                };
+            }
+        }
+
+        function runMQSimulation() {
+            mqOutputs = {};
+            for (var m = 0; m < activeMonths.length; m++) {
+                var r = rakumyInputs[m];
+                var sales = r.targetCustomers * r.targetUnitPrice / 1000;
+                var variableRate = r.fdRate + r.paRate;
+                var variableCost = sales * variableRate / 100;
+                var grossProfit = sales - variableCost;
+                var fixedCost = r.rent + r.fixedLabor + r.depreciation + r.material + r.promotion + r.menuCopy + r.survey + r.sanitary + r.service + r.electricity + r.gas + r.water + r.consumables + r.maintenance + r.taxes + r.entertainment + r.travel + r.communication + r.creditFee + r.paymentFee + r.meeting + r.membership + r.education + r.training + r.research + r.recruitment + r.it + r.outsource + r.misc;
+                var operatingProfit = grossProfit - fixedCost;
+                mqOutputs[m] = {
+                    sales: Math.round(sales), variableCost: Math.round(variableCost), variableRate: variableRate,
+                    grossProfit: Math.round(grossProfit), grossProfitRate: sales > 0 ? grossProfit / sales * 100 : 0,
+                    fixedCost: Math.round(fixedCost), operatingProfit: Math.round(operatingProfit),
+                    operatingProfitRate: sales > 0 ? operatingProfit / sales * 100 : 0,
+                    unitPrice: r.targetUnitPrice, customers: r.targetCustomers
+                };
+            }
+        }
+
+        // テーブル描画
+        function renderAllTables() {
+            renderInputTable();
+            renderCalcTable();
+            renderRakumyTables();
+            renderOutputTable();
+            renderBudgetListTable();
+            renderSummary();
+        }
+
+        function createMonthHeaders() {
+            var html = '<tr><th>項目</th>';
+            for (var i = 0; i < monthLabels.length; i++) {
+                html += '<th class="month-header">' + monthLabels[i] + '</th>';
+            }
+            html += '<th class="total-col">合計</th><th class="avg-col">平均</th></tr>';
+            return html;
+        }
+
+        function renderInputTable() {
+            var table = document.getElementById('inputTable');
+            var html = createMonthHeaders();
+            var categories = { '売上': [5, 2, 3, 4], '原価': [6, 7], '人件費': [10, 13, 14, 15, 16, 17, 18, 19], '経費': [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45], '固定費': [46, 47, 48, 49, 50], '利益': [60] };
+            for (var cat in categories) {
+                categories[cat].forEach(function(no) {
+                    if (!ITEMS[no] || !annualData[no]) return;
+                    html += '<tr><td>[' + no + '] ' + ITEMS[no].name + '</td>';
+                    var total = 0;
+                    for (var m = 0; m < activeMonths.length; m++) {
+                        var val = annualData[no][m] || 0;
+                        total += val;
+                        html += '<td class="input-cell">' + fmt(val) + '</td>';
+                    }
+                    html += '<td class="total-col">' + fmt(total) + '</td><td class="avg-col">' + fmt(total / activeMonths.length) + '</td></tr>';
+                });
+            }
+            table.innerHTML = html;
+        }
+
+        function renderCalcTable() {
+            var table = document.getElementById('calcTable');
+            var html = createMonthHeaders();
+            for (var name in CALC_RULES) {
+                var isRate = CALC_RULES[name].type === 'rate';
+                html += '<tr><td>' + name + '</td>';
+                var total = 0;
+                for (var m = 0; m < activeMonths.length; m++) {
+                    var val = calcResults[m][name] || 0;
+                    total += val;
+                    html += '<td class="calc-cell">' + (isRate ? fmtRate(val) + '%' : fmt(val)) + '</td>';
+                }
+                html += isRate ? '<td class="total-col">-</td><td class="avg-col">' + fmtRate(total / activeMonths.length) + '%</td></tr>' : '<td class="total-col">' + fmt(total) + '</td><td class="avg-col">' + fmt(total / activeMonths.length) + '</td></tr>';
+            }
+            table.innerHTML = html;
+        }
+
+        function renderRakumyTables() {
+            var costTable = document.getElementById('rakumyCostTable');
+            var budgetTable = document.getElementById('rakumyBudgetTable');
+            var monthlyTable = document.getElementById('rakumyMonthlyTable');
+
+            var costHtml = createMonthHeaders();
+            var budgetHtml = createMonthHeaders();
+            var monthlyHtml = createMonthHeaders();
+            var monthlyCount = 0; // 単月費用予算に表示する項目数
+
+            // タイプバッジ生成
+            function getTypeBadge(type) {
+                switch (type) {
+                    case 'direct': return '<span class="type-direct">直接</span>';
+                    case 'sum': return '<span class="type-sum">合計</span>';
+                    case 'rate': return '<span class="type-rate">率</span>';
+                    case 'input': return '<span class="type-input">入力</span>';
+                    case 'calc': return '<span class="type-output">出力</span>';
+                    default: return '';
+                }
+            }
+
+            // 月別差異チェック（値が月によって異なるかどうか）
+            function hasMonthlyVariation(key) {
+                if (activeMonths.length < 2) return false;
+                var firstVal = rakumyInputs[0][key] || 0;
+                for (var m = 1; m < activeMonths.length; m++) {
+                    var val = rakumyInputs[m][key] || 0;
+                    if (Math.abs(val - firstVal) > 0.01) return true;
+                }
+                return false;
+            }
+
+            // RAKUMY_ITEMSを使ってカテゴリ別に描画
+            for (var key in RAKUMY_ITEMS) {
+                var item = RAKUMY_ITEMS[key];
+                var isRate = item.type === 'rate' || key.indexOf('Ratio') > -1;
+                var typeBadge = getTypeBadge(item.type);
+                var descText = item.desc ? ' <span style="color:#888;font-size:9px;">(' + item.desc + ')</span>' : '';
+
+                // カテゴリ別に振り分け
+                if (item.category === 'cost') {
+                    // 費用予算設定：月別差異があるものは「単月設定」、全月同一のものは年間デフォルト値を表示
+                    var hasDiff = hasMonthlyVariation(key);
+                    var rowHtml;
+                    if (hasDiff) {
+                        // 月別差異あり → 単月費用予算で設定するため、ここでは「単月設定」と表示
+                        rowHtml = '<tr style="background:#fff3e0;"><td>' + item.name + ' ' + typeBadge + ' <span class="monthly-badge">単月設定</span>' + descText + '</td>';
+                        for (var m = 0; m < activeMonths.length; m++) {
+                            rowHtml += '<td class="rakumy-cell" style="color:#999;text-align:center;">-</td>';
+                        }
+                        rowHtml += '<td class="total-col" style="color:#999;">-</td><td class="avg-col" style="color:#999;">-</td></tr>';
+                    } else {
+                        // 全月同一 → 年間デフォルト値を表示
+                        var annualVal = rakumyInputs[0][key] || 0;
+                        rowHtml = '<tr><td>' + item.name + ' ' + typeBadge + ' <span class="annual-badge">年間固定</span>' + descText + '</td>';
+                        for (var m = 0; m < activeMonths.length; m++) {
+                            rowHtml += '<td class="rakumy-cell">' + fmt(annualVal) + '</td>';
+                        }
+                        var total = annualVal * activeMonths.length;
+                        rowHtml += '<td class="total-col">' + fmt(total) + '</td><td class="avg-col">' + fmt(annualVal) + '</td></tr>';
+                    }
+                    costHtml += rowHtml;
+                } else if (item.category === 'budget') {
+                    var rowHtml = '<tr><td>' + item.name + ' ' + typeBadge + descText + '</td>';
+                    var total = 0;
+                    for (var m = 0; m < activeMonths.length; m++) {
+                        var val = rakumyInputs[m][key] || 0;
+                        total += val;
+                        rowHtml += '<td class="rakumy-cell">' + (isRate ? fmtRate(val) + '%' : fmt(val)) + '</td>';
+                    }
+                    if (isRate) {
+                        rowHtml += '<td class="total-col">-</td><td class="avg-col">' + fmtRate(total / activeMonths.length) + '%</td></tr>';
+                    } else {
+                        rowHtml += '<td class="total-col">' + fmt(total) + '</td><td class="avg-col">' + fmt(total / activeMonths.length) + '</td></tr>';
+                    }
+                    budgetHtml += rowHtml;
+                } else if (item.category === 'monthly') {
+                    // 単月費用予算：月別差異がある項目のみ表示（実際の月別数値）
+                    var baseKey = key.replace('m_', ''); // m_fixedLabor → fixedLabor
+                    if (hasMonthlyVariation(baseKey)) {
+                        var rowHtml = '<tr><td>' + item.name + ' ' + typeBadge + descText + '</td>';
+                        var total = 0;
+                        for (var m = 0; m < activeMonths.length; m++) {
+                            var val = rakumyInputs[m][key] || 0;
+                            total += val;
+                            rowHtml += '<td class="rakumy-cell">' + fmt(val) + '</td>';
+                        }
+                        rowHtml += '<td class="total-col">' + fmt(total) + '</td><td class="avg-col">' + fmt(total / activeMonths.length) + '</td></tr>';
+                        monthlyHtml += rowHtml;
+                        monthlyCount++;
+                    }
+                }
+            }
+
+            // 単月費用予算が0件の場合のメッセージ
+            if (monthlyCount === 0) {
+                monthlyHtml += '<tr><td colspan="' + (activeMonths.length + 3) + '" style="text-align:center;color:#888;padding:20px;">全項目が年間で同一値のため、単月調整は不要です。<br>費用予算設定の年間デフォルト値が全月に適用されます。</td></tr>';
+            }
+
+            // 参考値：顧客予算売上（MQ出力との比較用）
+            budgetHtml += '<tr style="background:#fff3e0;"><td>【参考】顧客予算売上 <span class="type-output">出力</span></td>';
+            var refTotal = 0;
+            for (var m = 0; m < activeMonths.length; m++) {
+                var val = rakumyInputs[m].budgetSales || 0;
+                refTotal += val;
+                budgetHtml += '<td class="rakumy-cell">' + fmt(val) + '</td>';
+            }
+            budgetHtml += '<td class="total-col">' + fmt(refTotal) + '</td><td class="avg-col">' + fmt(refTotal / activeMonths.length) + '</td></tr>';
+
+            costTable.innerHTML = costHtml;
+            budgetTable.innerHTML = budgetHtml;
+            monthlyTable.innerHTML = monthlyHtml;
+
+            // 単月費用予算セクションのタイトルを更新
+            var monthlyHeader = document.querySelector('.rakumy-category.monthly h4');
+            if (monthlyHeader) {
+                monthlyHeader.textContent = '単月費用予算（固定費用）- ' + monthlyCount + '項目（月別差異がある項目のみ表示）';
+            }
+        }
+
+        function renderOutputTable() {
+            var table = document.getElementById('outputTable');
+            var html = createMonthHeaders();
+            var items = [{ key: 'customers', name: '客数' }, { key: 'unitPrice', name: '客単価' }, { key: 'sales', name: '売上' }, { key: 'variableCost', name: '変動費' }, { key: 'variableRate', name: '変動費率', isRate: true }, { key: 'grossProfit', name: '粗利' }, { key: 'grossProfitRate', name: '粗利率', isRate: true }, { key: 'fixedCost', name: '固定費' }, { key: 'operatingProfit', name: '営業利益' }, { key: 'operatingProfitRate', name: '営業利益率', isRate: true }];
+            items.forEach(function(item) {
+                html += '<tr><td>' + item.name + '</td>';
+                var total = 0;
+                for (var m = 0; m < activeMonths.length; m++) {
+                    var val = mqOutputs[m][item.key] || 0;
+                    total += val;
+                    html += '<td class="output-cell">' + (item.isRate ? fmtRate(val) + '%' : fmt(val)) + '</td>';
+                }
+                html += item.isRate ? '<td class="total-col">-</td><td class="avg-col">' + fmtRate(total / activeMonths.length) + '%</td></tr>' : '<td class="total-col">' + fmt(total) + '</td><td class="avg-col">' + fmt(total / activeMonths.length) + '</td></tr>';
+            });
+
+            // === 顧客予算との比較セクション ===
+            html += '<tr style="background:#1565c0;color:white;"><td colspan="' + (activeMonths.length + 3) + '" style="font-weight:bold;text-align:center;padding:12px;font-size:14px;">━━━ 顧客予算との比較 ━━━</td></tr>';
+
+            // ===== 売上比較グループ =====
+            html += '<tr style="background:#263238;color:white;"><td colspan="' + (activeMonths.length + 3) + '" style="font-weight:bold;padding:8px;">【売上】対比</td></tr>';
+
+            // MQ計算売上
+            html += '<tr style="background:#e3f2fd;border-left:4px solid #1565c0;"><td style="padding-left:20px;font-weight:bold;">MQ計算値（売上）</td>';
+            var mqSalesTotal = 0;
+            for (var m = 0; m < activeMonths.length; m++) {
+                var val = mqOutputs[m].sales || 0;
+                mqSalesTotal += val;
+                html += '<td class="output-cell" style="background:#e3f2fd;font-weight:bold;color:#1565c0;">' + fmt(val) + '</td>';
+            }
+            html += '<td class="total-col" style="background:#bbdefb;font-weight:bold;color:#1565c0;">' + fmt(mqSalesTotal) + '</td><td class="avg-col" style="background:#bbdefb;">' + fmt(mqSalesTotal / activeMonths.length) + '</td></tr>';
+
+            // 顧客予算売上（Item 5）
+            html += '<tr style="background:#fff8e1;border-left:4px solid #f57c00;"><td style="padding-left:20px;font-weight:bold;">顧客予算（売上）</td>';
+            var budgetSalesTotal = 0;
+            for (var m = 0; m < activeMonths.length; m++) {
+                var val = annualData[5] ? (annualData[5][m] || 0) : 0;
+                budgetSalesTotal += val;
+                html += '<td class="output-cell" style="background:#fff8e1;font-weight:bold;color:#e65100;">' + fmt(val) + '</td>';
+            }
+            html += '<td class="total-col" style="background:#ffecb3;font-weight:bold;color:#e65100;">' + fmt(budgetSalesTotal) + '</td><td class="avg-col" style="background:#ffecb3;">' + fmt(budgetSalesTotal / activeMonths.length) + '</td></tr>';
+
+            // 売上差異
+            html += '<tr style="background:#eceff1;border-left:4px solid #607d8b;"><td style="padding-left:20px;">差異（MQ - 予算）</td>';
+            var salesDiffTotal = 0;
+            for (var m = 0; m < activeMonths.length; m++) {
+                var mqSales = mqOutputs[m].sales || 0;
+                var budgetSales = annualData[5] ? (annualData[5][m] || 0) : 0;
+                var diff = mqSales - budgetSales;
+                salesDiffTotal += diff;
+                var color = diff >= 0 ? '#2e7d32' : '#c62828';
+                var bgColor = diff >= 0 ? '#e8f5e9' : '#ffebee';
+                html += '<td class="output-cell" style="color:' + color + ';background:' + bgColor + ';font-weight:bold;">' + (diff >= 0 ? '+' : '') + fmt(diff) + '</td>';
+            }
+            var diffColor = salesDiffTotal >= 0 ? '#2e7d32' : '#c62828';
+            var diffBg = salesDiffTotal >= 0 ? '#c8e6c9' : '#ffcdd2';
+            html += '<td class="total-col" style="color:' + diffColor + ';background:' + diffBg + ';font-weight:bold;">' + (salesDiffTotal >= 0 ? '+' : '') + fmt(salesDiffTotal) + '</td><td class="avg-col" style="background:#eceff1;">-</td></tr>';
+
+            // ===== 営業利益比較グループ =====
+            html += '<tr style="background:#263238;color:white;"><td colspan="' + (activeMonths.length + 3) + '" style="font-weight:bold;padding:8px;">【営業利益】対比</td></tr>';
+
+            // MQ計算営業利益
+            html += '<tr style="background:#e3f2fd;border-left:4px solid #1565c0;"><td style="padding-left:20px;font-weight:bold;">MQ計算値（営業利益）</td>';
+            var mqProfitTotal = 0;
+            for (var m = 0; m < activeMonths.length; m++) {
+                var val = mqOutputs[m].operatingProfit || 0;
+                mqProfitTotal += val;
+                html += '<td class="output-cell" style="background:#e3f2fd;font-weight:bold;color:#1565c0;">' + fmt(val) + '</td>';
+            }
+            html += '<td class="total-col" style="background:#bbdefb;font-weight:bold;color:#1565c0;">' + fmt(mqProfitTotal) + '</td><td class="avg-col" style="background:#bbdefb;">' + fmt(mqProfitTotal / activeMonths.length) + '</td></tr>';
+
+            // 顧客予算営業利益（Item 60 = 店舗営業利益）
+            html += '<tr style="background:#fff8e1;border-left:4px solid #f57c00;"><td style="padding-left:20px;font-weight:bold;">顧客予算（営業利益）</td>';
+            var budgetProfitTotal = 0;
+            for (var m = 0; m < activeMonths.length; m++) {
+                var val = annualData[60] ? (annualData[60][m] || 0) : 0;
+                budgetProfitTotal += val;
+                html += '<td class="output-cell" style="background:#fff8e1;font-weight:bold;color:#e65100;">' + fmt(val) + '</td>';
+            }
+            html += '<td class="total-col" style="background:#ffecb3;font-weight:bold;color:#e65100;">' + fmt(budgetProfitTotal) + '</td><td class="avg-col" style="background:#ffecb3;">' + fmt(budgetProfitTotal / activeMonths.length) + '</td></tr>';
+
+            // 営業利益差異
+            html += '<tr style="background:#eceff1;border-left:4px solid #607d8b;"><td style="padding-left:20px;">差異（MQ - 予算）</td>';
+            var profitDiffTotal = 0;
+            for (var m = 0; m < activeMonths.length; m++) {
+                var mqProfit = mqOutputs[m].operatingProfit || 0;
+                var budgetProfit = annualData[60] ? (annualData[60][m] || 0) : 0;
+                var diff = mqProfit - budgetProfit;
+                profitDiffTotal += diff;
+                var color = diff >= 0 ? '#2e7d32' : '#c62828';
+                var bgColor = diff >= 0 ? '#e8f5e9' : '#ffebee';
+                html += '<td class="output-cell" style="color:' + color + ';background:' + bgColor + ';font-weight:bold;">' + (diff >= 0 ? '+' : '') + fmt(diff) + '</td>';
+            }
+            var profitDiffColor = profitDiffTotal >= 0 ? '#2e7d32' : '#c62828';
+            var profitDiffBg = profitDiffTotal >= 0 ? '#c8e6c9' : '#ffcdd2';
+            html += '<td class="total-col" style="color:' + profitDiffColor + ';background:' + profitDiffBg + ';font-weight:bold;">' + (profitDiffTotal >= 0 ? '+' : '') + fmt(profitDiffTotal) + '</td><td class="avg-col" style="background:#eceff1;">-</td></tr>';
+
+            table.innerHTML = html;
+        }
+
+        function renderBudgetListTable() {
+            var table = document.getElementById('budgetListTable');
+            var html = createMonthHeaders();
+
+            // ヘルパー関数
+            function addRow(name, values, isRate, style) {
+                var rowStyle = style ? ' style="' + style + '"' : '';
+                html += '<tr' + rowStyle + '><td>' + name + '</td>';
+                var total = 0;
+                for (var m = 0; m < values.length; m++) {
+                    var val = values[m] || 0;
+                    total += val;
+                    html += '<td class="output-cell">' + (isRate ? fmtRate(val) + '%' : fmt(val)) + '</td>';
+                }
+                if (isRate) {
+                    html += '<td class="total-col">-</td><td class="avg-col">' + fmtRate(total / values.length) + '%</td></tr>';
+                } else {
+                    html += '<td class="total-col">' + fmt(total) + '</td><td class="avg-col">' + fmt(total / values.length) + '</td></tr>';
+                }
+            }
+
+            function addSectionHeader(title, bgColor) {
+                html += '<tr style="background:' + bgColor + ';color:#fff;"><td colspan="' + (activeMonths.length + 3) + '" style="font-weight:bold;padding:8px;">' + title + '</td></tr>';
+            }
+
+            // 月別データ取得関数
+            function getMonthlyData(getValue) {
+                var result = [];
+                for (var m = 0; m < activeMonths.length; m++) {
+                    result.push(getValue(m));
+                }
+                return result;
+            }
+
+            // ===== 目標設定セクション =====
+            addSectionHeader('目標設定', '#1565c0');
+            addRow('月次目標利益', getMonthlyData(function(m) { return annualData[60] ? (annualData[60][m] || 0) : 0; }), false);
+            addRow('目標FD仕入費率', getMonthlyData(function(m) { return rakumyInputs[m].fdRate || 0; }), true);
+            addRow('目標PA人件費率', getMonthlyData(function(m) { return rakumyInputs[m].paRate || 0; }), true);
+            addRow('目標客単価', getMonthlyData(function(m) { return rakumyInputs[m].targetUnitPrice || 0; }), false);
+            // ランチ・ディナー客単価は売上構成比から推定
+            addRow('目標客単価（ランチ）', getMonthlyData(function(m) {
+                var unitPrice = rakumyInputs[m].targetUnitPrice || 0;
+                var lunchRatio = rakumyInputs[m].lunchRatio || 0;
+                return lunchRatio > 0 ? Math.round(unitPrice * 0.7) : 0; // ランチは約70%と仮定
+            }), false);
+            addRow('目標客単価（ディナー）', getMonthlyData(function(m) {
+                var unitPrice = rakumyInputs[m].targetUnitPrice || 0;
+                var dinnerRatio = rakumyInputs[m].dinnerRatio || 0;
+                return dinnerRatio > 0 ? Math.round(unitPrice * 1.3) : 0; // ディナーは約130%と仮定
+            }), false);
+
+            // ===== 売上セクション =====
+            addSectionHeader('売上', '#2e7d32');
+            addRow('売上 計', getMonthlyData(function(m) { return mqOutputs[m].sales || 0; }), false);
+            addRow('フード売上 計', getMonthlyData(function(m) {
+                var sales = mqOutputs[m].sales || 0;
+                var foodRatio = rakumyInputs[m].foodRatio || 0;
+                return Math.round(sales * foodRatio / 100);
+            }), false);
+            addRow('　フード売上ランチ', getMonthlyData(function(m) {
+                var sales = mqOutputs[m].sales || 0;
+                var foodRatio = rakumyInputs[m].foodRatio || 0;
+                var lunchRatio = rakumyInputs[m].lunchRatio || 0;
+                return Math.round(sales * foodRatio / 100 * lunchRatio / 100);
+            }), false, 'background:#f5f5f5;');
+            addRow('　フード売上ディナー', getMonthlyData(function(m) {
+                var sales = mqOutputs[m].sales || 0;
+                var foodRatio = rakumyInputs[m].foodRatio || 0;
+                var dinnerRatio = rakumyInputs[m].dinnerRatio || 0;
+                return Math.round(sales * foodRatio / 100 * dinnerRatio / 100);
+            }), false, 'background:#f5f5f5;');
+            addRow('ドリンク売上 計', getMonthlyData(function(m) {
+                var sales = mqOutputs[m].sales || 0;
+                var drinkRatio = rakumyInputs[m].drinkRatio || 0;
+                return Math.round(sales * drinkRatio / 100);
+            }), false);
+            addRow('　ドリンク売上ランチ', getMonthlyData(function(m) {
+                var sales = mqOutputs[m].sales || 0;
+                var drinkRatio = rakumyInputs[m].drinkRatio || 0;
+                var lunchRatio = rakumyInputs[m].lunchRatio || 0;
+                return Math.round(sales * drinkRatio / 100 * lunchRatio / 100);
+            }), false, 'background:#f5f5f5;');
+            addRow('　ドリンク売上ディナー', getMonthlyData(function(m) {
+                var sales = mqOutputs[m].sales || 0;
+                var drinkRatio = rakumyInputs[m].drinkRatio || 0;
+                var dinnerRatio = rakumyInputs[m].dinnerRatio || 0;
+                return Math.round(sales * drinkRatio / 100 * dinnerRatio / 100);
+            }), false, 'background:#f5f5f5;');
+            addRow('その他売上 計（サービス料等）', getMonthlyData(function(m) {
+                var sales = mqOutputs[m].sales || 0;
+                var otherRatio = rakumyInputs[m].otherRatio || 0;
+                return Math.round(sales * otherRatio / 100);
+            }), false);
+
+            // ===== FLコストセクション =====
+            addSectionHeader('FLコスト', '#f57c00');
+            addRow('FLコスト 計', getMonthlyData(function(m) {
+                var fdCost = (mqOutputs[m].sales || 0) * (rakumyInputs[m].fdRate || 0) / 100;
+                var fixedLabor = rakumyInputs[m].fixedLabor || 0;
+                var paLabor = (mqOutputs[m].sales || 0) * (rakumyInputs[m].paRate || 0) / 100;
+                return Math.round(fdCost + fixedLabor + paLabor);
+            }), false);
+            addRow('FD仕入 計', getMonthlyData(function(m) {
+                return Math.round((mqOutputs[m].sales || 0) * (rakumyInputs[m].fdRate || 0) / 100);
+            }), false);
+            addRow('　フード仕入', getMonthlyData(function(m) {
+                var fdCost = (mqOutputs[m].sales || 0) * (rakumyInputs[m].fdRate || 0) / 100;
+                var foodRatio = rakumyInputs[m].foodRatio || 70;
+                var totalRatio = foodRatio + (rakumyInputs[m].drinkRatio || 30);
+                return Math.round(fdCost * foodRatio / totalRatio);
+            }), false, 'background:#f5f5f5;');
+            addRow('　ドリンク仕入', getMonthlyData(function(m) {
+                var fdCost = (mqOutputs[m].sales || 0) * (rakumyInputs[m].fdRate || 0) / 100;
+                var drinkRatio = rakumyInputs[m].drinkRatio || 30;
+                var totalRatio = (rakumyInputs[m].foodRatio || 70) + drinkRatio;
+                return Math.round(fdCost * drinkRatio / totalRatio);
+            }), false, 'background:#f5f5f5;');
+            addRow('人件費 計', getMonthlyData(function(m) {
+                var fixedLabor = rakumyInputs[m].fixedLabor || 0;
+                var paLabor = (mqOutputs[m].sales || 0) * (rakumyInputs[m].paRate || 0) / 100;
+                var helpLabor = annualData[19] ? (annualData[19][m] || 0) : 0;
+                return Math.round(fixedLabor + paLabor + helpLabor);
+            }), false);
+            addRow('　固定人件費', getMonthlyData(function(m) { return rakumyInputs[m].fixedLabor || 0; }), false, 'background:#f5f5f5;');
+            addRow('　PA人件費', getMonthlyData(function(m) {
+                return Math.round((mqOutputs[m].sales || 0) * (rakumyInputs[m].paRate || 0) / 100);
+            }), false, 'background:#f5f5f5;');
+            addRow('　ヘルプ人件費', getMonthlyData(function(m) { return annualData[19] ? (annualData[19][m] || 0) : 0; }), false, 'background:#f5f5f5;');
+
+            // ===== その他経費セクション =====
+            addSectionHeader('その他経費', '#7b1fa2');
+            // その他経費合計
+            var otherExpenseItems = ['rent', 'depreciation', 'material', 'promotion', 'menuCopy', 'survey', 'sanitary', 'service',
+                'electricity', 'gas', 'water', 'consumables', 'maintenance', 'taxes', 'entertainment', 'travel',
+                'communication', 'creditFee', 'paymentFee', 'meeting', 'membership', 'education', 'training',
+                'research', 'recruitment', 'it', 'outsource', 'misc'];
+
+            addRow('その他経費 計', getMonthlyData(function(m) {
+                var total = 0;
+                otherExpenseItems.forEach(function(key) {
+                    total += rakumyInputs[m][key] || 0;
+                });
+                return total;
+            }), false);
+
+            // 個別経費項目（費用予算設定の値を使用）
+            var expenseMapping = [
+                { key: 'rent', name: '地代家賃' },
+                { key: 'material', name: '資材費' },
+                { key: 'it', name: 'IT費' },
+                { key: 'gas', name: 'ガス代' },
+                { key: 'service', name: 'サービス費' },
+                { key: 'maintenance', name: '保守修繕費' },
+                { key: 'outsource', name: '外注費' },
+                { key: 'paymentFee', name: '支払手数料' },
+                { key: 'water', name: '水道代' },
+                { key: 'consumables', name: '消耗品費' },
+                { key: 'depreciation', name: '減価償却費' },
+                { key: 'sanitary', name: '衛生費' },
+                { key: 'survey', name: '調査費' },
+                { key: 'membership', name: '諸会費' },
+                { key: 'promotion', name: '販売促進費' },
+                { key: 'communication', name: '通信費' },
+                { key: 'misc', name: '雑費' },
+                { key: 'electricity', name: '電気代' },
+                { key: 'creditFee', name: 'クレジット手数料' }
+            ];
+
+            expenseMapping.forEach(function(exp) {
+                addRow('　' + exp.name, getMonthlyData(function(m) { return rakumyInputs[m][exp.key] || 0; }), false, 'background:#f5f5f5;');
+            });
+
+            // ===== 営業利益セクション =====
+            addSectionHeader('営業利益', '#c62828');
+            addRow('営業利益', getMonthlyData(function(m) { return mqOutputs[m].operatingProfit || 0; }), false, 'font-weight:bold;');
+
+            table.innerHTML = html;
+        }
+
+        function renderSummary() {
+            var totalSales = 0, totalProfit = 0, totalCustomers = 0, totalVariableRate = 0;
+            for (var m = 0; m < activeMonths.length; m++) {
+                totalSales += mqOutputs[m].sales || 0;
+                totalProfit += mqOutputs[m].operatingProfit || 0;
+                totalCustomers += mqOutputs[m].customers || 0;
+                totalVariableRate += mqOutputs[m].variableRate || 0;
+            }
+            document.getElementById('summaryGrid').innerHTML = '<div class="summary-card"><div class="summary-label">年間売上</div><div class="summary-value">' + fmt(totalSales) + '</div><div class="summary-sub">千円</div></div><div class="summary-card"><div class="summary-label">年間営業利益</div><div class="summary-value">' + fmt(totalProfit) + '</div><div class="summary-sub">千円</div></div><div class="summary-card"><div class="summary-label">営業利益率</div><div class="summary-value">' + fmtRate(totalSales > 0 ? totalProfit / totalSales * 100 : 0) + '%</div></div><div class="summary-card"><div class="summary-label">年間客数</div><div class="summary-value">' + fmt(totalCustomers) + '</div><div class="summary-sub">人</div></div><div class="summary-card"><div class="summary-label">平均客単価</div><div class="summary-value">' + fmt(totalCustomers > 0 ? Math.round(totalSales * 1000 / totalCustomers) : 0) + '</div><div class="summary-sub">円</div></div><div class="summary-card"><div class="summary-label">変動費率</div><div class="summary-value">' + fmtRate(totalVariableRate / activeMonths.length) + '%</div></div>';
+
+            var judgeHtml = '<table class="annual-table" style="max-width:500px;"><tr><th>項目</th><th>判定</th><th>設定先</th></tr>';
+            [{ name: '地代家賃', no: 47 }, { name: '固定人件費', no: 10 }, { name: '電気代', no: 26 }, { name: 'ガス代', no: 27 }, { name: '水道代', no: 28 }].forEach(function(item) {
+                var j = judgments[item.no];
+                if (j) judgeHtml += '<tr><td>' + item.name + '</td><td>' + (j.isAnnual ? '<span class="annual-badge">全月同一</span>' : '<span class="monthly-badge">月別差異</span>') + '</td><td>' + (j.isAnnual ? '費用予算設定' : '単月費用設定') + '</td></tr>';
+            });
+            judgeHtml += '</table>';
+            document.getElementById('judgmentResults').innerHTML = judgeHtml;
+        }
+
+        // 初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            showStatus('info', 'CSVファイルを選択してください');
+        });
+    </script>
+</body>
+</html>
