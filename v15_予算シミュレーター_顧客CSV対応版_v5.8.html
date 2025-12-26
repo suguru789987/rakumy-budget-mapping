@@ -177,9 +177,9 @@
         <div class="import-section">
             <h2>顧客予算CSVインポート（複数店舗対応）</h2>
             <div class="import-controls">
-                <input type="file" id="csvFile" accept=".csv" multiple style="display:none" onchange="handleFileSelect(event)">
-                <button class="btn btn-primary" onclick="document.getElementById('csvFile').click()">CSVファイル選択</button>
-                <button class="btn btn-info" onclick="document.getElementById('csvFile').click()" id="addFileBtn" style="display:none;">追加選択</button>
+                <input type="file" id="csvFile" accept=".csv" multiple="multiple" onchange="handleFileSelect(event)" style="position:absolute;left:-9999px;opacity:0;">
+                <label for="csvFile" class="btn btn-primary" style="cursor:pointer;margin:0;">CSVファイル選択（複数可）</label>
+                <label for="csvFile" class="btn btn-info" id="addFileBtn" style="display:none;cursor:pointer;margin:0;">追加選択</label>
                 <button class="btn" style="background:#ff5722;color:#fff;display:none;" onclick="clearSelectedFiles()" id="clearFilesBtn">選択クリア</button>
                 <button class="btn btn-success" onclick="importAllCSVs()" id="importBtn" disabled>一括インポート実行</button>
                 <button class="btn btn-warning" onclick="runSimulationForCurrentStore()">シミュレーション実行</button>
@@ -189,7 +189,7 @@
                 <div id="fileListContainer" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
             </div>
             <div style="margin-top:8px; font-size:10px; color:#666;">
-                ※ ファイル選択ダイアログで Ctrl/Cmd キーを押しながらクリックすると複数選択できます。「追加選択」で後からファイルを追加することもできます。
+                ※ ファイル選択ダイアログで <strong>Ctrl（Mac: Cmd）キーを押しながらクリック</strong>で複数選択、または<strong>Shift+クリック</strong>で範囲選択できます。
             </div>
             <div class="import-controls" style="margin-top:10px;">
                 <span style="font-weight:bold;margin-right:10px;">エクスポート:</span>
