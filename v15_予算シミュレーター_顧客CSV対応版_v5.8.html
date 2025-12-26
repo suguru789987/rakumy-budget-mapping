@@ -143,6 +143,12 @@
         .store-card .metric-value { font-weight: bold; }
         .store-card.total { background: rgba(255,193,7,0.3); border: 2px solid #ffc107; }
 
+        /* ファイル選択チップ */
+        .file-chip { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; background: #e3f2fd; border-radius: 15px; font-size: 11px; color: #1565c0; border: 1px solid #90caf9; }
+        .file-chip .file-name { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .file-chip .remove-file { cursor: pointer; color: #f44336; font-weight: bold; font-size: 14px; line-height: 1; }
+        .file-chip .remove-file:hover { color: #d32f2f; }
+
         /* 履歴セクション */
         .history-section { background: #f8f9fa; border-radius: 8px; padding: 15px; margin-bottom: 15px; }
         .history-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; max-height: 300px; overflow-y: auto; }
@@ -172,10 +178,18 @@
             <h2>顧客予算CSVインポート（複数店舗対応）</h2>
             <div class="import-controls">
                 <input type="file" id="csvFile" accept=".csv" multiple style="display:none" onchange="handleFileSelect(event)">
-                <button class="btn btn-primary" onclick="document.getElementById('csvFile').click()">CSVファイル選択（複数可）</button>
-                <span id="fileName">ファイル未選択</span>
-                <button class="btn btn-success" onclick="importAllCSVs()" id="importBtn" disabled>インポート実行</button>
+                <button class="btn btn-primary" onclick="document.getElementById('csvFile').click()">CSVファイル選択</button>
+                <button class="btn btn-info" onclick="document.getElementById('csvFile').click()" id="addFileBtn" style="display:none;">追加選択</button>
+                <button class="btn" style="background:#ff5722;color:#fff;display:none;" onclick="clearSelectedFiles()" id="clearFilesBtn">選択クリア</button>
+                <button class="btn btn-success" onclick="importAllCSVs()" id="importBtn" disabled>一括インポート実行</button>
                 <button class="btn btn-warning" onclick="runSimulationForCurrentStore()">シミュレーション実行</button>
+            </div>
+            <div id="selectedFilesList" style="margin-top:10px; display:none;">
+                <div style="font-weight:bold; margin-bottom:5px;">選択ファイル一覧: <span id="fileCount" style="color:#1565c0;"></span></div>
+                <div id="fileListContainer" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+            </div>
+            <div style="margin-top:8px; font-size:10px; color:#666;">
+                ※ ファイル選択ダイアログで Ctrl/Cmd キーを押しながらクリックすると複数選択できます。「追加選択」で後からファイルを追加することもできます。
             </div>
             <div class="import-controls" style="margin-top:10px;">
                 <span style="font-weight:bold;margin-right:10px;">エクスポート:</span>
@@ -542,27 +556,88 @@
         }
 
         function handleFileSelect(event) {
-            selectedFiles = Array.from(event.target.files);
-            if (selectedFiles.length > 0) {
-                var names = selectedFiles.map(function(f) { return f.name; }).join(', ');
-                document.getElementById('fileName').textContent = selectedFiles.length + '件: ' + names.substring(0, 50) + (names.length > 50 ? '...' : '');
-                document.getElementById('importBtn').disabled = false;
+            var newFiles = Array.from(event.target.files);
+            if (newFiles.length === 0) return;
+
+            // 既存のファイルに追加（重複除外）
+            newFiles.forEach(function(newFile) {
+                var exists = selectedFiles.some(function(f) { return f.name === newFile.name && f.size === newFile.size; });
+                if (!exists) {
+                    selectedFiles.push(newFile);
+                }
+            });
+
+            updateFileListDisplay();
+
+            // 入力をリセット（同じファイルを再選択可能にする）
+            event.target.value = '';
+        }
+
+        // ファイル一覧表示を更新
+        function updateFileListDisplay() {
+            var container = document.getElementById('fileListContainer');
+            var listSection = document.getElementById('selectedFilesList');
+            var fileCount = document.getElementById('fileCount');
+            var addBtn = document.getElementById('addFileBtn');
+            var clearBtn = document.getElementById('clearFilesBtn');
+            var importBtn = document.getElementById('importBtn');
+
+            if (selectedFiles.length === 0) {
+                listSection.style.display = 'none';
+                addBtn.style.display = 'none';
+                clearBtn.style.display = 'none';
+                importBtn.disabled = true;
+                fileCount.textContent = '';
+                return;
             }
+
+            listSection.style.display = 'block';
+            addBtn.style.display = 'inline-block';
+            clearBtn.style.display = 'inline-block';
+            importBtn.disabled = false;
+            fileCount.textContent = selectedFiles.length + '件';
+
+            var html = '';
+            selectedFiles.forEach(function(file, index) {
+                html += '<div class="file-chip">';
+                html += '<span class="file-name" title="' + file.name + '">' + file.name + '</span>';
+                html += '<span class="remove-file" onclick="removeSelectedFile(' + index + ')">×</span>';
+                html += '</div>';
+            });
+
+            container.innerHTML = html;
+        }
+
+        // 個別ファイルを削除
+        function removeSelectedFile(index) {
+            selectedFiles.splice(index, 1);
+            updateFileListDisplay();
+        }
+
+        // 選択ファイルをクリア
+        function clearSelectedFiles() {
+            selectedFiles = [];
+            updateFileListDisplay();
         }
 
         // ★ 複数CSVインポート
         function importAllCSVs() {
             if (selectedFiles.length === 0) return;
 
+            var filesToImport = selectedFiles.slice(); // コピーを作成
+            var totalFiles = filesToImport.length;
             var importCount = 0;
             var errorCount = 0;
 
-            selectedFiles.forEach(function(file, index) {
+            // インポート開始メッセージ
+            showStatus('info', totalFiles + '件のファイルをインポート中...');
+
+            filesToImport.forEach(function(file, index) {
                 var reader = new FileReader();
                 reader.onload = function(e) {
                     try {
                         preprocessLog = [];
-                        addLog('CSVファイル ' + (index + 1) + '/' + selectedFiles.length + ': ' + file.name, 'info');
+                        addLog('CSVファイル ' + (index + 1) + '/' + totalFiles + ': ' + file.name, 'info');
                         parseCustomerCSV(e.target.result);
 
                         // シミュレーション実行
@@ -574,12 +649,12 @@
 
                         addLog('店舗「' + storeName + '」のインポート＆シミュレーション完了', 'success');
                     } catch (err) {
-                        addLog('エラー: ' + err.message, 'error');
+                        addLog('エラー（' + file.name + '）: ' + err.message, 'error');
                         errorCount++;
                     }
 
                     // 全ファイル処理完了
-                    if (importCount + errorCount === selectedFiles.length) {
+                    if (importCount + errorCount === totalFiles) {
                         updateStoreSelector();
                         renderAllStoresSummary();
 
@@ -591,6 +666,9 @@
 
                         document.getElementById('preprocessLog').innerHTML = preprocessLog.join('\n');
                         showStatus('success', importCount + '店舗インポート完了' + (errorCount > 0 ? '（' + errorCount + '件エラー）' : ''));
+
+                        // インポート完了後、選択ファイルをクリア
+                        clearSelectedFiles();
                     }
                 };
                 reader.readAsText(file, 'UTF-8');
