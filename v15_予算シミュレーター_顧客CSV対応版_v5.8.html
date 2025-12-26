@@ -454,18 +454,33 @@
                 <span style="margin-left:auto; font-size:10px; color:#666;">インポート済: <strong id="storeCount">0</strong>店舗</span>
             </div>
 
-            <!-- マッピング設定セクション -->
+            <!-- マッピング結果サマリー -->
             <div class="section" style="margin-top:15px;">
-                <div class="section-header header-mapping">項目マッピング一覧</div>
+                <div class="section-header header-mapping">マッピング結果</div>
                 <div class="section-body">
-                    <div class="unmatched-section" id="unmatchedSection" style="display:none;margin-bottom:15px;">
-                        <h3>未マッチ項目</h3>
-                        <div id="unmatchedList"></div>
-                        <div class="form-row" style="margin-top:15px;">
-                            <label>新規マッピング:</label>
-                            <input type="text" id="newCode" placeholder="項目コード">
-                            <input type="text" id="newName" placeholder="項目名">
-                            <input type="number" id="newV15No" placeholder="v15番号">
+                    <!-- マッチ結果サマリー -->
+                    <div style="display:flex;gap:20px;align-items:center;margin-bottom:15px;flex-wrap:wrap;">
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <span style="background:#4caf50;color:#fff;padding:6px 15px;border-radius:20px;font-weight:bold;">
+                                ✓ マッチ: <span id="matchedCountDisplay">0</span>件
+                            </span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <span id="unmatchedBadge" style="background:#f44336;color:#fff;padding:6px 15px;border-radius:20px;font-weight:bold;display:none;">
+                                ✗ 未マッチ: <span id="unmatchedCountDisplay">0</span>件
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- 未マッチ項目（あれば表示） -->
+                    <div id="unmatchedSection" style="display:none;background:#fff3cd;border:2px solid #ffc107;border-radius:8px;padding:15px;margin-bottom:15px;">
+                        <h4 style="color:#856404;margin-bottom:10px;">⚠️ 未マッチ項目（CSVにあるがマッピング定義がない）</h4>
+                        <div id="unmatchedList" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+                        <div class="form-row" style="margin-top:15px;padding-top:15px;border-top:1px solid #ddd;">
+                            <label>新規マッピング追加:</label>
+                            <input type="text" id="newCode" placeholder="コード" style="width:80px;">
+                            <input type="text" id="newName" placeholder="項目名" style="width:120px;">
+                            <input type="number" id="newV15No" placeholder="v15番号" style="width:80px;">
                             <select id="newCategory">
                                 <option value="売上">売上</option>
                                 <option value="原価">原価</option>
@@ -478,7 +493,14 @@
                             <button class="btn btn-success" onclick="addMapping()">追加</button>
                         </div>
                     </div>
-                    <div id="mappingTable"></div>
+
+                    <!-- 折りたたみ式マッピング詳細 -->
+                    <details style="margin-top:10px;">
+                        <summary style="cursor:pointer;padding:10px;background:#f5f5f5;border-radius:4px;font-weight:bold;color:#666;">
+                            📋 マッピング詳細を表示（クリックで展開）
+                        </summary>
+                        <div id="mappingTable" style="margin-top:10px;"></div>
+                    </details>
                 </div>
             </div>
 
@@ -1882,20 +1904,43 @@
         }
 
         function renderUnmatchedItems() {
+            // サマリー表示を更新
+            var matchedCount = matchedItems ? matchedItems.length : 0;
+            var unmatchedCount = unmatchedItems ? unmatchedItems.length : 0;
+
+            var matchedDisplay = document.getElementById('matchedCountDisplay');
+            var unmatchedDisplay = document.getElementById('unmatchedCountDisplay');
+            var unmatchedBadge = document.getElementById('unmatchedBadge');
+
+            if (matchedDisplay) matchedDisplay.textContent = matchedCount;
+            if (unmatchedDisplay) unmatchedDisplay.textContent = unmatchedCount;
+
+            // 未マッチバッジの表示/非表示
+            if (unmatchedBadge) {
+                unmatchedBadge.style.display = unmatchedCount > 0 ? 'inline-block' : 'none';
+            }
+
+            // 未マッチセクション
             var section = document.getElementById('unmatchedSection');
-            if (unmatchedItems.length === 0) {
-                section.style.display = 'none';
+            if (unmatchedCount === 0) {
+                if (section) section.style.display = 'none';
                 return;
             }
-            section.style.display = 'block';
-            var html = '<table class="mapping-table"><tr><th>コード</th><th>項目名</th><th>サンプル値</th><th></th></tr>';
+
+            if (section) section.style.display = 'block';
+
+            // 未マッチ項目をチップ形式で表示
+            var html = '';
             unmatchedItems.forEach(function(item) {
-                html += '<tr><td>' + item.code + '</td><td>' + (item.name || '(なし)') + '</td>';
-                html += '<td>' + fmt(item.sampleValue) + '</td>';
-                html += '<td><button class="btn btn-info" style="padding:2px 6px;font-size:9px;" onclick="quickAddMapping(\'' + item.code + '\', \'' + (item.name || '').replace(/'/g, "\\'") + '\')">追加</button></td></tr>';
+                html += '<div style="display:inline-flex;align-items:center;gap:5px;background:#fff;border:1px solid #ffc107;border-radius:20px;padding:5px 12px;font-size:11px;">';
+                html += '<span style="font-weight:bold;color:#856404;">' + item.code + '</span>';
+                html += '<span style="color:#666;">' + (item.name || '(名称なし)') + '</span>';
+                html += '<button style="background:#17a2b8;color:#fff;border:none;border-radius:3px;padding:2px 6px;font-size:9px;cursor:pointer;" onclick="quickAddMapping(\'' + item.code + '\', \'' + (item.name || '').replace(/'/g, "\\'") + '\')">+追加</button>';
+                html += '</div>';
             });
-            html += '</table>';
-            document.getElementById('unmatchedList').innerHTML = html;
+
+            var listEl = document.getElementById('unmatchedList');
+            if (listEl) listEl.innerHTML = html;
         }
 
         // 設定エクスポート/インポート
