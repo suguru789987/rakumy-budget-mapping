@@ -163,7 +163,13 @@
                 <span id="fileName">ファイル未選択</span>
                 <button class="btn btn-success" onclick="importAllCSVs()" id="importBtn" disabled>インポート実行</button>
                 <button class="btn btn-warning" onclick="runSimulationForCurrentStore()">シミュレーション実行</button>
-                <button class="btn btn-info" onclick="exportAllConfig()">設定出力</button>
+            </div>
+            <div class="import-controls" style="margin-top:10px;">
+                <span style="font-weight:bold;margin-right:10px;">エクスポート:</span>
+                <button class="btn" style="background:#4caf50;color:#fff;" onclick="exportRakumyInputsCSV()">ラクミー入力値CSV</button>
+                <button class="btn" style="background:#2196f3;color:#fff;" onclick="exportBudgetListCSV()">予算一覧CSV</button>
+                <button class="btn" style="background:#9c27b0;color:#fff;" onclick="exportMQOutputCSV()">MQ出力CSV</button>
+                <button class="btn btn-info" onclick="exportAllConfig()">設定JSON</button>
                 <input type="file" id="configFile" accept=".json" style="display:none" onchange="importAllConfig(event)">
                 <button class="btn btn-secondary" onclick="document.getElementById('configFile').click()">設定読込</button>
                 <button class="btn btn-danger" onclick="clearAllStores()">全店舗クリア</button>
@@ -1060,6 +1066,329 @@
             link.href = URL.createObjectURL(blob);
             link.download = 'budget_config_v5.8_' + new Date().toISOString().slice(0,10) + '.json';
             link.click();
+        }
+
+        // ★ ラクミー入力値CSVエクスポート
+        function exportRakumyInputsCSV() {
+            if (!rakumyInputs || activeMonths.length === 0) {
+                alert('データがありません。CSVをインポートしてください。');
+                return;
+            }
+
+            var csv = [];
+            var BOM = '\uFEFF'; // Excel用BOM
+
+            // ヘッダー行
+            var header = ['セクション', '項目名', '変換タイプ'];
+            monthLabels.forEach(function(m) { header.push(m); });
+            header.push('合計', '平均');
+            csv.push(header.join(','));
+
+            // 月別差異チェック
+            function hasMonthlyVariation(key) {
+                if (activeMonths.length < 2) return false;
+                var firstVal = rakumyInputs[0][key] || 0;
+                for (var m = 1; m < activeMonths.length; m++) {
+                    if (Math.abs((rakumyInputs[m][key] || 0) - firstVal) > 0.01) return true;
+                }
+                return false;
+            }
+
+            // === 費用予算設定（固定費用）===
+            csv.push('');
+            csv.push('【費用予算設定（固定費用）- 29項目】');
+            for (var key in RAKUMY_ITEMS) {
+                var item = RAKUMY_ITEMS[key];
+                if (item.category !== 'cost') continue;
+
+                var hasDiff = hasMonthlyVariation(key);
+                var row = ['費用予算設定', item.name, item.type];
+
+                if (hasDiff) {
+                    // 月別差異あり → 単月設定
+                    for (var m = 0; m < activeMonths.length; m++) {
+                        row.push('単月設定');
+                    }
+                    row.push('-', '-');
+                } else {
+                    // 全月同一
+                    var val = rakumyInputs[0][key] || 0;
+                    var total = 0;
+                    for (var m = 0; m < activeMonths.length; m++) {
+                        row.push(Math.round(val));
+                        total += val;
+                    }
+                    row.push(Math.round(total), Math.round(total / activeMonths.length));
+                }
+                csv.push(row.join(','));
+            }
+
+            // === 単月費用予算（固定費用）===
+            csv.push('');
+            csv.push('【単月費用予算（固定費用）- 月別差異項目のみ】');
+            for (var key in RAKUMY_ITEMS) {
+                var item = RAKUMY_ITEMS[key];
+                if (item.category !== 'monthly') continue;
+
+                var baseKey = key.replace('m_', '');
+                if (!hasMonthlyVariation(baseKey)) continue;
+
+                var row = ['単月費用予算', item.name, item.type];
+                var total = 0;
+                for (var m = 0; m < activeMonths.length; m++) {
+                    var val = rakumyInputs[m][key] || 0;
+                    total += val;
+                    row.push(Math.round(val));
+                }
+                row.push(Math.round(total), Math.round(total / activeMonths.length));
+                csv.push(row.join(','));
+            }
+
+            // === 予算設定（変動費用）===
+            csv.push('');
+            csv.push('【予算設定（変動費用）- MQパラメータ】');
+            for (var key in RAKUMY_ITEMS) {
+                var item = RAKUMY_ITEMS[key];
+                if (item.category !== 'budget') continue;
+
+                var isRate = item.type === 'rate' || key.indexOf('Ratio') > -1;
+                var row = ['予算設定', item.name, item.type];
+                var total = 0;
+                for (var m = 0; m < activeMonths.length; m++) {
+                    var val = rakumyInputs[m][key] || 0;
+                    total += val;
+                    row.push(isRate ? Math.round(val) + '%' : Math.round(val));
+                }
+                if (isRate) {
+                    row.push('-', Math.round(total / activeMonths.length) + '%');
+                } else {
+                    row.push(Math.round(total), Math.round(total / activeMonths.length));
+                }
+                csv.push(row.join(','));
+            }
+
+            // ダウンロード
+            var blob = new Blob([BOM + csv.join('\n')], { type: 'text/csv;charset=utf-8' });
+            var link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'ラクミー入力値_' + storeName + '_' + new Date().toISOString().slice(0,10) + '.csv';
+            link.click();
+            showStatus('success', 'ラクミー入力値CSVをエクスポートしました');
+        }
+
+        // ★ 予算一覧CSVエクスポート
+        function exportBudgetListCSV() {
+            if (!rakumyInputs || !mqOutputs || activeMonths.length === 0) {
+                alert('データがありません。CSVをインポートしてください。');
+                return;
+            }
+
+            var csv = [];
+            var BOM = '\uFEFF';
+
+            // ヘッダー行
+            var header = ['セクション', '項目名'];
+            monthLabels.forEach(function(m) { header.push(m); });
+            header.push('合計', '平均');
+            csv.push(header.join(','));
+
+            function addRow(section, name, values, isRate) {
+                var row = [section, name];
+                var total = 0;
+                for (var m = 0; m < values.length; m++) {
+                    var val = values[m] || 0;
+                    total += val;
+                    row.push(isRate ? val.toFixed(1) + '%' : Math.round(val));
+                }
+                if (isRate) {
+                    row.push('-', (total / values.length).toFixed(1) + '%');
+                } else {
+                    row.push(Math.round(total), Math.round(total / values.length));
+                }
+                csv.push(row.join(','));
+            }
+
+            function getMonthlyData(getValue) {
+                var result = [];
+                for (var m = 0; m < activeMonths.length; m++) {
+                    result.push(getValue(m));
+                }
+                return result;
+            }
+
+            // 目標設定
+            csv.push('');
+            addRow('目標設定', '月次目標利益', getMonthlyData(function(m) { return annualData[60] ? (annualData[60][m] || 0) : 0; }), false);
+            addRow('目標設定', '目標FD仕入費率', getMonthlyData(function(m) { return rakumyInputs[m].fdRate || 0; }), true);
+            addRow('目標設定', '目標PA人件費率', getMonthlyData(function(m) { return rakumyInputs[m].paRate || 0; }), true);
+            addRow('目標設定', '目標客単価', getMonthlyData(function(m) { return rakumyInputs[m].targetUnitPrice || 0; }), false);
+
+            // 売上
+            csv.push('');
+            addRow('売上', '売上 計', getMonthlyData(function(m) { return mqOutputs[m].sales || 0; }), false);
+            addRow('売上', 'フード売上 計', getMonthlyData(function(m) {
+                return Math.round((mqOutputs[m].sales || 0) * (rakumyInputs[m].foodRatio || 0) / 100);
+            }), false);
+            addRow('売上', 'ドリンク売上 計', getMonthlyData(function(m) {
+                return Math.round((mqOutputs[m].sales || 0) * (rakumyInputs[m].drinkRatio || 0) / 100);
+            }), false);
+            addRow('売上', 'その他売上 計', getMonthlyData(function(m) {
+                return Math.round((mqOutputs[m].sales || 0) * (rakumyInputs[m].otherRatio || 0) / 100);
+            }), false);
+
+            // FLコスト
+            csv.push('');
+            addRow('FLコスト', 'FLコスト 計', getMonthlyData(function(m) {
+                var fdCost = (mqOutputs[m].sales || 0) * (rakumyInputs[m].fdRate || 0) / 100;
+                var fixedLabor = rakumyInputs[m].fixedLabor || 0;
+                var paLabor = (mqOutputs[m].sales || 0) * (rakumyInputs[m].paRate || 0) / 100;
+                return Math.round(fdCost + fixedLabor + paLabor);
+            }), false);
+            addRow('FLコスト', 'FD仕入 計', getMonthlyData(function(m) {
+                return Math.round((mqOutputs[m].sales || 0) * (rakumyInputs[m].fdRate || 0) / 100);
+            }), false);
+            addRow('FLコスト', '人件費 計', getMonthlyData(function(m) {
+                var fixedLabor = rakumyInputs[m].fixedLabor || 0;
+                var paLabor = (mqOutputs[m].sales || 0) * (rakumyInputs[m].paRate || 0) / 100;
+                return Math.round(fixedLabor + paLabor);
+            }), false);
+            addRow('FLコスト', '固定人件費', getMonthlyData(function(m) { return rakumyInputs[m].fixedLabor || 0; }), false);
+            addRow('FLコスト', 'PA人件費', getMonthlyData(function(m) {
+                return Math.round((mqOutputs[m].sales || 0) * (rakumyInputs[m].paRate || 0) / 100);
+            }), false);
+
+            // その他経費
+            csv.push('');
+            var expenseKeys = ['rent', 'depreciation', 'material', 'promotion', 'sanitary', 'service',
+                'electricity', 'gas', 'water', 'consumables', 'maintenance', 'communication',
+                'creditFee', 'paymentFee', 'membership', 'it', 'outsource', 'misc'];
+            addRow('その他経費', 'その他経費 計', getMonthlyData(function(m) {
+                var total = 0;
+                expenseKeys.forEach(function(key) { total += rakumyInputs[m][key] || 0; });
+                return total;
+            }), false);
+            expenseKeys.forEach(function(key) {
+                var name = RAKUMY_ITEMS[key] ? RAKUMY_ITEMS[key].name : key;
+                addRow('その他経費', name, getMonthlyData(function(m) { return rakumyInputs[m][key] || 0; }), false);
+            });
+
+            // 営業利益
+            csv.push('');
+            addRow('営業利益', '営業利益', getMonthlyData(function(m) { return mqOutputs[m].operatingProfit || 0; }), false);
+
+            // ダウンロード
+            var blob = new Blob([BOM + csv.join('\n')], { type: 'text/csv;charset=utf-8' });
+            var link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = '予算一覧_' + storeName + '_' + new Date().toISOString().slice(0,10) + '.csv';
+            link.click();
+            showStatus('success', '予算一覧CSVをエクスポートしました');
+        }
+
+        // ★ MQ出力CSVエクスポート
+        function exportMQOutputCSV() {
+            if (!mqOutputs || activeMonths.length === 0) {
+                alert('データがありません。CSVをインポートしてください。');
+                return;
+            }
+
+            var csv = [];
+            var BOM = '\uFEFF';
+
+            // ヘッダー行
+            var header = ['項目'];
+            monthLabels.forEach(function(m) { header.push(m); });
+            header.push('合計', '平均');
+            csv.push(header.join(','));
+
+            var items = [
+                { key: 'customers', name: '客数', isRate: false },
+                { key: 'unitPrice', name: '客単価', isRate: false },
+                { key: 'sales', name: '売上', isRate: false },
+                { key: 'variableCost', name: '変動費', isRate: false },
+                { key: 'variableRate', name: '変動費率', isRate: true },
+                { key: 'grossProfit', name: '粗利', isRate: false },
+                { key: 'grossProfitRate', name: '粗利率', isRate: true },
+                { key: 'fixedCost', name: '固定費', isRate: false },
+                { key: 'operatingProfit', name: '営業利益', isRate: false },
+                { key: 'operatingProfitRate', name: '営業利益率', isRate: true }
+            ];
+
+            items.forEach(function(item) {
+                var row = [item.name];
+                var total = 0;
+                for (var m = 0; m < activeMonths.length; m++) {
+                    var val = mqOutputs[m][item.key] || 0;
+                    total += val;
+                    row.push(item.isRate ? val.toFixed(1) + '%' : Math.round(val));
+                }
+                if (item.isRate) {
+                    row.push('-', (total / activeMonths.length).toFixed(1) + '%');
+                } else {
+                    row.push(Math.round(total), Math.round(total / activeMonths.length));
+                }
+                csv.push(row.join(','));
+            });
+
+            // 顧客予算との比較
+            csv.push('');
+            csv.push('【顧客予算との比較】');
+
+            // 顧客予算売上
+            var budgetSalesRow = ['顧客予算売上'];
+            var budgetSalesTotal = 0;
+            for (var m = 0; m < activeMonths.length; m++) {
+                var val = annualData[5] ? (annualData[5][m] || 0) : 0;
+                budgetSalesTotal += val;
+                budgetSalesRow.push(Math.round(val));
+            }
+            budgetSalesRow.push(Math.round(budgetSalesTotal), Math.round(budgetSalesTotal / activeMonths.length));
+            csv.push(budgetSalesRow.join(','));
+
+            // 売上差異
+            var salesDiffRow = ['売上差異（MQ-予算）'];
+            var salesDiffTotal = 0;
+            for (var m = 0; m < activeMonths.length; m++) {
+                var mqSales = mqOutputs[m].sales || 0;
+                var budgetSales = annualData[5] ? (annualData[5][m] || 0) : 0;
+                var diff = mqSales - budgetSales;
+                salesDiffTotal += diff;
+                salesDiffRow.push((diff >= 0 ? '+' : '') + Math.round(diff));
+            }
+            salesDiffRow.push((salesDiffTotal >= 0 ? '+' : '') + Math.round(salesDiffTotal), '-');
+            csv.push(salesDiffRow.join(','));
+
+            // 顧客予算営業利益
+            var budgetProfitRow = ['顧客予算営業利益'];
+            var budgetProfitTotal = 0;
+            for (var m = 0; m < activeMonths.length; m++) {
+                var val = annualData[60] ? (annualData[60][m] || 0) : 0;
+                budgetProfitTotal += val;
+                budgetProfitRow.push(Math.round(val));
+            }
+            budgetProfitRow.push(Math.round(budgetProfitTotal), Math.round(budgetProfitTotal / activeMonths.length));
+            csv.push(budgetProfitRow.join(','));
+
+            // 営業利益差異
+            var profitDiffRow = ['営業利益差異（MQ-予算）'];
+            var profitDiffTotal = 0;
+            for (var m = 0; m < activeMonths.length; m++) {
+                var mqProfit = mqOutputs[m].operatingProfit || 0;
+                var budgetProfit = annualData[60] ? (annualData[60][m] || 0) : 0;
+                var diff = mqProfit - budgetProfit;
+                profitDiffTotal += diff;
+                profitDiffRow.push((diff >= 0 ? '+' : '') + Math.round(diff));
+            }
+            profitDiffRow.push((profitDiffTotal >= 0 ? '+' : '') + Math.round(profitDiffTotal), '-');
+            csv.push(profitDiffRow.join(','));
+
+            // ダウンロード
+            var blob = new Blob([BOM + csv.join('\n')], { type: 'text/csv;charset=utf-8' });
+            var link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'MQ出力_' + storeName + '_' + new Date().toISOString().slice(0,10) + '.csv';
+            link.click();
+            showStatus('success', 'MQ出力CSVをエクスポートしました');
         }
 
         function importAllConfig(event) {
