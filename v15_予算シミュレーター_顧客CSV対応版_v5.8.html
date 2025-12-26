@@ -434,6 +434,14 @@
                         📋 取り込みデータ履歴を見る (<span id="importedStoreCount">0</span>件)
                     </button>
                 </div>
+
+                <!-- 検出結果表示 -->
+                <div class="info-bar" style="margin-top:15px;">
+                    <div><span class="info-label">店舗名:</span> <span class="info-value" id="detectedStore">-</span></div>
+                    <div><span class="info-label">検出月数:</span> <span class="info-value" id="detectedMonthCount">-</span></div>
+                    <div><span class="info-label">マッチ項目:</span> <span class="info-value" id="detectedItemCount">-</span></div>
+                    <div><span class="info-label">未マッチ項目:</span> <span class="info-value" id="unmatchedCount">-</span></div>
+                </div>
             </div>
         </div>
 
@@ -491,14 +499,6 @@
                 <h3>月別「予算」列検出結果（3行目:月名 + 4行目:サブヘッダー の照合）</h3>
                 <div class="month-cols-grid" id="monthColsGrid"></div>
                 <div class="sample-values" id="sampleValues"></div>
-            </div>
-
-            <!-- 検出結果表示 -->
-            <div class="info-bar">
-                <div><span class="info-label">店舗名:</span> <span class="info-value" id="detectedStore">-</span></div>
-                <div><span class="info-label">検出月数:</span> <span class="info-value" id="detectedMonthCount">-</span></div>
-                <div><span class="info-label">マッチ項目:</span> <span class="info-value" id="detectedItemCount">-</span></div>
-                <div><span class="info-label">未マッチ項目:</span> <span class="info-value" id="unmatchedCount">-</span></div>
             </div>
 
             <!-- サブタブ -->
