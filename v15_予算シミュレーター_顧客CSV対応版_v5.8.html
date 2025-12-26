@@ -192,6 +192,39 @@
         .file-item .remove-btn { background: #f44336; color: #fff; border: none; border-radius: 4px; padding: 4px 8px; font-size: 10px; cursor: pointer; }
         .file-item .remove-btn:hover { background: #d32f2f; }
 
+        /* 取り込みデータ一覧 */
+        .imported-data-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .data-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            background: #fff;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .data-item:hover { border-color: #1565c0; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .data-item .data-info { flex: 1; }
+        .data-item .data-name { font-weight: bold; font-size: 14px; color: #333; margin-bottom: 5px; }
+        .data-item .data-meta { font-size: 11px; color: #666; display: flex; gap: 15px; flex-wrap: wrap; }
+        .data-item .data-meta span { background: #f5f5f5; padding: 2px 8px; border-radius: 10px; }
+        .data-item .data-actions { display: flex; gap: 8px; }
+        .data-item .data-actions button { padding: 8px 15px; font-size: 11px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .data-item .save-btn { background: #4caf50; color: #fff; }
+        .data-item .save-btn:hover { background: #43a047; }
+        .data-item .view-btn { background: #2196f3; color: #fff; }
+        .data-item .view-btn:hover { background: #1e88e5; }
+        .data-item .delete-btn { background: #f44336; color: #fff; }
+        .data-item .delete-btn:hover { background: #e53935; }
+        .empty-message { text-align: center; padding: 30px; color: #999; font-size: 14px; }
+
         /* 履歴セクション */
         .history-section { background: #f8f9fa; border-radius: 8px; padding: 15px; margin-bottom: 15px; }
         .history-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; max-height: 300px; overflow-y: auto; }
@@ -216,9 +249,9 @@
         <h1>v15 予算シミュレーター（顧客CSV対応版 v5.8）</h1>
         <p class="subtitle">変換ロジック強化：顧客予算→ラクミー入力の変換タイプ（直接/合計/率/出力）を明示化</p>
 
-        <!-- CSVインポートセクション -->
-        <div class="import-section">
-            <h2>CSVインポート</h2>
+        <!-- ===== インポートセクション ===== -->
+        <div class="import-section" style="border-left:4px solid #2196f3;">
+            <h2 style="color:#1565c0;">📥 インポート</h2>
 
             <!-- ドラッグ＆ドロップエリア -->
             <div id="dropZone" class="drop-zone" ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
@@ -247,28 +280,83 @@
             </div>
 
             <div id="importStatus" style="margin-top:10px;"></div>
-        </div>
 
-        <!-- エクスポートセクション -->
-        <div class="import-section" style="margin-top:15px;">
-            <h2>エクスポート・設定</h2>
-            <div class="import-controls">
-                <button class="btn" style="background:#4caf50;color:#fff;" onclick="exportRakumyInputsCSV()">ラクミー入力値CSV</button>
-                <button class="btn" style="background:#2196f3;color:#fff;" onclick="exportBudgetListCSV()">予算一覧CSV</button>
-                <button class="btn" style="background:#9c27b0;color:#fff;" onclick="exportMQOutputCSV()">MQ出力CSV</button>
-                <button class="btn btn-info" onclick="exportAllConfig()">設定JSON</button>
-                <input type="file" id="configFile" accept=".json" style="display:none" onchange="importAllConfig(event)">
-                <button class="btn btn-secondary" onclick="document.getElementById('configFile').click()">設定読込</button>
-                <button class="btn btn-danger" onclick="clearAllStores()">全店舗クリア</button>
-                <button class="btn btn-warning" onclick="runSimulationForCurrentStore()">再シミュレーション</button>
+            <!-- 取り込みデータ一覧ボタン -->
+            <div style="margin-top:15px;text-align:center;">
+                <button class="btn" style="background:#1565c0;color:#fff;padding:10px 30px;" onclick="toggleImportedDataList()">
+                    取り込みデータ一覧 (<span id="importedStoreCount">0</span>件)
+                </button>
             </div>
         </div>
 
-        <!-- 履歴セクション -->
-        <div class="history-section" id="historySection" style="display:none;">
+        <!-- ===== 取り込みデータ一覧セクション ===== -->
+        <div class="import-section imported-data-section" id="importedDataSection" style="display:none;border-left:4px solid #4caf50;margin-top:15px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+                <h2 style="color:#2e7d32;margin:0;">📋 取り込みデータ一覧</h2>
+                <div>
+                    <button class="btn" style="background:#4caf50;color:#fff;" onclick="saveAllToHistory()">全データを履歴に保存</button>
+                    <button class="btn btn-danger" onclick="clearAllStores()">全データ削除</button>
+                    <button class="btn btn-secondary" onclick="toggleImportedDataList()">閉じる</button>
+                </div>
+            </div>
+            <div id="importedDataList" class="imported-data-list"></div>
+        </div>
+
+        <!-- ===== エクスポートセクション ===== -->
+        <div class="import-section" style="margin-top:15px;border-left:4px solid #9c27b0;">
+            <h2 style="color:#7b1fa2;">📤 エクスポート</h2>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));gap:10px;">
+                <button class="btn" style="background:#4caf50;color:#fff;padding:12px;" onclick="exportRakumyInputsCSV()">
+                    <div style="font-size:20px;">📊</div>
+                    <div>ラクミー入力値CSV</div>
+                </button>
+                <button class="btn" style="background:#2196f3;color:#fff;padding:12px;" onclick="exportBudgetListCSV()">
+                    <div style="font-size:20px;">📋</div>
+                    <div>予算一覧CSV</div>
+                </button>
+                <button class="btn" style="background:#9c27b0;color:#fff;padding:12px;" onclick="exportMQOutputCSV()">
+                    <div style="font-size:20px;">📈</div>
+                    <div>MQ出力CSV</div>
+                </button>
+                <button class="btn btn-info" style="padding:12px;" onclick="exportAllConfig()">
+                    <div style="font-size:20px;">⚙️</div>
+                    <div>設定JSON</div>
+                </button>
+            </div>
+
+            <!-- エクスポート対象データ一覧ボタン -->
+            <div style="margin-top:15px;text-align:center;">
+                <button class="btn" style="background:#7b1fa2;color:#fff;padding:10px 30px;" onclick="toggleExportDataList()">
+                    エクスポート対象データ一覧 (<span id="exportStoreCount">0</span>件)
+                </button>
+            </div>
+        </div>
+
+        <!-- ===== エクスポート対象データ一覧セクション ===== -->
+        <div class="import-section" id="exportDataSection" style="display:none;border-left:4px solid #e91e63;margin-top:15px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+                <h2 style="color:#c2185b;margin:0;">📤 エクスポート対象データ</h2>
+                <div>
+                    <button class="btn btn-secondary" onclick="toggleExportDataList()">閉じる</button>
+                </div>
+            </div>
+            <div id="exportDataList" class="imported-data-list"></div>
+        </div>
+
+        <!-- ===== 設定セクション ===== -->
+        <div class="import-section" style="margin-top:15px;border-left:4px solid #607d8b;">
+            <h2 style="color:#455a64;">⚙️ 設定</h2>
+            <div class="import-controls">
+                <input type="file" id="configFile" accept=".json" style="display:none" onchange="importAllConfig(event)">
+                <button class="btn btn-secondary" onclick="document.getElementById('configFile').click()">設定読込（JSON）</button>
+                <button class="btn btn-warning" onclick="runSimulationForCurrentStore()">再シミュレーション実行</button>
+            </div>
+        </div>
+
+        <!-- ===== 履歴セクション ===== -->
+        <div class="history-section" id="historySection" style="display:none;margin-top:15px;">
             <div style="display:flex; align-items:center; gap:15px; margin-bottom:10px;">
-                <h3 style="margin:0;">インポート履歴</h3>
-                <button class="btn" style="background:#4caf50;color:#fff;padding:5px 15px;" onclick="saveToHistory()">現在のデータを保存</button>
+                <h3 style="margin:0;">💾 保存履歴</h3>
                 <button class="btn btn-danger" style="padding:5px 15px;" onclick="clearAllHistory()">履歴全削除</button>
             </div>
             <div class="history-list" id="historyList"></div>
@@ -716,6 +804,180 @@
             updateFileListDisplay();
         }
 
+        // =====================
+        // 取り込みデータ一覧機能
+        // =====================
+
+        // 取り込みデータ一覧の表示/非表示切り替え
+        function toggleImportedDataList() {
+            var section = document.getElementById('importedDataSection');
+            if (section.style.display === 'none') {
+                section.style.display = 'block';
+                renderImportedDataList();
+            } else {
+                section.style.display = 'none';
+            }
+        }
+
+        // エクスポート対象データ一覧の表示/非表示切り替え
+        function toggleExportDataList() {
+            var section = document.getElementById('exportDataSection');
+            if (section.style.display === 'none') {
+                section.style.display = 'block';
+                renderExportDataList();
+            } else {
+                section.style.display = 'none';
+            }
+        }
+
+        // 取り込みデータ一覧を描画
+        function renderImportedDataList() {
+            var container = document.getElementById('importedDataList');
+            var storeNames = Object.keys(allStoresData);
+
+            if (storeNames.length === 0) {
+                container.innerHTML = '<div class="empty-message">取り込みデータがありません。<br>CSVファイルをインポートしてください。</div>';
+                return;
+            }
+
+            var html = '';
+            storeNames.forEach(function(name) {
+                var data = allStoresData[name];
+                var totalSales = 0;
+                var totalProfit = 0;
+                if (data.mqOutputs) {
+                    for (var m = 0; m < 12; m++) {
+                        if (data.mqOutputs[m]) {
+                            totalSales += data.mqOutputs[m].sales || 0;
+                            totalProfit += data.mqOutputs[m].operatingProfit || 0;
+                        }
+                    }
+                }
+
+                html += '<div class="data-item">';
+                html += '  <div class="data-info">';
+                html += '    <div class="data-name">🏪 ' + escapeHtml(name) + '</div>';
+                html += '    <div class="data-meta">';
+                html += '      <span>年間売上: ' + fmt(totalSales) + '千円</span>';
+                html += '      <span>営業利益: ' + fmt(totalProfit) + '千円</span>';
+                html += '    </div>';
+                html += '  </div>';
+                html += '  <div class="data-actions">';
+                html += '    <button class="view-btn" onclick="switchStore(\'' + escapeHtml(name) + '\')">表示</button>';
+                html += '    <button class="save-btn" onclick="saveStoreToHistory(\'' + escapeHtml(name) + '\')">保存</button>';
+                html += '    <button class="delete-btn" onclick="deleteStore(\'' + escapeHtml(name) + '\')">削除</button>';
+                html += '  </div>';
+                html += '</div>';
+            });
+
+            container.innerHTML = html;
+        }
+
+        // エクスポート対象データ一覧を描画
+        function renderExportDataList() {
+            var container = document.getElementById('exportDataList');
+            var storeNames = Object.keys(allStoresData);
+
+            if (storeNames.length === 0) {
+                container.innerHTML = '<div class="empty-message">エクスポート可能なデータがありません。<br>CSVファイルをインポートしてください。</div>';
+                return;
+            }
+
+            var html = '';
+            storeNames.forEach(function(name) {
+                var data = allStoresData[name];
+                var totalSales = 0;
+                if (data.mqOutputs) {
+                    for (var m = 0; m < 12; m++) {
+                        if (data.mqOutputs[m]) {
+                            totalSales += data.mqOutputs[m].sales || 0;
+                        }
+                    }
+                }
+
+                html += '<div class="data-item">';
+                html += '  <div class="data-info">';
+                html += '    <div class="data-name">📤 ' + escapeHtml(name) + '</div>';
+                html += '    <div class="data-meta">';
+                html += '      <span>年間売上: ' + fmt(totalSales) + '千円</span>';
+                html += '    </div>';
+                html += '  </div>';
+                html += '  <div class="data-actions">';
+                html += '    <button class="view-btn" onclick="switchStore(\'' + escapeHtml(name) + '\');toggleExportDataList();">選択して閉じる</button>';
+                html += '  </div>';
+                html += '</div>';
+            });
+
+            container.innerHTML = html;
+        }
+
+        // 個別店舗を履歴に保存
+        function saveStoreToHistory(name) {
+            if (!allStoresData[name]) {
+                alert('店舗データが見つかりません');
+                return;
+            }
+
+            var history = loadHistory();
+            var dateTime = formatDateTime();
+            var title = dateTime + '_' + name;
+
+            var newEntry = {
+                id: Date.now().toString(),
+                title: title,
+                dateTime: dateTime,
+                storeNames: [name],
+                storeCount: 1,
+                data: { [name]: JSON.parse(JSON.stringify(allStoresData[name])) },
+                savedAt: new Date().toISOString()
+            };
+
+            history.unshift(newEntry);
+            if (history.length > 20) history = history.slice(0, 20);
+
+            try {
+                localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+                showStatus('success', '「' + name + '」を履歴に保存しました');
+                renderHistoryList();
+            } catch (e) {
+                alert('保存に失敗しました');
+            }
+        }
+
+        // 個別店舗を削除
+        function deleteStore(name) {
+            if (!confirm('「' + name + '」のデータを削除しますか？')) return;
+
+            delete allStoresData[name];
+
+            // 現在表示中の店舗が削除された場合
+            if (currentStoreName === name) {
+                var remaining = Object.keys(allStoresData);
+                if (remaining.length > 0) {
+                    switchStore(remaining[0]);
+                } else {
+                    currentStoreName = '';
+                }
+            }
+
+            updateStoreSelector();
+            updateDataCounts();
+            renderImportedDataList();
+            showStatus('info', '「' + name + '」を削除しました');
+        }
+
+        // 全データを履歴に保存
+        function saveAllToHistory() {
+            saveToHistory();
+        }
+
+        // データ件数を更新
+        function updateDataCounts() {
+            var count = Object.keys(allStoresData).length;
+            document.getElementById('importedStoreCount').textContent = count;
+            document.getElementById('exportStoreCount').textContent = count;
+        }
+
         // ★ 複数CSVインポート
         function importAllCSVs() {
             if (selectedFiles.length === 0) return;
@@ -753,6 +1015,7 @@
                     if (importCount + errorCount === totalFiles) {
                         updateStoreSelector();
                         renderAllStoresSummary();
+                        updateDataCounts();
 
                         // 最初の店舗を選択
                         var storeNames = Object.keys(allStoresData);
@@ -895,7 +1158,10 @@
             mqOutputs = {};
 
             updateStoreSelector();
+            updateDataCounts();
             document.getElementById('allStoresSummary').style.display = 'none';
+            document.getElementById('importedDataSection').style.display = 'none';
+            document.getElementById('exportDataSection').style.display = 'none';
             document.getElementById('detectedStore').textContent = '-';
             document.getElementById('detectedMonthCount').textContent = '-';
             document.getElementById('detectedItemCount').textContent = '-';
