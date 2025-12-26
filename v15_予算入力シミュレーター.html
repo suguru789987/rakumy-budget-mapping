@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>v15 予算入力シミュレーター</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif; background: #f0f2f5; font-size: 13px; }
+        .header { background: #2c3e50; color: white; padding: 12px 20px; font-size: 14px; }
+        .container { max-width: 1600px; margin: 0 auto; padding: 15px; }
+        .flow-grid { display: grid; grid-template-columns: 320px 40px 280px 40px 280px 40px 320px; gap: 0; align-items: start; }
+        .arrow { display: flex; align-items: center; justify-content: center; padding-top: 100px; font-size: 24px; color: #3498db; }
+        .panel { background: white; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); overflow: hidden; }
+        .panel-header { padding: 10px 15px; font-weight: bold; font-size: 12px; color: white; }
+        .panel-header.step1 { background: #e74c3c; }
+        .panel-header.step2 { background: #f39c12; }
+        .panel-header.step3 { background: #3498db; }
+        .panel-header.step4 { background: #27ae60; }
+        .panel-body { padding: 10px; max-height: 75vh; overflow-y: auto; }
+        .section { margin-bottom: 10px; }
+        .section-title { font-size: 11px; font-weight: bold; color: #666; padding: 5px 8px; background: #f8f9fa; border-radius: 4px; margin-bottom: 5px; }
+        .row { display: flex; align-items: center; padding: 4px 8px; border-bottom: 1px solid #f5f5f5; }
+        .row:hover { background: #fafafa; }
+        .row-no { width: 30px; font-size: 10px; color: #999; }
+        .row-label { flex: 1; font-size: 12px; }
+        .row-input { width: 80px; }
+        .row-input input { width: 100%; padding: 4px 6px; border: 1px solid #ddd; border-radius: 3px; font-size: 12px; text-align: right; }
+        .row-input input:focus { outline: none; border-color: #3498db; }
+        .row-unit { width: 35px; font-size: 10px; color: #999; padding-left: 5px; }
+        .row-value { width: 90px; text-align: right; font-weight: bold; font-size: 12px; }
+        .row-value.calc { color: #3498db; }
+        .row.highlight { background: #e8f4fc; }
+        .row.total { background: #e8f5e9; font-weight: bold; }
+        .row.output { background: #fff3e0; }
+        .row.profit { background: linear-gradient(135deg, #27ae60, #2ecc71); color: white; padding: 8px; border-radius: 4px; margin-top: 5px; }
+        .row.profit.warning { background: linear-gradient(135deg, #f39c12, #e67e22); }
+        .row.profit.danger { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+        .formula { font-size: 10px; color: #999; margin-left: 5px; }
+        .diff { font-size: 10px; padding: 2px 5px; border-radius: 3px; margin-left: 5px; }
+        .diff.ok { background: #d4edda; color: #155724; }
+        .diff.ng { background: #f8d7da; color: #721c24; }
+        .btn-group { display: flex; gap: 10px; margin-top: 15px; justify-content: center; }
+        .btn { padding: 10px 25px; border: none; border-radius: 5px; cursor: pointer; font-size: 13px; }
+        .btn-primary { background: #3498db; color: white; }
+        .btn-secondary { background: #ecf0f1; color: #666; }
+        .step-label { font-size: 10px; opacity: 0.8; }
+    </style>
+</head>
+<body>
+    <div class="header">v15 予算入力シミュレーター | 顧客予算 → ラクミー入力 → ラクミー出力</div>
+    <div class="container">
+        <div class="flow-grid">
+            <!-- STEP1: 顧客予算値入力 -->
+            <div class="panel">
+                <div class="panel-header step1"><span class="step-label">STEP1</span> 顧客予算値入力</div>
+                <div class="panel-body">
+                    <div class="section">
+                        <div class="section-title">売上</div>
+                        <div class="row">
+                            <div class="row-no">1</div>
+                            <div class="row-label">売上高合計</div>
+                            <div class="row-input"><input type="number" id="in_sales" value="13700" onchange="calc()"></div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-no">2</div>
+                            <div class="row-label">フード売上</div>
+                            <div class="row-input"><input type="number" id="in_food_sales" value="8220" onchange="calc()"></div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-no">3</div>
+                            <div class="row-label">ドリンク売上</div>
+                            <div class="row-input"><input type="number" id="in_drink_sales" value="5480" onchange="calc()"></div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                    </div>
+                    <div class="section">
+                        <div class="section-title">原価</div>
+                        <div class="row">
+                            <div class="row-no">6</div>
+                            <div class="row-label">食材原価</div>
+                            <div class="row-input"><input type="number" id="in_food_cost" value="2877" onchange="calc()"></div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-no">7</div>
+                            <div class="row-label">ドリンク原価</div>
+                            <div class="row-input"><input type="number" id="in_drink_cost" value="1507" onchange="calc()"></div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                    </div>
+                    <div class="section">
+                        <div class="section-title">人件費</div>
+                        <div class="row">
+                            <div class="row-no">10</div>
+                            <div class="row-label">給料手当</div>
+                            <div class="row-input"><input type="number" id="in_salary" value="3460" onchange="calc()"></div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-no">13</div>
+                            <div class="row-label">雑給（PA）</div>
+                            <div class="row-input"><input type="number" id="in_pa" value="750" onchange="calc()"></div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-no">14</div>
+                            <div class="row-label">ヘルプ人件費</div>
+                            <div class="row-input"><input type="number" id="in_help" value="0" onchange="calc()"></div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-no">15</div>
+                            <div class="row-label">法定福利費</div>
+                            <div class="row-input"><input type="number" id="in_welfare" value="519" onchange="calc()"></div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-no">16</div>
+                            <div class="row-label">通勤交通費</div>
+                            <div class="row-input"><input type="number" id="in_commute" value="126" onchange="calc()"></div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-no">17</div>
+                            <div class="row-label">賞与引当金</div>
+                            <div class="row-input"><input type="number" id="in_bonus" value="577" onchange="calc()"></div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                    </div>
+                    <div class="section">
+                        <div class="section-title">経費（No.21-45抜粋）</div>
+                        <div class="row">
+                            <div class="row-no">21</div>
+                            <div class="row-label">販売促進費</div>
+                            <div class="row-input"><input type="number" id="in_promo" value="426" onchange="calc()"></div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-no">26</div>
+                            <div class="row-label">電気代</div>
+                            <div class="row-input"><input type="number" id="in_elec" value="206" onchange="calc()"></div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-no">27</div>
+                            <div class="row-label">ガス代</div>
+                            <div class="row-input"><input type="number" id="in_gas" value="55" onchange="calc()"></div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-no">28</div>
+                            <div class="row-label">水道代</div>
+                            <div class="row-input"><input type="number" id="in_water" value="69" onchange="calc()"></div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-no">29</div>
+                            <div class="row-label">消耗品費</div>
+                            <div class="row-input"><input type="number" id="in_supply" value="343" onchange="calc()"></div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-no">35</div>
+                            <div class="row-label">クレジット手数料</div>
+                            <div class="row-input"><input type="number" id="in_credit" value="411" onchange="calc()"></div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-no">-</div>
+                            <div class="row-label">その他経費</div>
+                            <div class="row-input"><input type="number" id="in_other_exp" value="231" onchange="calc()"></div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                    </div>
+                    <div class="section">
+                        <div class="section-title">固定費</div>
+                        <div class="row">
+                            <div class="row-no">46</div>
+                            <div class="row-label">減価償却費</div>
+                            <div class="row-input"><input type="number" id="in_deprec" value="96" onchange="calc()"></div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-no">47</div>
+                            <div class="row-label">家賃</div>
+                            <div class="row-input"><input type="number" id="in_rent" value="556" onchange="calc()"></div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-no">48</div>
+                            <div class="row-label">警備料</div>
+                            <div class="row-input"><input type="number" id="in_guard" value="16" onchange="calc()"></div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-no">50</div>
+                            <div class="row-label">賃借料</div>
+                            <div class="row-input"><input type="number" id="in_lease" value="0" onchange="calc()"></div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                    </div>
+                    <div class="section">
+                        <div class="section-title">KPI</div>
+                        <div class="row">
+                            <div class="row-no">57</div>
+                            <div class="row-label">客数</div>
+                            <div class="row-input"><input type="number" id="in_customers" value="3000" onchange="calc()"></div>
+                            <div class="row-unit">人</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-no">55</div>
+                            <div class="row-label">営業利益（目標）</div>
+                            <div class="row-input"><input type="number" id="in_profit" value="919" onchange="calc()"></div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="arrow">→</div>
+
+            <!-- STEP2: 入力前準備・演算 -->
+            <div class="panel">
+                <div class="panel-header step2"><span class="step-label">STEP2</span> 入力前準備・演算</div>
+                <div class="panel-body">
+                    <div class="section">
+                        <div class="section-title">売上比率計算</div>
+                        <div class="row">
+                            <div class="row-label">フード売上比率</div>
+                            <div class="row-value calc" id="calc_food_ratio">60.0</div>
+                            <div class="row-unit">%</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-label">ドリンク売上比率</div>
+                            <div class="row-value calc" id="calc_drink_ratio">40.0</div>
+                            <div class="row-unit">%</div>
+                        </div>
+                    </div>
+                    <div class="section">
+                        <div class="section-title">FD仕入費率計算</div>
+                        <div class="row">
+                            <div class="row-label">原価合計</div>
+                            <div class="row-value calc" id="calc_cost_total">4,384</div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                        <div class="row highlight">
+                            <div class="row-label">FD仕入費率<span class="formula">原価÷売上×100</span></div>
+                            <div class="row-value calc" id="calc_fd_rate">32.0</div>
+                            <div class="row-unit">%</div>
+                        </div>
+                    </div>
+                    <div class="section">
+                        <div class="section-title">PA人件費率計算</div>
+                        <div class="row">
+                            <div class="row-label">PA人件費合計</div>
+                            <div class="row-value calc" id="calc_pa_total">750</div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                        <div class="row highlight">
+                            <div class="row-label">PA人件費率<span class="formula">PA÷売上×100</span></div>
+                            <div class="row-value calc" id="calc_pa_rate">5.5</div>
+                            <div class="row-unit">%</div>
+                        </div>
+                    </div>
+                    <div class="section">
+                        <div class="section-title">固定人件費合算</div>
+                        <div class="row highlight">
+                            <div class="row-label">固定人件費<span class="formula">給料+福利+交通+賞与</span></div>
+                            <div class="row-value calc" id="calc_fixed_labor">4,682</div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                    </div>
+                    <div class="section">
+                        <div class="section-title">経費合算</div>
+                        <div class="row highlight">
+                            <div class="row-label">経費合計<span class="formula">No.21-45合計</span></div>
+                            <div class="row-value calc" id="calc_expenses">1,741</div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                    </div>
+                    <div class="section">
+                        <div class="section-title">固定費合算</div>
+                        <div class="row">
+                            <div class="row-label">地代家賃<span class="formula">家賃+賃借料</span></div>
+                            <div class="row-value calc" id="calc_rent_total">556</div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-label">資材費<span class="formula">警備料+リース料</span></div>
+                            <div class="row-value calc" id="calc_materials">16</div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                    </div>
+                    <div class="section">
+                        <div class="section-title">客単価計算</div>
+                        <div class="row highlight">
+                            <div class="row-label">客単価<span class="formula">売上÷客数</span></div>
+                            <div class="row-value calc" id="calc_unit_price">4,567</div>
+                            <div class="row-unit">円</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="arrow">→</div>
+
+            <!-- STEP3: ラクミー入力 -->
+            <div class="panel">
+                <div class="panel-header step3"><span class="step-label">STEP3</span> ラクミー入力値</div>
+                <div class="panel-body">
+                    <div class="section">
+                        <div class="section-title">月次予算設定</div>
+                        <div class="row">
+                            <div class="row-label">目標客数</div>
+                            <div class="row-value" id="rk_customers">3,000</div>
+                            <div class="row-unit">人</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-label">目標客単価</div>
+                            <div class="row-value" id="rk_unit_price">4,567</div>
+                            <div class="row-unit">円</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-label">FD仕入費率</div>
+                            <div class="row-value" id="rk_fd_rate">32.0</div>
+                            <div class="row-unit">%</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-label">PA人件費率</div>
+                            <div class="row-value" id="rk_pa_rate">5.5</div>
+                            <div class="row-unit">%</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-label">目標月次利益</div>
+                            <div class="row-value" id="rk_target_profit">919</div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                    </div>
+                    <div class="section">
+                        <div class="section-title">売上構成比設定</div>
+                        <div class="row">
+                            <div class="row-label">フード売上比率</div>
+                            <div class="row-value" id="rk_food_ratio">60.0</div>
+                            <div class="row-unit">%</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-label">ドリンク売上比率</div>
+                            <div class="row-value" id="rk_drink_ratio">40.0</div>
+                            <div class="row-unit">%</div>
+                        </div>
+                    </div>
+                    <div class="section">
+                        <div class="section-title">費用予算設定</div>
+                        <div class="row">
+                            <div class="row-label">固定人件費</div>
+                            <div class="row-value" id="rk_fixed_labor">4,682</div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-label">販売促進費</div>
+                            <div class="row-value" id="rk_promo">426</div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-label">電気代</div>
+                            <div class="row-value" id="rk_elec">206</div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-label">ガス代</div>
+                            <div class="row-value" id="rk_gas">55</div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-label">水道代</div>
+                            <div class="row-value" id="rk_water">69</div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-label">消耗品費</div>
+                            <div class="row-value" id="rk_supply">343</div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-label">クレジット手数料</div>
+                            <div class="row-value" id="rk_credit">411</div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-label">その他経費</div>
+                            <div class="row-value" id="rk_other_exp">231</div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-label">減価償却費</div>
+                            <div class="row-value" id="rk_deprec">96</div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-label">地代家賃</div>
+                            <div class="row-value" id="rk_rent">556</div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-label">資材費</div>
+                            <div class="row-value" id="rk_materials">16</div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="arrow">→</div>
+
+            <!-- STEP4: ラクミー出力 -->
+            <div class="panel">
+                <div class="panel-header step4"><span class="step-label">STEP4</span> ラクミー自動計上値</div>
+                <div class="panel-body">
+                    <div class="section">
+                        <div class="section-title">売上予算</div>
+                        <div class="row output">
+                            <div class="row-label">売上予算<span class="formula">客数×客単価</span></div>
+                            <div class="row-value" id="out_sales">13,701</div>
+                            <div class="row-unit">千円</div>
+                            <span class="diff ok" id="diff_sales">○</span>
+                        </div>
+                    </div>
+                    <div class="section">
+                        <div class="section-title">原価予算</div>
+                        <div class="row output">
+                            <div class="row-label">原価予算<span class="formula">売上×FD仕入費率</span></div>
+                            <div class="row-value" id="out_cost">4,384</div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                    </div>
+                    <div class="section">
+                        <div class="section-title">人件費予算</div>
+                        <div class="row">
+                            <div class="row-label">PA人件費<span class="formula">売上×PA人件費率</span></div>
+                            <div class="row-value" id="out_pa">754</div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-label">固定人件費</div>
+                            <div class="row-value" id="out_fixed_labor">4,682</div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                        <div class="row output">
+                            <div class="row-label">人件費合計</div>
+                            <div class="row-value" id="out_labor_total">5,436</div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                    </div>
+                    <div class="section">
+                        <div class="section-title">経費・固定費予算</div>
+                        <div class="row">
+                            <div class="row-label">経費合計</div>
+                            <div class="row-value" id="out_expenses">1,741</div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-label">その他固定費</div>
+                            <div class="row-value" id="out_other_fixed">668</div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                        <div class="row output">
+                            <div class="row-label">固定費合計</div>
+                            <div class="row-value" id="out_fixed_total">7,091</div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                    </div>
+                    <div class="section">
+                        <div class="section-title">変動費予算</div>
+                        <div class="row output">
+                            <div class="row-label">変動費合計<span class="formula">原価+PA人件費</span></div>
+                            <div class="row-value" id="out_variable">5,138</div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                    </div>
+                    <div class="section">
+                        <div class="section-title">利益予算</div>
+                        <div class="row">
+                            <div class="row-label">限界利益<span class="formula">売上-変動費</span></div>
+                            <div class="row-value" id="out_margin">8,563</div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                        <div class="row profit" id="profit_row">
+                            <div class="row-label">営業利益予算<span class="formula" style="color:rgba(255,255,255,0.7)">限界利益-固定費</span></div>
+                            <div class="row-value" id="out_profit">1,472</div>
+                            <div class="row-unit">千円</div>
+                            <span class="diff" id="diff_profit" style="background:rgba(255,255,255,0.3);color:white;">○</span>
+                        </div>
+                    </div>
+                    <div class="section">
+                        <div class="section-title">差異サマリー</div>
+                        <div class="row">
+                            <div class="row-label">売上差異</div>
+                            <div class="row-value" id="sum_sales_diff">+1</div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                        <div class="row">
+                            <div class="row-label">営業利益差異</div>
+                            <div class="row-value" id="sum_profit_diff">-3</div>
+                            <div class="row-unit">千円</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn btn-primary" onclick="alert('予算設定を保存しました')">この設定で予算を保存</button>
+            <button class="btn btn-secondary" onclick="location.reload()">リセット</button>
+        </div>
+    </div>
+
+    <script>
+        function calc() {
+            // 入力値取得
+            const in_sales = g('in_sales');
+            const in_food_sales = g('in_food_sales');
+            const in_drink_sales = g('in_drink_sales');
+            const in_food_cost = g('in_food_cost');
+            const in_drink_cost = g('in_drink_cost');
+            const in_salary = g('in_salary');
+            const in_pa = g('in_pa');
+            const in_help = g('in_help');
+            const in_welfare = g('in_welfare');
+            const in_commute = g('in_commute');
+            const in_bonus = g('in_bonus');
+            const in_promo = g('in_promo');
+            const in_elec = g('in_elec');
+            const in_gas = g('in_gas');
+            const in_water = g('in_water');
+            const in_supply = g('in_supply');
+            const in_credit = g('in_credit');
+            const in_other_exp = g('in_other_exp');
+            const in_deprec = g('in_deprec');
+            const in_rent = g('in_rent');
+            const in_guard = g('in_guard');
+            const in_lease = g('in_lease');
+            const in_customers = g('in_customers');
+            const in_profit = g('in_profit');
+
+            // STEP2: 入力前準備・演算
+            const food_ratio = (in_food_sales / in_sales * 100).toFixed(1);
+            const drink_ratio = (in_drink_sales / in_sales * 100).toFixed(1);
+            const cost_total = in_food_cost + in_drink_cost;
+            const fd_rate = (cost_total / in_sales * 100).toFixed(1);
+            const pa_total = in_pa + in_help;
+            const pa_rate = (pa_total / in_sales * 100).toFixed(1);
+            const fixed_labor = in_salary + in_welfare + in_commute + in_bonus;
+            const expenses = in_promo + in_elec + in_gas + in_water + in_supply + in_credit + in_other_exp;
+            const rent_total = in_rent + in_lease;
+            const materials = in_guard;
+            const unit_price = Math.round(in_sales * 1000 / in_customers);
+
+            s('calc_food_ratio', food_ratio);
+            s('calc_drink_ratio', drink_ratio);
+            s('calc_cost_total', f(cost_total));
+            s('calc_fd_rate', fd_rate);
+            s('calc_pa_total', f(pa_total));
+            s('calc_pa_rate', pa_rate);
+            s('calc_fixed_labor', f(fixed_labor));
+            s('calc_expenses', f(expenses));
+            s('calc_rent_total', f(rent_total));
+            s('calc_materials', f(materials));
+            s('calc_unit_price', f(unit_price));
+
+            // STEP3: ラクミー入力値
+            s('rk_customers', f(in_customers));
+            s('rk_unit_price', f(unit_price));
+            s('rk_fd_rate', fd_rate);
+            s('rk_pa_rate', pa_rate);
+            s('rk_target_profit', f(in_profit));
+            s('rk_food_ratio', food_ratio);
+            s('rk_drink_ratio', drink_ratio);
+            s('rk_fixed_labor', f(fixed_labor));
+            s('rk_promo', f(in_promo));
+            s('rk_elec', f(in_elec));
+            s('rk_gas', f(in_gas));
+            s('rk_water', f(in_water));
+            s('rk_supply', f(in_supply));
+            s('rk_credit', f(in_credit));
+            s('rk_other_exp', f(in_other_exp));
+            s('rk_deprec', f(in_deprec));
+            s('rk_rent', f(rent_total));
+            s('rk_materials', f(materials));
+
+            // STEP4: ラクミー自動計上値
+            const out_sales = in_customers * unit_price / 1000;
+            const out_cost = out_sales * parseFloat(fd_rate) / 100;
+            const out_pa = out_sales * parseFloat(pa_rate) / 100;
+            const out_labor_total = fixed_labor + out_pa;
+            const other_fixed = in_deprec + rent_total + materials;
+            const out_fixed_total = fixed_labor + expenses + other_fixed;
+            const out_variable = out_cost + out_pa;
+            const out_margin = out_sales - out_variable;
+            const out_profit_val = out_margin - out_fixed_total;
+
+            s('out_sales', f(out_sales));
+            s('out_cost', f(out_cost));
+            s('out_pa', f(out_pa));
+            s('out_fixed_labor', f(fixed_labor));
+            s('out_labor_total', f(out_labor_total));
+            s('out_expenses', f(expenses));
+            s('out_other_fixed', f(other_fixed));
+            s('out_fixed_total', f(out_fixed_total));
+            s('out_variable', f(out_variable));
+            s('out_margin', f(out_margin));
+            s('out_profit', f(out_profit_val));
+
+            // 差異
+            const sales_diff = out_sales - in_sales;
+            const profit_diff = out_profit_val - in_profit;
+            s('sum_sales_diff', (sales_diff >= 0 ? '+' : '') + f(sales_diff));
+            s('sum_profit_diff', (profit_diff >= 0 ? '+' : '') + f(profit_diff));
+
+            // 差異判定
+            const sales_diff_pct = Math.abs(sales_diff / in_sales * 100);
+            document.getElementById('diff_sales').textContent = sales_diff_pct < 1 ? '○' : '×';
+            document.getElementById('diff_sales').className = sales_diff_pct < 1 ? 'diff ok' : 'diff ng';
+
+            const profit_diff_pct = Math.abs(profit_diff / in_profit * 100);
+            document.getElementById('diff_profit').textContent = profit_diff_pct < 1 ? '○' : '×';
+
+            // 利益行色
+            const pr = document.getElementById('profit_row');
+            pr.className = out_profit_val >= in_profit ? 'row profit' : (out_profit_val > 0 ? 'row profit warning' : 'row profit danger');
+        }
+
+        function g(id) { return parseFloat(document.getElementById(id).value) || 0; }
+        function s(id, v) { document.getElementById(id).textContent = v; }
+        function f(n) { return Math.round(n).toLocaleString(); }
+
+        calc();
+    </script>
+</body>
+</html>
