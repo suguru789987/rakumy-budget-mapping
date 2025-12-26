@@ -358,6 +358,9 @@
         .main-nav-tab.import-tab.active {
             background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%);
         }
+        .main-nav-tab.budget-tab.active {
+            background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%);
+        }
         .main-nav-tab.export-tab.active {
             background: linear-gradient(135deg, #7b1fa2 0%, #4a148c 100%);
         }
@@ -381,6 +384,10 @@
             <button class="main-nav-tab import-tab active" onclick="showMainPage('import')">
                 <span class="tab-icon">📥</span>
                 <span>インポート</span>
+            </button>
+            <button class="main-nav-tab budget-tab" onclick="showMainPage('budget')">
+                <span class="tab-icon">📊</span>
+                <span>予算設定</span>
             </button>
             <button class="main-nav-tab export-tab" onclick="showMainPage('export')">
                 <span class="tab-icon">📤</span>
@@ -436,7 +443,7 @@
                 <h2 style="color:#7b1fa2;font-size:18px;margin-bottom:20px;">📤 データをエクスポート</h2>
 
                 <!-- エクスポートボタングリッド -->
-                <div style="display:grid;grid-template-columns:repeat(2, 1fr);gap:15px;margin-bottom:20px;">
+                <div style="display:grid;grid-template-columns:repeat(2, 1fr);gap:15px;">
                     <button class="btn" style="background:linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);color:#fff;padding:25px;border-radius:10px;font-size:14px;" onclick="exportRakumyInputsCSV()">
                         <div style="font-size:32px;margin-bottom:10px;">📊</div>
                         <div style="font-weight:bold;">ラクミー入力値CSV</div>
@@ -458,72 +465,52 @@
                         <div style="font-size:11px;opacity:0.8;margin-top:5px;">マッピング設定データ</div>
                     </button>
                 </div>
-
-                <!-- その他の操作 -->
-                <div style="padding-top:20px;border-top:2px solid #e0e0e0;">
-                    <h3 style="font-size:14px;color:#666;margin-bottom:15px;">その他の操作</h3>
-                    <div class="import-controls" style="display:flex;gap:10px;flex-wrap:wrap;">
-                        <input type="file" id="configFile" accept=".json" style="display:none" onchange="importAllConfig(event)">
-                        <button class="btn btn-secondary" style="padding:12px 20px;" onclick="document.getElementById('configFile').click()">📂 設定読込（JSON）</button>
-                        <button class="btn btn-warning" style="padding:12px 20px;" onclick="runSimulationForCurrentStore()">🔄 再シミュレーション</button>
-                        <button class="btn btn-danger" style="padding:12px 20px;" onclick="clearAllStores()">🗑️ 全データ削除</button>
-                    </div>
-                </div>
             </div>
         </div>
 
-        <!-- ===== 取り込みデータ履歴一覧画面 ===== -->
-        <div id="dataHistoryPage" class="data-history-page" style="display:none;">
-            <div class="data-history-header">
-                <h2>📋 取り込みデータ履歴一覧</h2>
-                <button class="btn btn-secondary" onclick="hideDataHistoryPage()">✕ 閉じる</button>
+        <!-- ===== 予算設定ページ ===== -->
+        <div id="page-budget" class="main-page">
+            <!-- 店舗セレクター -->
+            <div class="store-selector" id="storeSelector" style="display:none;">
+                <label>表示店舗:</label>
+                <select id="storeSelect" onchange="switchStore(this.value)">
+                    <option value="">-- 店舗を選択 --</option>
+                </select>
+                <div class="store-list" id="storeList"></div>
+                <span style="margin-left:auto; font-size:10px; color:#666;">インポート済: <strong id="storeCount">0</strong>店舗</span>
             </div>
-            <div class="data-history-content">
-                <div id="dataHistoryList" class="data-history-list"></div>
+
+            <!-- 全店舗サマリー -->
+            <div class="all-stores-summary" id="allStoresSummary" style="display:none;">
+                <h3>全店舗サマリー</h3>
+                <div class="all-stores-grid" id="allStoresGrid"></div>
             </div>
-        </div>
 
-        <!-- 店舗セレクター -->
-        <div class="store-selector" id="storeSelector" style="display:none;">
-            <label>表示店舗:</label>
-            <select id="storeSelect" onchange="switchStore(this.value)">
-                <option value="">-- 店舗を選択 --</option>
-            </select>
-            <div class="store-list" id="storeList"></div>
-            <span style="margin-left:auto; font-size:10px; color:#666;">インポート済: <strong id="storeCount">0</strong>店舗</span>
-        </div>
+            <!-- 月列検出結果 -->
+            <div class="column-detection" id="columnDetection" style="display:none;">
+                <h3>月別「予算」列検出結果（3行目:月名 + 4行目:サブヘッダー の照合）</h3>
+                <div class="month-cols-grid" id="monthColsGrid"></div>
+                <div class="sample-values" id="sampleValues"></div>
+            </div>
 
-        <!-- 全店舗サマリー -->
-        <div class="all-stores-summary" id="allStoresSummary" style="display:none;">
-            <h3>全店舗サマリー</h3>
-            <div class="all-stores-grid" id="allStoresGrid"></div>
-        </div>
+            <!-- 検出結果表示 -->
+            <div class="info-bar">
+                <div><span class="info-label">店舗名:</span> <span class="info-value" id="detectedStore">-</span></div>
+                <div><span class="info-label">検出月数:</span> <span class="info-value" id="detectedMonthCount">-</span></div>
+                <div><span class="info-label">マッチ項目:</span> <span class="info-value" id="detectedItemCount">-</span></div>
+                <div><span class="info-label">未マッチ項目:</span> <span class="info-value" id="unmatchedCount">-</span></div>
+            </div>
 
-        <!-- 月列検出結果 -->
-        <div class="column-detection" id="columnDetection" style="display:none;">
-            <h3>月別「予算」列検出結果（3行目:月名 + 4行目:サブヘッダー の照合）</h3>
-            <div class="month-cols-grid" id="monthColsGrid"></div>
-            <div class="sample-values" id="sampleValues"></div>
-        </div>
-
-        <!-- 検出結果表示 -->
-        <div class="info-bar">
-            <div><span class="info-label">店舗名:</span> <span class="info-value" id="detectedStore">-</span></div>
-            <div><span class="info-label">検出月数:</span> <span class="info-value" id="detectedMonthCount">-</span></div>
-            <div><span class="info-label">マッチ項目:</span> <span class="info-value" id="detectedItemCount">-</span></div>
-            <div><span class="info-label">未マッチ項目:</span> <span class="info-value" id="unmatchedCount">-</span></div>
-        </div>
-
-        <!-- タブ -->
-        <div class="tabs">
-            <div class="tab active" onclick="showTab('tab-mapping')">マッピング設定</div>
-            <div class="tab" onclick="showTab('tab-input')">【1】予算入力</div>
-            <div class="tab" onclick="showTab('tab-calc')">【2】入力前演算</div>
-            <div class="tab" onclick="showTab('tab-rakumy')">【3】ラクミー入力値</div>
-            <div class="tab" onclick="showTab('tab-output')">【4】MQ出力</div>
-            <div class="tab" onclick="showTab('tab-budget-list')">【5】予算一覧</div>
-            <div class="tab" onclick="showTab('tab-summary')">【6】サマリー</div>
-        </div>
+            <!-- サブタブ -->
+            <div class="tabs">
+                <div class="tab active" onclick="showTab('tab-mapping')">マッピング設定</div>
+                <div class="tab" onclick="showTab('tab-input')">【1】予算入力</div>
+                <div class="tab" onclick="showTab('tab-calc')">【2】入力前演算</div>
+                <div class="tab" onclick="showTab('tab-rakumy')">【3】ラクミー入力値</div>
+                <div class="tab" onclick="showTab('tab-output')">【4】MQ出力</div>
+                <div class="tab" onclick="showTab('tab-budget-list')">【5】予算一覧</div>
+                <div class="tab" onclick="showTab('tab-summary')">【6】サマリー</div>
+            </div>
 
         <!-- マッピング設定タブ -->
         <div id="tab-mapping" class="tab-content active">
@@ -644,6 +631,18 @@
             <div class="section">
                 <div class="section-header" style="background:#f5f5f5;">費用設定判定結果</div>
                 <div class="section-body" id="judgmentResults"></div>
+            </div>
+        </div>
+        </div><!-- 予算設定ページ終了 -->
+
+        <!-- ===== 取り込みデータ履歴一覧画面（オーバーレイ） ===== -->
+        <div id="dataHistoryPage" class="data-history-page" style="display:none;">
+            <div class="data-history-header">
+                <h2>📋 取り込みデータ履歴一覧</h2>
+                <button class="btn btn-secondary" onclick="hideDataHistoryPage()">✕ 閉じる</button>
+            </div>
+            <div class="data-history-content">
+                <div id="dataHistoryList" class="data-history-list"></div>
             </div>
         </div>
     </div>
@@ -824,7 +823,7 @@
             event.target.classList.add('active');
         }
 
-        // メインページ（インポート/エクスポート）切り替え
+        // メインページ（インポート/予算設定/エクスポート）切り替え
         function showMainPage(page) {
             // タブのアクティブ状態を切り替え
             document.querySelectorAll('.main-nav-tab').forEach(function(tab) {
@@ -838,6 +837,9 @@
             if (page === 'import') {
                 document.querySelector('.import-tab').classList.add('active');
                 document.getElementById('page-import').classList.add('active');
+            } else if (page === 'budget') {
+                document.querySelector('.budget-tab').classList.add('active');
+                document.getElementById('page-budget').classList.add('active');
             } else if (page === 'export') {
                 document.querySelector('.export-tab').classList.add('active');
                 document.getElementById('page-export').classList.add('active');
