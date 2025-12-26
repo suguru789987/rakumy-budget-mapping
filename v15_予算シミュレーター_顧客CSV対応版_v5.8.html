@@ -143,11 +143,54 @@
         .store-card .metric-value { font-weight: bold; }
         .store-card.total { background: rgba(255,193,7,0.3); border: 2px solid #ffc107; }
 
-        /* ファイル選択チップ */
-        .file-chip { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; background: #e3f2fd; border-radius: 15px; font-size: 11px; color: #1565c0; border: 1px solid #90caf9; }
-        .file-chip .file-name { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .file-chip .remove-file { cursor: pointer; color: #f44336; font-weight: bold; font-size: 14px; line-height: 1; }
-        .file-chip .remove-file:hover { color: #d32f2f; }
+        /* ドラッグ＆ドロップエリア */
+        .drop-zone {
+            border: 2px dashed #90caf9;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            background: #f8f9fa;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .drop-zone:hover { border-color: #1565c0; background: #e3f2fd; }
+        .drop-zone.drag-over { border-color: #4caf50; background: #e8f5e9; border-style: solid; }
+        .drop-zone-content { pointer-events: none; }
+        .drop-zone-content button { pointer-events: auto; }
+
+        /* 選択ファイルセクション */
+        .selected-files-section {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        /* 縦積みファイルリスト */
+        .file-list-vertical {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            background: #f5f5f5;
+            border-radius: 6px;
+            border-left: 4px solid #1565c0;
+        }
+        .file-item:hover { background: #e3f2fd; }
+        .file-item .file-info { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+        .file-item .file-icon { font-size: 18px; }
+        .file-item .file-name { font-weight: bold; font-size: 12px; color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .file-item .file-size { font-size: 10px; color: #666; white-space: nowrap; }
+        .file-item .remove-btn { background: #f44336; color: #fff; border: none; border-radius: 4px; padding: 4px 8px; font-size: 10px; cursor: pointer; }
+        .file-item .remove-btn:hover { background: #d32f2f; }
 
         /* 履歴セクション */
         .history-section { background: #f8f9fa; border-radius: 8px; padding: 15px; margin-bottom: 15px; }
@@ -173,26 +216,43 @@
         <h1>v15 予算シミュレーター（顧客CSV対応版 v5.8）</h1>
         <p class="subtitle">変換ロジック強化：顧客予算→ラクミー入力の変換タイプ（直接/合計/率/出力）を明示化</p>
 
-        <!-- CSVインポート -->
+        <!-- CSVインポートセクション -->
         <div class="import-section">
-            <h2>顧客予算CSVインポート（複数店舗対応）</h2>
+            <h2>CSVインポート</h2>
+
+            <!-- ドラッグ＆ドロップエリア -->
+            <div id="dropZone" class="drop-zone" ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+                <div class="drop-zone-content">
+                    <div style="font-size:40px;margin-bottom:10px;">📁</div>
+                    <div style="font-size:14px;font-weight:bold;margin-bottom:5px;">CSVファイルをここにドラッグ＆ドロップ</div>
+                    <div style="font-size:11px;color:#666;margin-bottom:10px;">または</div>
+                    <input type="file" id="csvFile" accept=".csv" multiple onchange="handleFileSelect(event)" style="display:none;">
+                    <button class="btn btn-primary" onclick="document.getElementById('csvFile').click()">ファイルを選択（複数可）</button>
+                </div>
+            </div>
+
+            <!-- 選択ファイル一覧（縦積み） -->
+            <div id="selectedFilesList" class="selected-files-section" style="display:none;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                    <div style="font-weight:bold;font-size:13px;">選択ファイル一覧 (<span id="fileCount">0</span>件)</div>
+                    <div>
+                        <button class="btn btn-primary" onclick="document.getElementById('csvFile').click()" style="padding:5px 12px;font-size:10px;">＋追加</button>
+                        <button class="btn" style="background:#ff5722;color:#fff;padding:5px 12px;font-size:10px;" onclick="clearSelectedFiles()">全クリア</button>
+                    </div>
+                </div>
+                <div id="fileListContainer" class="file-list-vertical"></div>
+                <div style="margin-top:10px;">
+                    <button class="btn btn-success" onclick="importAllCSVs()" id="importBtn" style="width:100%;padding:12px;font-size:14px;">一括インポート実行</button>
+                </div>
+            </div>
+
+            <div id="importStatus" style="margin-top:10px;"></div>
+        </div>
+
+        <!-- エクスポートセクション -->
+        <div class="import-section" style="margin-top:15px;">
+            <h2>エクスポート・設定</h2>
             <div class="import-controls">
-                <input type="file" id="csvFile" accept=".csv" multiple="multiple" onchange="handleFileSelect(event)" style="position:absolute;left:-9999px;opacity:0;">
-                <label for="csvFile" class="btn btn-primary" style="cursor:pointer;margin:0;">CSVファイル選択（複数可）</label>
-                <label for="csvFile" class="btn btn-info" id="addFileBtn" style="display:none;cursor:pointer;margin:0;">追加選択</label>
-                <button class="btn" style="background:#ff5722;color:#fff;display:none;" onclick="clearSelectedFiles()" id="clearFilesBtn">選択クリア</button>
-                <button class="btn btn-success" onclick="importAllCSVs()" id="importBtn" disabled>一括インポート実行</button>
-                <button class="btn btn-warning" onclick="runSimulationForCurrentStore()">シミュレーション実行</button>
-            </div>
-            <div id="selectedFilesList" style="margin-top:10px; display:none;">
-                <div style="font-weight:bold; margin-bottom:5px;">選択ファイル一覧: <span id="fileCount" style="color:#1565c0;"></span></div>
-                <div id="fileListContainer" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
-            </div>
-            <div style="margin-top:8px; font-size:10px; color:#666;">
-                ※ ファイル選択ダイアログで <strong>Ctrl（Mac: Cmd）キーを押しながらクリック</strong>で複数選択、または<strong>Shift+クリック</strong>で範囲選択できます。
-            </div>
-            <div class="import-controls" style="margin-top:10px;">
-                <span style="font-weight:bold;margin-right:10px;">エクスポート:</span>
                 <button class="btn" style="background:#4caf50;color:#fff;" onclick="exportRakumyInputsCSV()">ラクミー入力値CSV</button>
                 <button class="btn" style="background:#2196f3;color:#fff;" onclick="exportBudgetListCSV()">予算一覧CSV</button>
                 <button class="btn" style="background:#9c27b0;color:#fff;" onclick="exportMQOutputCSV()">MQ出力CSV</button>
@@ -200,8 +260,8 @@
                 <input type="file" id="configFile" accept=".json" style="display:none" onchange="importAllConfig(event)">
                 <button class="btn btn-secondary" onclick="document.getElementById('configFile').click()">設定読込</button>
                 <button class="btn btn-danger" onclick="clearAllStores()">全店舗クリア</button>
+                <button class="btn btn-warning" onclick="runSimulationForCurrentStore()">再シミュレーション</button>
             </div>
-            <div id="importStatus"></div>
         </div>
 
         <!-- 履歴セクション -->
@@ -555,53 +615,89 @@
             event.target.classList.add('active');
         }
 
+        // ドラッグ＆ドロップ処理
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            document.getElementById('dropZone').classList.add('drag-over');
+        }
+
+        function handleDragLeave(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            document.getElementById('dropZone').classList.remove('drag-over');
+        }
+
+        function handleDrop(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            document.getElementById('dropZone').classList.remove('drag-over');
+
+            var files = event.dataTransfer.files;
+            if (files.length > 0) {
+                addFilesToSelection(Array.from(files));
+            }
+        }
+
         function handleFileSelect(event) {
             var newFiles = Array.from(event.target.files);
-            if (newFiles.length === 0) return;
+            if (newFiles.length > 0) {
+                addFilesToSelection(newFiles);
+            }
+            // 入力をリセット（同じファイルを再選択可能にする）
+            event.target.value = '';
+        }
 
-            // 既存のファイルに追加（重複除外）
+        // ファイルを選択リストに追加
+        function addFilesToSelection(newFiles) {
             newFiles.forEach(function(newFile) {
+                // CSVファイルのみ追加
+                if (!newFile.name.toLowerCase().endsWith('.csv')) {
+                    showStatus('error', newFile.name + ' はCSVファイルではありません');
+                    return;
+                }
+                // 重複チェック
                 var exists = selectedFiles.some(function(f) { return f.name === newFile.name && f.size === newFile.size; });
                 if (!exists) {
                     selectedFiles.push(newFile);
                 }
             });
-
             updateFileListDisplay();
-
-            // 入力をリセット（同じファイルを再選択可能にする）
-            event.target.value = '';
         }
 
-        // ファイル一覧表示を更新
+        // ファイルサイズをフォーマット
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        // ファイル一覧表示を更新（縦積み）
         function updateFileListDisplay() {
             var container = document.getElementById('fileListContainer');
             var listSection = document.getElementById('selectedFilesList');
             var fileCount = document.getElementById('fileCount');
-            var addBtn = document.getElementById('addFileBtn');
-            var clearBtn = document.getElementById('clearFilesBtn');
-            var importBtn = document.getElementById('importBtn');
+            var dropZone = document.getElementById('dropZone');
 
             if (selectedFiles.length === 0) {
                 listSection.style.display = 'none';
-                addBtn.style.display = 'none';
-                clearBtn.style.display = 'none';
-                importBtn.disabled = true;
-                fileCount.textContent = '';
+                dropZone.style.display = 'block';
                 return;
             }
 
             listSection.style.display = 'block';
-            addBtn.style.display = 'inline-block';
-            clearBtn.style.display = 'inline-block';
-            importBtn.disabled = false;
-            fileCount.textContent = selectedFiles.length + '件';
+            dropZone.style.display = 'none';
+            fileCount.textContent = selectedFiles.length;
 
             var html = '';
             selectedFiles.forEach(function(file, index) {
-                html += '<div class="file-chip">';
-                html += '<span class="file-name" title="' + file.name + '">' + file.name + '</span>';
-                html += '<span class="remove-file" onclick="removeSelectedFile(' + index + ')">×</span>';
+                html += '<div class="file-item">';
+                html += '  <div class="file-info">';
+                html += '    <span class="file-icon">📄</span>';
+                html += '    <span class="file-name" title="' + escapeHtml(file.name) + '">' + escapeHtml(file.name) + '</span>';
+                html += '    <span class="file-size">' + formatFileSize(file.size) + '</span>';
+                html += '  </div>';
+                html += '  <button class="remove-btn" onclick="removeSelectedFile(' + index + ')">削除</button>';
                 html += '</div>';
             });
 
