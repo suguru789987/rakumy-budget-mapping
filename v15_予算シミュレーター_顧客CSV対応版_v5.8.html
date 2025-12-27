@@ -2268,7 +2268,6 @@
                 }
 
                 // === 費用予算設定（固定費用）===
-                csv.push([stName, '', '【費用予算設定（固定費用）- 29項目】'].join(','));
                 for (var key in RAKUMY_ITEMS) {
                     var item = RAKUMY_ITEMS[key];
                     if (item.category !== 'cost') continue;
@@ -2294,7 +2293,6 @@
                 }
 
                 // === 単月費用予算（固定費用）===
-                csv.push([stName, '', '【単月費用予算（固定費用）- 月別差異項目のみ】'].join(','));
                 for (var key in RAKUMY_ITEMS) {
                     var item = RAKUMY_ITEMS[key];
                     if (item.category !== 'monthly') continue;
@@ -2314,7 +2312,6 @@
                 }
 
                 // === 予算設定（変動費用）===
-                csv.push([stName, '', '【予算設定（変動費用）- MQパラメータ】'].join(','));
                 for (var key in RAKUMY_ITEMS) {
                     var item = RAKUMY_ITEMS[key];
                     if (item.category !== 'budget') continue;
@@ -2565,8 +2562,6 @@
                 });
 
                 // 顧客予算との比較
-                csv.push([stName, '【顧客予算との比較】'].join(','));
-
                 // 顧客予算売上
                 var budgetSalesRow = [stName, '顧客予算売上'];
                 var budgetSalesTotal = 0;
