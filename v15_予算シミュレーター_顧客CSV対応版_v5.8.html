@@ -647,7 +647,10 @@
         <div id="exportHistoryPage" class="data-history-page" style="display:none;">
             <div class="data-history-header" style="background:linear-gradient(135deg, #7b1fa2 0%, #4a148c 100%);">
                 <h2>📋 出力データ履歴一覧</h2>
-                <button class="btn btn-secondary" onclick="hideExportHistoryPage()">✕ 閉じる</button>
+                <div style="display:flex;gap:10px;">
+                    <button class="btn btn-danger" onclick="clearAllExportHistory()">全履歴クリア</button>
+                    <button class="btn btn-secondary" onclick="hideExportHistoryPage()">✕ 閉じる</button>
+                </div>
             </div>
             <div class="data-history-content">
                 <div id="exportHistoryList" class="data-history-list"></div>
@@ -1512,6 +1515,16 @@
             renderExportHistoryList();
             updateExportHistoryCount();
             showStatus('info', '出力データを削除しました');
+        }
+
+        // 全履歴クリア
+        function clearAllExportHistory() {
+            if (!confirm('全ての出力データ履歴を削除しますか？\nこの操作は取り消せません。')) return;
+
+            saveExportHistory([]);
+            renderExportHistoryList();
+            updateExportHistoryCount();
+            showStatus('info', '全ての出力データ履歴を削除しました');
         }
 
         // ★ インポート完了時に全店舗のエクスポートデータを自動生成
