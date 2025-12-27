@@ -536,12 +536,18 @@
                                 ✗ 未マッチ: <span id="unmatchedCountDisplay">0</span>件
                             </span>
                         </div>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <span id="unusedBadge" style="background:#ff9800;color:#fff;padding:6px 15px;border-radius:20px;font-weight:bold;display:none;">
+                                ⚠ 未使用: <span id="unusedCountDisplay">0</span>件
+                            </span>
+                        </div>
                     </div>
 
                     <!-- 未マッチ項目（あれば表示） -->
                     <div id="unmatchedSection" style="display:none;background:#fff3cd;border:2px solid #ffc107;border-radius:8px;padding:15px;margin-bottom:15px;">
                         <h4 style="color:#856404;margin-bottom:10px;">⚠️ 未マッチ項目（CSVにあるがマッピング定義がない）</h4>
                         <div id="unmatchedList" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+                        <div id="similarSuggestions" style="margin-top:10px;"></div>
                         <div class="form-row" style="margin-top:15px;padding-top:15px;border-top:1px solid #ddd;">
                             <label>新規マッピング追加:</label>
                             <input type="text" id="newCode" placeholder="コード" style="width:80px;">
@@ -560,8 +566,28 @@
                         </div>
                     </div>
 
+                    <!-- 未使用マッピング（あれば表示） -->
+                    <div id="unusedSection" style="display:none;background:#fff8e1;border:2px solid #ff9800;border-radius:8px;padding:15px;margin-bottom:15px;">
+                        <h4 style="color:#e65100;margin-bottom:10px;">⚠️ 未使用マッピング（定義はあるがCSVに存在しない）</h4>
+                        <div id="unusedList" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+                        <button class="btn btn-warning" style="margin-top:10px;" onclick="removeUnusedMappings()">未使用マッピングを一括削除</button>
+                    </div>
+
+                    <!-- マッピング管理ツールバー -->
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:15px;padding:10px;background:#f5f5f5;border-radius:8px;">
+                        <button class="btn btn-primary" onclick="toggleEditMode()">
+                            <span id="editModeLabel">✏️ 編集モード</span>
+                        </button>
+                        <label class="btn btn-info" style="cursor:pointer;margin:0;">
+                            📥 マッピングCSV読込
+                            <input type="file" accept=".csv" onchange="importMappingCSV(event)" style="display:none;">
+                        </label>
+                        <button class="btn btn-secondary" onclick="exportMappingCSV()">📤 マッピングCSV出力</button>
+                        <button class="btn btn-warning" onclick="detectUnusedMappings()">🔍 未使用検出</button>
+                    </div>
+
                     <!-- 折りたたみ式マッピング詳細 -->
-                    <details style="margin-top:10px;">
+                    <details style="margin-top:10px;" id="mappingDetails">
                         <summary style="cursor:pointer;padding:10px;background:#f5f5f5;border-radius:4px;font-weight:bold;color:#666;">
                             📋 マッピング詳細を表示（クリックで展開）
                         </summary>
@@ -2167,13 +2193,68 @@
 
         function renderMappingTable() {
             var html = '<table class="mapping-table">';
-            html += '<tr><th>コード</th><th>項目名</th><th>→</th><th>v15 No</th><th>v15項目名</th><th>カテゴリ</th><th></th></tr>';
-            matchedItems.forEach(function(item) {
-                html += '<tr><td>' + item.code + '</td><td>' + item.name + '</td><td style="color:#28a745;">→</td>';
-                html += '<td>' + item.v15No + '</td><td>' + item.v15Name + '</td><td>' + item.category + '</td>';
-                html += '<td><button class="btn btn-danger" style="padding:2px 6px;font-size:9px;" onclick="deleteMapping(\'' + item.code + '\')">削除</button></td></tr>';
-            });
+
+            if (isEditMode) {
+                // 編集モード：全マッピング定義を表示
+                html += '<tr><th>コード</th><th>項目名</th><th>v15 No</th><th>カテゴリ</th><th>操作</th></tr>';
+
+                var codes = Object.keys(CUSTOMER_CODE_MAP).sort(function(a, b) {
+                    return CUSTOMER_CODE_MAP[a].v15No - CUSTOMER_CODE_MAP[b].v15No;
+                });
+
+                codes.forEach(function(code) {
+                    var item = CUSTOMER_CODE_MAP[code];
+                    var isEditing = (editingCode === code);
+
+                    if (isEditing) {
+                        // 編集中の行
+                        html += '<tr style="background:#fff3cd;">';
+                        html += '<td><strong>' + code + '</strong></td>';
+                        html += '<td><input type="text" id="edit_name_' + code + '" value="' + item.name + '" style="width:150px;padding:3px;"></td>';
+                        html += '<td><input type="number" id="edit_v15no_' + code + '" value="' + item.v15No + '" style="width:60px;padding:3px;"></td>';
+                        html += '<td><select id="edit_category_' + code + '" style="padding:3px;">';
+                        ['売上', '原価', '固定人件費', 'PA人件費', '経費', '固定費', '利益'].forEach(function(cat) {
+                            html += '<option value="' + cat + '"' + (item.category === cat ? ' selected' : '') + '>' + cat + '</option>';
+                        });
+                        html += '</select></td>';
+                        html += '<td>';
+                        html += '<button class="btn btn-success" style="padding:2px 8px;font-size:9px;margin-right:3px;" onclick="saveEditMapping(\'' + code + '\')">保存</button>';
+                        html += '<button class="btn btn-secondary" style="padding:2px 8px;font-size:9px;" onclick="cancelEditMapping()">取消</button>';
+                        html += '</td></tr>';
+                    } else {
+                        // 通常表示の行
+                        html += '<tr>';
+                        html += '<td><strong>' + code + '</strong></td>';
+                        html += '<td>' + item.name + '</td>';
+                        html += '<td>' + item.v15No + '</td>';
+                        html += '<td><span style="background:#e0e0e0;padding:2px 6px;border-radius:3px;font-size:10px;">' + item.category + '</span></td>';
+                        html += '<td>';
+                        html += '<button class="btn btn-primary" style="padding:2px 8px;font-size:9px;margin-right:3px;" onclick="editMapping(\'' + code + '\')">編集</button>';
+                        html += '<button class="btn btn-danger" style="padding:2px 8px;font-size:9px;" onclick="deleteMapping(\'' + code + '\')">削除</button>';
+                        html += '</td></tr>';
+                    }
+                });
+            } else {
+                // 通常モード：マッチした項目のみ表示
+                html += '<tr><th>コード</th><th>項目名</th><th>→</th><th>v15 No</th><th>v15項目名</th><th>カテゴリ</th><th></th></tr>';
+                if (matchedItems && matchedItems.length > 0) {
+                    matchedItems.forEach(function(item) {
+                        html += '<tr><td>' + item.code + '</td><td>' + item.name + '</td><td style="color:#28a745;">→</td>';
+                        html += '<td>' + item.v15No + '</td><td>' + item.v15Name + '</td><td>' + item.category + '</td>';
+                        html += '<td><button class="btn btn-danger" style="padding:2px 6px;font-size:9px;" onclick="deleteMapping(\'' + item.code + '\')">削除</button></td></tr>';
+                    });
+                } else {
+                    html += '<tr><td colspan="7" style="text-align:center;color:#666;padding:20px;">CSVをインポートするとマッチした項目が表示されます</td></tr>';
+                }
+            }
+
             html += '</table>';
+
+            // 編集モード時はマッピング件数を表示
+            if (isEditMode) {
+                html += '<div style="margin-top:10px;font-size:11px;color:#666;">全 ' + Object.keys(CUSTOMER_CODE_MAP).length + ' 件のマッピング定義</div>';
+            }
+
             document.getElementById('mappingTable').innerHTML = html;
         }
 
@@ -2215,6 +2296,327 @@
 
             var listEl = document.getElementById('unmatchedList');
             if (listEl) listEl.innerHTML = html;
+
+            // 類似マッチング候補を表示
+            renderSimilarSuggestions();
+        }
+
+        // ★ 編集モード管理
+        var isEditMode = false;
+
+        function toggleEditMode() {
+            isEditMode = !isEditMode;
+            var label = document.getElementById('editModeLabel');
+            if (label) {
+                label.textContent = isEditMode ? '✅ 編集モードON' : '✏️ 編集モード';
+            }
+            renderMappingTable();
+
+            // 編集モードON時はマッピング詳細を自動展開
+            if (isEditMode) {
+                var details = document.getElementById('mappingDetails');
+                if (details) details.open = true;
+            }
+
+            showStatus('info', isEditMode ? '編集モードを有効にしました' : '編集モードを終了しました');
+        }
+
+        // ★ マッピング編集開始
+        var editingCode = null;
+
+        function editMapping(code) {
+            editingCode = code;
+            renderMappingTable();
+        }
+
+        function cancelEditMapping() {
+            editingCode = null;
+            renderMappingTable();
+        }
+
+        function saveEditMapping(code) {
+            var nameInput = document.getElementById('edit_name_' + code);
+            var v15NoInput = document.getElementById('edit_v15no_' + code);
+            var categorySelect = document.getElementById('edit_category_' + code);
+
+            if (!nameInput || !v15NoInput || !categorySelect) return;
+
+            var newName = nameInput.value.trim();
+            var newV15No = parseInt(v15NoInput.value);
+            var newCategory = categorySelect.value;
+
+            if (!newName || isNaN(newV15No)) {
+                alert('項目名とv15番号を正しく入力してください');
+                return;
+            }
+
+            CUSTOMER_CODE_MAP[code] = {
+                v15No: newV15No,
+                name: newName,
+                category: newCategory
+            };
+            ITEMS[newV15No] = { name: newName, category: newCategory };
+
+            editingCode = null;
+            renderMappingTable();
+            showStatus('success', 'マッピングを更新しました: ' + code);
+        }
+
+        // ★ マッピングCSVインポート
+        function importMappingCSV(event) {
+            var file = event.target.files[0];
+            if (!file) return;
+
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                var content = e.target.result;
+                var lines = content.split('\n');
+                var importCount = 0;
+                var errorCount = 0;
+
+                // ヘッダー行をスキップ（最初の行）
+                for (var i = 1; i < lines.length; i++) {
+                    var line = lines[i].trim();
+                    if (!line) continue;
+
+                    var cols = line.split(',');
+                    if (cols.length < 4) {
+                        errorCount++;
+                        continue;
+                    }
+
+                    var code = cols[0].trim();
+                    var name = cols[1].trim();
+                    var v15No = parseInt(cols[2].trim());
+                    var category = cols[3].trim();
+
+                    if (!code || !name || isNaN(v15No)) {
+                        errorCount++;
+                        continue;
+                    }
+
+                    CUSTOMER_CODE_MAP[code] = { v15No: v15No, name: name, category: category };
+                    ITEMS[v15No] = { name: name, category: category };
+                    importCount++;
+                }
+
+                renderMappingTable();
+                showStatus('success', 'マッピングCSVをインポートしました: ' + importCount + '件' + (errorCount > 0 ? '（エラー: ' + errorCount + '件）' : ''));
+
+                // ファイル選択をリセット
+                event.target.value = '';
+            };
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        // ★ マッピングCSVエクスポート
+        function exportMappingCSV() {
+            var csv = [];
+            var BOM = '\uFEFF';
+
+            // ヘッダー行
+            csv.push('コード,項目名,v15番号,カテゴリ');
+
+            // データ行
+            for (var code in CUSTOMER_CODE_MAP) {
+                var item = CUSTOMER_CODE_MAP[code];
+                csv.push([code, item.name, item.v15No, item.category].join(','));
+            }
+
+            var blob = new Blob([BOM + csv.join('\n')], { type: 'text/csv;charset=utf-8' });
+            var link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'マッピング定義_' + new Date().toISOString().slice(0,10) + '.csv';
+            link.click();
+
+            showStatus('success', 'マッピングCSVをエクスポートしました');
+        }
+
+        // ★ 未使用マッピング検出
+        var unusedMappings = [];
+
+        function detectUnusedMappings() {
+            unusedMappings = [];
+
+            // CSVに存在するコードを収集
+            var usedCodes = {};
+            if (matchedItems) {
+                matchedItems.forEach(function(item) {
+                    usedCodes[item.code] = true;
+                });
+            }
+
+            // 定義されているがCSVに存在しないコードを検出
+            for (var code in CUSTOMER_CODE_MAP) {
+                if (!usedCodes[code]) {
+                    unusedMappings.push({
+                        code: code,
+                        name: CUSTOMER_CODE_MAP[code].name,
+                        v15No: CUSTOMER_CODE_MAP[code].v15No,
+                        category: CUSTOMER_CODE_MAP[code].category
+                    });
+                }
+            }
+
+            // 表示更新
+            var unusedBadge = document.getElementById('unusedBadge');
+            var unusedDisplay = document.getElementById('unusedCountDisplay');
+            var unusedSection = document.getElementById('unusedSection');
+
+            if (unusedBadge) {
+                unusedBadge.style.display = unusedMappings.length > 0 ? 'inline-block' : 'none';
+            }
+            if (unusedDisplay) {
+                unusedDisplay.textContent = unusedMappings.length;
+            }
+
+            if (unusedMappings.length === 0) {
+                if (unusedSection) unusedSection.style.display = 'none';
+                showStatus('success', '未使用のマッピングはありません');
+                return;
+            }
+
+            if (unusedSection) unusedSection.style.display = 'block';
+
+            // 未使用項目をチップ形式で表示
+            var html = '';
+            unusedMappings.forEach(function(item) {
+                html += '<div style="display:inline-flex;align-items:center;gap:5px;background:#fff;border:1px solid #ff9800;border-radius:20px;padding:5px 12px;font-size:11px;">';
+                html += '<span style="font-weight:bold;color:#e65100;">' + item.code + '</span>';
+                html += '<span style="color:#666;">' + item.name + '</span>';
+                html += '<button style="background:#dc3545;color:#fff;border:none;border-radius:3px;padding:2px 6px;font-size:9px;cursor:pointer;" onclick="deleteSingleUnused(\'' + item.code + '\')">削除</button>';
+                html += '</div>';
+            });
+
+            var listEl = document.getElementById('unusedList');
+            if (listEl) listEl.innerHTML = html;
+
+            showStatus('warning', '未使用マッピングを検出しました: ' + unusedMappings.length + '件');
+        }
+
+        function deleteSingleUnused(code) {
+            if (confirm('マッピング「' + code + '」を削除しますか？')) {
+                delete CUSTOMER_CODE_MAP[code];
+                detectUnusedMappings();
+                renderMappingTable();
+            }
+        }
+
+        function removeUnusedMappings() {
+            if (unusedMappings.length === 0) {
+                alert('未使用マッピングがありません');
+                return;
+            }
+
+            if (!confirm(unusedMappings.length + '件の未使用マッピングを一括削除しますか？')) return;
+
+            unusedMappings.forEach(function(item) {
+                delete CUSTOMER_CODE_MAP[item.code];
+            });
+
+            unusedMappings = [];
+            detectUnusedMappings();
+            renderMappingTable();
+            showStatus('success', '未使用マッピングを一括削除しました');
+        }
+
+        // ★ 類似項目マッチング
+        function findSimilarItems(targetName) {
+            var suggestions = [];
+            var targetLower = targetName.toLowerCase();
+
+            for (var code in CUSTOMER_CODE_MAP) {
+                var item = CUSTOMER_CODE_MAP[code];
+                var nameLower = item.name.toLowerCase();
+
+                // 完全一致または部分一致をチェック
+                if (nameLower.indexOf(targetLower) >= 0 || targetLower.indexOf(nameLower) >= 0) {
+                    suggestions.push({
+                        code: code,
+                        name: item.name,
+                        v15No: item.v15No,
+                        category: item.category,
+                        matchType: 'partial'
+                    });
+                }
+            }
+
+            // ラクミー項目からも候補を検索
+            for (var key in RAKUMY_ITEMS) {
+                var rakumyItem = RAKUMY_ITEMS[key];
+                if (!rakumyItem.name) continue;
+                var rakumyLower = rakumyItem.name.toLowerCase();
+
+                if (rakumyLower.indexOf(targetLower) >= 0 || targetLower.indexOf(rakumyLower) >= 0) {
+                    // 既に候補にないか確認
+                    var exists = suggestions.some(function(s) { return s.name === rakumyItem.name; });
+                    if (!exists) {
+                        suggestions.push({
+                            code: null,
+                            name: rakumyItem.name,
+                            v15No: null,
+                            category: rakumyItem.category || '不明',
+                            matchType: 'rakumy'
+                        });
+                    }
+                }
+            }
+
+            return suggestions.slice(0, 5); // 最大5件
+        }
+
+        function renderSimilarSuggestions() {
+            var container = document.getElementById('similarSuggestions');
+            if (!container || !unmatchedItems || unmatchedItems.length === 0) {
+                if (container) container.innerHTML = '';
+                return;
+            }
+
+            var html = '<div style="background:#e3f2fd;border-radius:8px;padding:10px;margin-top:10px;">';
+            html += '<h5 style="color:#1565c0;margin-bottom:10px;">💡 類似項目の候補</h5>';
+
+            var hasSuggestions = false;
+            unmatchedItems.forEach(function(unmatchedItem) {
+                var suggestions = findSimilarItems(unmatchedItem.name || '');
+                if (suggestions.length === 0) return;
+
+                hasSuggestions = true;
+                html += '<div style="margin-bottom:10px;padding:8px;background:#fff;border-radius:4px;">';
+                html += '<strong style="color:#d32f2f;">' + unmatchedItem.code + ' (' + (unmatchedItem.name || '名称なし') + ')</strong>';
+                html += '<div style="margin-top:5px;display:flex;flex-wrap:wrap;gap:5px;">';
+
+                suggestions.forEach(function(suggestion) {
+                    var bgColor = suggestion.matchType === 'rakumy' ? '#e8f5e9' : '#fff3e0';
+                    var label = suggestion.matchType === 'rakumy' ? 'ラクミー' : suggestion.code;
+                    html += '<span style="background:' + bgColor + ';border-radius:4px;padding:3px 8px;font-size:10px;">';
+                    html += '<strong>' + label + '</strong>: ' + suggestion.name;
+                    if (suggestion.code) {
+                        html += ' <button style="background:#4caf50;color:#fff;border:none;border-radius:3px;padding:1px 5px;font-size:9px;cursor:pointer;" onclick="applyMappingSuggestion(\'' + unmatchedItem.code + '\', \'' + (unmatchedItem.name || '').replace(/'/g, "\\'") + '\', ' + suggestion.v15No + ', \'' + suggestion.category + '\')">適用</button>';
+                    }
+                    html += '</span>';
+                });
+
+                html += '</div></div>';
+            });
+
+            if (!hasSuggestions) {
+                html += '<p style="color:#666;font-size:11px;">類似する項目が見つかりませんでした</p>';
+            }
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        function applyMappingSuggestion(code, name, v15No, category) {
+            CUSTOMER_CODE_MAP[code] = { v15No: v15No, name: name, category: category };
+            ITEMS[v15No] = { name: name, category: category };
+
+            showStatus('success', 'マッピングを適用しました: ' + code + ' → [' + v15No + ']');
+
+            // 再インポートして更新
+            if (document.getElementById('csvFile').files[0]) {
+                importCSV();
+            }
         }
 
         // 設定エクスポート/インポート
