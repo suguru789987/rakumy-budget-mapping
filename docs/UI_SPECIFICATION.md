@@ -2,29 +2,29 @@
 
 ## 1. 画面構成
 
-### 1.1 全体レイアウト
+### 1.1 全体レイアウト（3タブ構造）
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                       ヘッダー                               │
 │  予算シミュレーター v5.8 （顧客CSV対応版・変換ロジック強化）     │
 ├─────────────────────────────────────────────────────────────┤
-│ CSVファイル選択 │ 設定エクスポート │ 設定インポート            │
-├─────────────────────────────────────────────────────────────┤
-│                   店舗セレクター                             │
-├─────────────────────────────────────────────────────────────┤
-│                     情報バー                                │
-│  店舗名 │ 会計年度 │ 検出月数 │ マッチ項目 │ 未マッチ項目     │
-├─────────────────────────────────────────────────────────────┤
-│  タブナビゲーション                                          │
-│  [マッピング設定][1.予算入力][2.入力前演算][3.ラクミー入力値]   │
-│  [4.MQ出力][5.予算一覧][6.サマリー]                          │
+│  メインタブナビゲーション                                     │
+│  [インポート] [予算設定] [エクスポート]                        │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │                    タブコンテンツ                            │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+### 1.2 メインタブ構成
+
+| タブ | 内容 |
+|------|------|
+| インポート | CSVファイル取込、マッピング設定 |
+| 予算設定 | 予算入力・演算・ラクミー入力値・MQ出力・予算一覧・サマリー |
+| エクスポート | 出力データ履歴一覧、CSVダウンロード |
 
 ---
 
@@ -45,188 +45,166 @@
 
 ---
 
-## 3. ツールバー
+## 3. メインタブナビゲーション
 
-### 3.1 インポートセクション（1行目）
+### 3.1 タブ構成
 
-| 要素 | 種類 | ID/クラス | イベント |
-|------|------|-----------|----------|
-| CSVファイル選択 | `<input type="file">` | csvFile | `handleFileSelect(event)` |
-| インポート実行 | `<button>` | btn-success | `importAllCSVs()` |
-| シミュレーション実行 | `<button>` | btn-warning | `runSimulationForCurrentStore()` |
+| タブ | 内容 | アイコン |
+|------|------|----------|
+| インポート | CSV取込・マッピング設定 | 📥 |
+| 予算設定 | 予算データ確認・編集 | 📊 |
+| エクスポート | 出力データ履歴・ダウンロード | 📤 |
 
-### 3.2 エクスポートセクション（2行目）
-
-| ボタン | 背景色 | 関数 | 出力形式 |
-|--------|--------|------|----------|
-| ラクミー入力値CSV | #4caf50（緑） | `exportRakumyInputsCSV()` | CSV |
-| 予算一覧CSV | #2196f3（青） | `exportBudgetListCSV()` | CSV |
-| MQ出力CSV | #9c27b0（紫） | `exportMQOutputCSV()` | CSV |
-| 設定JSON | btn-info | `exportAllConfig()` | JSON |
-| 設定読込 | btn-secondary | `importAllConfig(event)` | JSON |
-| 全店舗クリア | btn-danger | `clearAllStores()` | - |
-
-### 3.3 ツールバーHTML構造
-```html
-<div class="import-controls">
-    <input type="file" id="csvFile" accept=".csv" multiple>
-    <button class="btn btn-primary">CSVファイル選択</button>
-    <span id="fileName">ファイル未選択</span>
-    <button class="btn btn-success">インポート実行</button>
-    <button class="btn btn-warning">シミュレーション実行</button>
-</div>
-<div class="import-controls" style="margin-top:10px;">
-    <span style="font-weight:bold;">エクスポート:</span>
-    <button style="background:#4caf50;color:#fff;">ラクミー入力値CSV</button>
-    <button style="background:#2196f3;color:#fff;">予算一覧CSV</button>
-    <button style="background:#9c27b0;color:#fff;">MQ出力CSV</button>
-    <button class="btn btn-info">設定JSON</button>
-    <button class="btn btn-secondary">設定読込</button>
-    <button class="btn btn-danger">全店舗クリア</button>
-</div>
-```
-
----
-
-## 4. 店舗セレクター
-
-### 4.1 表示条件
-- 複数店舗がある場合のみ表示
-- `display: flex` / `display: none`
-
-### 4.2 要素
-```html
-<div class="store-selector">
-  <span>店舗選択 (N店舗):</span>
-  <div class="store-chips">
-    <span class="store-chip active" onclick="switchStore('店舗名')">店舗名</span>
-    ...
-  </div>
-</div>
-```
-
-### 4.3 店舗チップスタイル
+### 3.2 スタイル
 ```css
-.store-chip {
-  padding: 4px 12px;
-  border-radius: 15px;
-  background: #e0e0e0;
-  cursor: pointer;
-  font-size: 11px;
+.main-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 20px;
 }
-.store-chip.active {
-  background: #1565c0;
+.main-tab {
+  padding: 12px 30px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  border: none;
+  background: #e0e0e0;
+}
+.main-tab.active {
+  background: linear-gradient(135deg, #1a237e 0%, #4a148c 100%);
   color: white;
 }
 ```
 
 ---
 
-## 5. 情報バー
+## 4. インポートタブ
 
-### 5.1 レイアウト
-```css
-.info-bar {
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-  padding: 10px 15px;
-  background: #f8f9fa;
-  border-radius: 6px;
-}
+### 4.1 構成
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ CSVインポートセクション                                       │
+│  [ファイル選択] [インポート実行] [シミュレーション実行]         │
+│  設定: [設定JSON] [設定読込] [全店舗クリア]                   │
+├─────────────────────────────────────────────────────────────┤
+│                   店舗セレクター                             │
+├─────────────────────────────────────────────────────────────┤
+│                     情報バー                                │
+│  店舗名 │ 会計年度 │ 検出月数 │ マッチ項目 │ 未マッチ項目     │
+├─────────────────────────────────────────────────────────────┤
+│                 マッピング設定セクション                      │
+│  ┌─────────────────────────────────────────────────────┐  │
+│  │ マッピング管理ツールバー                              │  │
+│  │ [編集モード] [CSV読込] [CSV出力] [未使用検出]         │  │
+│  ├─────────────────────────────────────────────────────┤  │
+│  │ 未使用マッピングセクション                            │  │
+│  │ 類似候補セクション                                   │  │
+│  ├─────────────────────────────────────────────────────┤  │
+│  │ 未マッチ項目セクション                                │  │
+│  │ マッピング一覧テーブル                                │  │
+│  │ 処理ログ                                            │  │
+│  └─────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### 5.2 表示項目
-| ID | ラベル | 初期値 |
-|----|--------|--------|
-| detectedStore | 店舗名 | - |
-| detectedFiscalYear | 会計年度 | - |
-| detectedMonthCount | 検出月数 | - |
-| detectedItemCount | マッチ項目 | - |
-| unmatchedCount | 未マッチ項目 | - |
+### 4.2 CSVインポートセクション
 
----
+| 要素 | 種類 | イベント |
+|------|------|----------|
+| CSVファイル選択 | `<input type="file" multiple>` | `handleFileSelect(event)` |
+| インポート実行 | `<button>` | `importAllCSVs()` |
+| シミュレーション実行 | `<button>` | `runSimulationForCurrentStore()` |
+| 設定JSON | `<button>` | `exportAllConfig()` |
+| 設定読込 | `<input type="file">` | `importAllConfig(event)` |
+| 全店舗クリア | `<button>` | `clearAllStores()` |
 
-## 6. タブナビゲーション
+### 4.3 マッピング管理ツールバー
 
-### 6.1 タブ一覧
-| タブ | ID | テキスト |
-|------|-----|---------|
-| マッピング設定 | tab-mapping | マッピング設定 |
-| 予算入力 | tab-input | 【1】予算入力 |
-| 入力前演算 | tab-calc | 【2】入力前演算 |
-| ラクミー入力値 | tab-rakumy | 【3】ラクミー入力値 |
-| MQ出力 | tab-output | 【4】MQ出力 |
-| 予算一覧 | tab-budget-list | 【5】予算一覧 |
-| サマリー | tab-summary | 【6】サマリー |
-
-### 6.2 タブスタイル
-```css
-.tabs {
-  display: flex;
-  gap: 5px;
-  flex-wrap: wrap;
-  margin-bottom: 15px;
-}
-.tab {
-  padding: 8px 16px;
-  border-radius: 4px 4px 0 0;
-  cursor: pointer;
-  background: #e0e0e0;
-  font-size: 11px;
-}
-.tab.active {
-  background: #1565c0;
-  color: white;
-}
-```
-
-### 6.3 タブ切り替え処理
-```javascript
-function showTab(tabId) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-  event.target.classList.add('active');
-  document.getElementById(tabId).classList.add('active');
-}
-```
-
----
-
-## 7. タブコンテンツ
-
-### 7.1 マッピング設定タブ
-
-#### 未マッチセクション
 ```html
-<div class="unmatched-section">
-  <h3>未マッチ項目</h3>
-  <div id="unmatchedList"></div>
-  <!-- 新規マッピングフォーム -->
+<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:15px;padding:10px;background:#f5f5f5;border-radius:8px;">
+    <button class="btn btn-primary" onclick="toggleEditMode()">
+        <span id="editModeLabel">✏️ 編集モード</span>
+    </button>
+    <label class="btn btn-info" style="cursor:pointer;margin:0;">
+        📥 マッピングCSV読込
+        <input type="file" accept=".csv" onchange="importMappingCSV(event)" style="display:none;">
+    </label>
+    <button class="btn btn-secondary" onclick="exportMappingCSV()">📤 マッピングCSV出力</button>
+    <button class="btn btn-warning" onclick="detectUnusedMappings()">🔍 未使用検出</button>
 </div>
 ```
 
-#### マッピング一覧テーブル
-| カラム | 説明 |
-|--------|------|
-| コード | 顧客CSVの項目コード |
-| 項目名 | 顧客CSVの項目名 |
-| → | 矢印 |
-| v15 No | マッピング先番号 |
-| v15項目名 | マッピング先名称 |
-| カテゴリ | 項目カテゴリ |
-| 操作 | 削除ボタン |
+### 4.4 マッピング管理機能
 
-#### 処理ログ
+#### 編集モード
+- トグルボタンで表示/非表示を切り替え
+- 編集モードON時: 全マッピングに編集・削除ボタン表示
+- 編集モードOFF時: マッチした項目のみ表示
+
+#### マッピングCSV読込
+- CSVファイルからマッピング定義をインポート
+- フォーマット: `顧客コード,v15番号,項目名,カテゴリ`
+
+#### マッピングCSV出力
+- 現在のマッピング定義をCSVでエクスポート
+- BOM付きUTF-8形式
+
+#### 未使用検出
+- インポートされたCSVに存在しないマッピングを検出
+- 一括削除機能付き
+
+### 4.5 未使用マッピングセクション
+
 ```html
-<div id="preprocessLog" class="preprocess-log">
-  CSVをインポートしてください
+<div id="unusedMappingSection" style="display:none;margin-bottom:15px;padding:15px;background:#fff3e0;border-radius:8px;border:1px solid #ff9800;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <h4 style="margin:0;color:#e65100;">⚠️ 未使用マッピング（N件）</h4>
+        <button class="btn btn-danger" onclick="removeUnusedMappings()">未使用を一括削除</button>
+    </div>
+    <div id="unusedMappingList" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+</div>
+```
+
+### 4.6 類似候補セクション
+
+```html
+<div id="similarSuggestionsSection" style="display:none;margin-bottom:15px;padding:15px;background:#e3f2fd;border-radius:8px;border:1px solid #2196f3;">
+    <h4 style="margin:0 0 10px 0;color:#1565c0;">💡 類似項目の提案</h4>
+    <div id="similarSuggestionsList"></div>
 </div>
 ```
 
 ---
 
-### 7.2 予算入力タブ（【1】）
+## 5. 予算設定タブ
+
+### 5.1 サブタブ構成
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  サブタブナビゲーション                                       │
+│  [1.予算入力][2.入力前演算][3.ラクミー入力値]                   │
+│  [4.MQ出力][5.予算一覧][6.サマリー]                          │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│                   サブタブコンテンツ                          │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 5.2 サブタブ一覧
+
+| タブ | ID | テキスト | ヘッダー色 |
+|------|-----|---------|-----------|
+| 予算入力 | tab-input | 【1】予算入力 | オレンジグラデーション |
+| 入力前演算 | tab-calc | 【2】入力前演算 | シアングラデーション |
+| ラクミー入力値 | tab-rakumy | 【3】ラクミー入力値 | グリーングラデーション |
+| MQ出力 | tab-output | 【4】MQ出力 | インディゴグラデーション |
+| 予算一覧 | tab-budget-list | 【5】予算一覧 | パープルグラデーション |
+| サマリー | tab-summary | 【6】サマリー | バイオレットグラデーション |
+
+### 5.3 予算入力タブ（【1】）
 
 #### ヘッダースタイル
 ```css
@@ -245,9 +223,7 @@ function showTab(tabId) {
 └────────┴────┴────┴────┴...┴────┴────┘
 ```
 
----
-
-### 7.3 入力前演算タブ（【2】）
+### 5.4 入力前演算タブ（【2】）
 
 #### ヘッダースタイル
 ```css
@@ -258,22 +234,13 @@ function showTab(tabId) {
 
 #### 表示項目
 - 売上合計
-- FD仕入費合計
-- FD仕入費率（%表示）
-- PA人件費合計
-- PA人件費率（%表示）
+- FD仕入費合計 / FD仕入費率（%）
+- PA人件費合計 / PA人件費率（%）
 - 固定人件費合計
-- ランチ売上比率
-- ディナー売上比率
-- フード売上比率
-- ドリンク売上比率
-- その他売上比率
-- 地代家賃合計
-- 資材費合計
+- ランチ/ディナー/フード/ドリンク/その他売上比率
+- 地代家賃合計 / 資材費合計
 
----
-
-### 7.4 ラクミー入力値タブ（【3】）
+### 5.5 ラクミー入力値タブ（【3】）
 
 #### ヘッダースタイル
 ```css
@@ -284,51 +251,23 @@ function showTab(tabId) {
 
 #### カテゴリセクション
 
-##### 費用予算設定（固定費用）
-```css
-.rakumy-category.cost h4 {
-  background: #e8f5e9;
-  color: #2e7d32;
-  border-left: 4px solid #4caf50;
-}
-```
-
-##### 単月費用予算（固定費用）
-```css
-.rakumy-category.monthly h4 {
-  background: #fff3e0;
-  color: #e65100;
-  border-left: 4px solid #ff9800;
-}
-```
-
-##### 予算設定（変動費用）
-```css
-.rakumy-category.budget h4 {
-  background: #e3f2fd;
-  color: #1565c0;
-  border-left: 4px solid #2196f3;
-}
-```
+| カテゴリ | ヘッダー背景 | ボーダー色 |
+|----------|-------------|-----------|
+| 費用予算設定（固定費用） | #e8f5e9 | #4caf50 |
+| 単月費用予算（固定費用） | #fff3e0 | #ff9800 |
+| 予算設定（変動費用） | #e3f2fd | #2196f3 |
 
 #### 変換タイプバッジ
-| タイプ | クラス | 背景色 | 説明 |
-|--------|--------|--------|------|
-| 直接 | type-direct | #2196f3 | 顧客予算をそのまま転記 |
-| 合計 | type-sum | #9c27b0 | 複数項目を合算 |
-| 率 | type-rate | #e91e63 | 売上に対する率を計算 |
-| 入力 | type-input | #4caf50 | ユーザー入力値 |
-| 出力 | type-output | #607d8b | MQ計算で算出 |
 
-#### 設定バッジ
-| タイプ | クラス | 背景色 | 説明 |
-|--------|--------|--------|------|
-| 年間固定 | annual-badge | #4caf50 | 全月同一値 |
-| 単月設定 | monthly-badge | #ff9800 | 月別に値が異なる |
+| タイプ | クラス | 背景色 |
+|--------|--------|--------|
+| 直接 | type-direct | #2196f3 |
+| 合計 | type-sum | #9c27b0 |
+| 率 | type-rate | #e91e63 |
+| 入力 | type-input | #4caf50 |
+| 出力 | type-output | #607d8b |
 
----
-
-### 7.5 MQ出力タブ（【4】）
+### 5.6 MQ出力タブ（【4】）
 
 #### ヘッダースタイル
 ```css
@@ -337,78 +276,25 @@ function showTab(tabId) {
 }
 ```
 
-#### 出力テーブル構造
-```
-┌──────────┬────┬────┬...┬────┬────┐
-│ 項目     │ 4月│ 5月│...│合計│平均│
-├──────────┼────┼────┼...┼────┼────┤
-│ 客数     │xxxx│xxxx│...│xxxx│xxxx│
-│ 客単価   │xxxx│xxxx│...│xxxx│xxxx│
-│ 売上     │xxxx│xxxx│...│xxxx│xxxx│
-│ 変動費   │xxxx│xxxx│...│xxxx│xxxx│
-│ 変動費率 │xx.x│xx.x│...│  - │xx.x│
-│ 粗利     │xxxx│xxxx│...│xxxx│xxxx│
-│ 粗利率   │xx.x│xx.x│...│  - │xx.x│
-│ 固定費   │xxxx│xxxx│...│xxxx│xxxx│
-│ 営業利益 │xxxx│xxxx│...│xxxx│xxxx│
-│ 営業利益率│xx.x│xx.x│...│  - │xx.x│
-└──────────┴────┴────┴...┴────┴────┘
-```
+#### 出力項目
+- 客数、客単価、売上
+- 変動費、変動費率
+- 粗利、粗利率
+- 固定費、営業利益、営業利益率
 
 #### 顧客予算との比較セクション
 
-##### セクションヘッダー
-```css
-background: #1565c0;
-color: white;
-font-size: 14px;
-text-align: center;
-```
+| 行タイプ | 背景色 | ボーダー色 |
+|---------|--------|-----------|
+| MQ計算値 | #e3f2fd | #1565c0 |
+| 顧客予算 | #fff8e1 | #f57c00 |
+| 差異（+） | #e8f5e9 | 緑 |
+| 差異（-） | #ffebee | 赤 |
 
-##### グループヘッダー（【売上】対比、【営業利益】対比）
-```css
-background: #263238;
-color: white;
-```
-
-##### MQ計算値行
-```css
-background: #e3f2fd;
-border-left: 4px solid #1565c0;
-color: #1565c0;
-font-weight: bold;
-```
-
-##### 顧客予算行
-```css
-background: #fff8e1;
-border-left: 4px solid #f57c00;
-color: #e65100;
-font-weight: bold;
-```
-
-##### 差異行
-```css
-/* プラスの場合 */
-background: #e8f5e9;
-color: #2e7d32;
-
-/* マイナスの場合 */
-background: #ffebee;
-color: #c62828;
-```
-
----
-
-### 7.6 予算一覧タブ（【5】）
-
-#### ヘッダースタイル
-```css
-background: linear-gradient(135deg, #1a237e 0%, #4a148c 100%);
-color: white;
-```
+### 5.7 予算一覧タブ（【5】）
 
 #### セクションヘッダー色
+
 | セクション | 背景色 |
 |-----------|--------|
 | 目標設定 | #1565c0（青） |
@@ -417,20 +303,7 @@ color: white;
 | その他経費 | #7b1fa2（紫） |
 | 営業利益 | #c62828（赤） |
 
-#### 行スタイル
-- 親項目: 通常背景
-- 子項目（インデント）: `background: #f5f5f5;`
-
----
-
-### 7.7 サマリータブ（【6】）
-
-#### ヘッダースタイル
-```css
-.section-header.header-summary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-```
+### 5.8 サマリータブ（【6】）
 
 #### サマリーグリッド
 ```css
@@ -439,15 +312,6 @@ color: white;
   grid-template-columns: repeat(6, 1fr);
   gap: 15px;
 }
-```
-
-#### サマリーカード
-```html
-<div class="summary-card">
-  <div class="summary-label">年間売上</div>
-  <div class="summary-value">xxx,xxx</div>
-  <div class="summary-sub">千円</div>
-</div>
 ```
 
 #### 表示項目
@@ -462,9 +326,188 @@ color: white;
 
 ---
 
-## 8. テーブル共通仕様
+## 6. エクスポートタブ
 
-### 8.1 基本スタイル
+### 6.1 構成
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                 出力データ履歴一覧                            │
+├─────────────────────────────────────────────────────────────┤
+│ ヘッダー: 出力データ履歴一覧（N件）    [全履歴クリア]          │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌──────────────────┐  ┌──────────────────┐               │
+│  │ 履歴カード1       │  │ 履歴カード2       │               │
+│  │ タイトル         │  │ タイトル         │               │
+│  │ 保存日時         │  │ 保存日時         │               │
+│  │ データ種別       │  │ データ種別       │               │
+│  │ [表示][保存][削除]│  │ [表示][保存][削除]│               │
+│  └──────────────────┘  └──────────────────┘               │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 6.2 出力データ履歴一覧
+
+#### HTMLプレビューモーダル
+```html
+<div id="previewModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:9999;">
+    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:8px;width:90%;max-width:1200px;max-height:90vh;overflow:auto;">
+        <div style="padding:15px;border-bottom:1px solid #ddd;display:flex;justify-content:space-between;align-items:center;">
+            <h3 id="previewTitle">プレビュー</h3>
+            <button onclick="closePreviewModal()" style="background:none;border:none;font-size:24px;cursor:pointer;">&times;</button>
+        </div>
+        <div id="previewContent" style="padding:15px;"></div>
+    </div>
+</div>
+```
+
+### 6.3 履歴カード
+
+```html
+<div class="export-history-item">
+    <div class="export-history-title">ラクミー入力値_店舗A_2024-12-27</div>
+    <div class="export-history-meta">
+        保存日時: 2024/12/27 15:30:00
+    </div>
+    <div class="export-history-type">
+        種別: ラクミー入力値
+    </div>
+    <div class="export-history-actions">
+        <button class="view-btn" onclick="viewExportData(id)">👁 表示</button>
+        <button class="save-btn" onclick="downloadExportData(id)">💾 保存</button>
+        <button class="delete-btn" onclick="deleteExportData(id)">🗑 削除</button>
+    </div>
+</div>
+```
+
+### 6.4 履歴カードスタイル
+
+```css
+.export-history-item {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.export-history-item:hover {
+  border-color: #1565c0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.export-history-title {
+  font-weight: bold;
+  font-size: 13px;
+  color: #1565c0;
+}
+.export-history-meta,
+.export-history-type {
+  font-size: 11px;
+  color: #666;
+}
+.export-history-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.export-history-actions button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+}
+.view-btn { background: #2196f3; color: #fff; }
+.save-btn { background: #4caf50; color: #fff; }
+.delete-btn { background: #f44336; color: #fff; }
+```
+
+### 6.5 全履歴クリアボタン
+
+```html
+<button class="btn btn-danger" onclick="clearAllExportHistory()">
+    🗑 全履歴クリア
+</button>
+```
+
+### 6.6 データ自動保存
+
+- CSVインポート時に自動保存
+- CSVエクスポート時に自動保存
+- localStorageに履歴を永続化
+
+---
+
+## 7. 店舗セレクター
+
+### 7.1 表示条件
+- 複数店舗がある場合のみ表示
+
+### 7.2 要素
+```html
+<div class="store-selector">
+  <span>店舗選択 (N店舗):</span>
+  <div class="store-chips">
+    <span class="store-chip active" onclick="switchStore('店舗名')">店舗名</span>
+    ...
+  </div>
+</div>
+```
+
+### 7.3 店舗チップスタイル
+```css
+.store-chip {
+  padding: 4px 12px;
+  border-radius: 15px;
+  background: #e0e0e0;
+  cursor: pointer;
+  font-size: 11px;
+}
+.store-chip.active {
+  background: #1565c0;
+  color: white;
+}
+```
+
+---
+
+## 8. CSVエクスポート仕様
+
+### 8.1 全店舗エクスポート
+
+「全店舗を選択」時は1つのCSVに全店舗データを縦に連結：
+
+```
+店舗名,セクション,項目名,変換タイプ,4月,5月,...,3月,合計,平均
+店舗A,費用予算設定,地代家賃,sum,450,450,...,450,5400,450
+店舗A,費用予算設定,固定人件費,sum,500,500,...,500,6000,500
+...
+店舗B,費用予算設定,地代家賃,sum,380,380,...,380,4560,380
+店舗B,費用予算設定,固定人件費,sum,450,450,...,450,5400,450
+...
+```
+
+### 8.2 ファイル名規則
+
+| 条件 | ファイル名 |
+|------|-----------|
+| 単一店舗 | `{種別}_{店舗名}_{YYYY-MM-DD}.csv` |
+| 全店舗 | `{種別}_全店舗_{YYYY-MM-DD}.csv` |
+
+### 8.3 出力形式
+
+- 文字コード: UTF-8 with BOM（Excel対応）
+- 金額: 千円単位、整数
+- 率: 整数%表示
+
+---
+
+## 9. テーブル共通仕様
+
+### 9.1 基本スタイル
 ```css
 .annual-table {
   width: 100%;
@@ -482,185 +525,37 @@ color: white;
 }
 ```
 
-### 8.2 月ヘッダー
+### 9.2 合計・平均列
 ```css
-.month-header {
-  min-width: 55px;
-  text-align: center;
-}
+.total-col { background: #fff9c4; font-weight: bold; }
+.avg-col { background: #e3f2fd; }
 ```
-
-### 8.3 合計・平均列
-```css
-.total-col {
-  background: #fff9c4;
-  font-weight: bold;
-}
-.avg-col {
-  background: #e3f2fd;
-}
-```
-
-### 8.4 セル種別
-| クラス | 用途 |
-|--------|------|
-| input-cell | 予算入力値 |
-| calc-cell | 演算結果 |
-| rakumy-cell | ラクミー入力値 |
-| output-cell | MQ出力値 |
 
 ---
 
-## 9. ステータスメッセージ
+## 10. 数値フォーマット
 
-### 9.1 種別
-| 種別 | 背景色 | アイコン |
-|------|--------|----------|
-| info | #e3f2fd | 青 |
-| success | #e8f5e9 | 緑 |
-| error | #ffebee | 赤 |
-
-### 9.2 表示位置
-- ヘッダー直下
-- 全幅表示
-
----
-
-## 10. レスポンシブ対応
-
-### 10.1 テーブルスクロール
-- 横スクロール対応
-- `overflow-x: auto`
-
-### 10.2 タブ折り返し
-```css
-.tabs {
-  flex-wrap: wrap;
-}
-```
-
-### 10.3 サマリーグリッド
-- 画面幅に応じて列数を調整
-- 最小幅でカードが縦並びに
-
----
-
-## 11. 数値フォーマット
-
-### 11.1 金額（千円単位）
+### 10.1 金額（千円単位）
 ```javascript
 function fmt(val) {
   return Math.round(val).toLocaleString();
 }
-// 例: 12345678 → "12,345,678"
 ```
 
-### 11.2 率（%）
+### 10.2 率（%）
 ```javascript
 function fmtRate(val) {
   return val.toFixed(1);
 }
-// 例: 32.567 → "32.6"
 ```
 
 ---
 
-## 12. 履歴セクション
+## 11. レスポンシブ対応
 
-### 12.1 表示位置
-ツールバーの下、店舗セレクターの上に配置。
+### 11.1 テーブルスクロール
+- 横スクロール対応 `overflow-x: auto`
 
-### 12.2 表示条件
-- 履歴データがある場合のみ表示
-- `display: block` / `display: none`
-
-### 12.3 HTML構造
-```html
-<div class="history-section" id="historySection">
-  <div style="display:flex; align-items:center; gap:15px;">
-    <h3>インポート履歴</h3>
-    <button class="btn" style="background:#4caf50;color:#fff;">現在のデータを保存</button>
-    <button class="btn btn-danger">履歴全削除</button>
-  </div>
-  <div class="history-list" id="historyList">
-    <!-- 履歴アイテム -->
-  </div>
-</div>
-```
-
-### 12.4 履歴セクションスタイル
-```css
-.history-section {
-  background: #f8f9fa;
-  border-radius: 8px;
-  padding: 15px;
-  margin-bottom: 15px;
-}
-.history-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 10px;
-  max-height: 300px;
-  overflow-y: auto;
-}
-```
-
-### 12.5 履歴アイテムスタイル
-```css
-.history-item {
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.history-item:hover {
-  border-color: #1565c0;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-.history-title {
-  font-weight: bold;
-  font-size: 12px;
-  color: #1565c0;
-}
-.history-meta {
-  font-size: 10px;
-  color: #666;
-}
-.history-stores {
-  font-size: 10px;
-  color: #888;
-}
-.history-actions {
-  display: flex;
-  gap: 5px;
-  margin-top: 5px;
-}
-.history-actions .load-btn {
-  background: #1565c0;
-  color: #fff;
-}
-.history-actions .delete-btn {
-  background: #f44336;
-  color: #fff;
-}
-```
-
-### 12.6 履歴アイテム構造
-```html
-<div class="history-item">
-  <div class="history-title">2024-12-26_21:30_店舗A, 店舗B</div>
-  <div class="history-meta">
-    <span>保存日時: 2024/12/26 21:30:00</span>
-  </div>
-  <div class="history-stores">
-    <span>店舗数: 2店舗 (店舗A, 店舗B)</span>
-  </div>
-  <div class="history-actions">
-    <button class="load-btn">読み込み</button>
-    <button class="delete-btn">削除</button>
-  </div>
-</div>
-```
+### 11.2 グリッドレイアウト
+- 画面幅に応じて列数を自動調整
+- `grid-template-columns: repeat(auto-fill, minmax(300px, 1fr))`
