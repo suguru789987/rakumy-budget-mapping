@@ -60,6 +60,7 @@
         .annual-table .avg-col { background: #f3e5f5; }
 
         .input-cell { background: #fffde7; }
+        .input-cell.zero-value { background: #f5f5f5; color: #bbb; }
         .calc-cell { background: #e0f7fa; }
         .rakumy-cell { background: #e3f2fd; }
         .output-cell { background: #e8f5e9; }
@@ -427,6 +428,9 @@
         .main-nav-tab.budget-tab.active {
             background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%);
         }
+        .main-nav-tab.simulation-tab.active {
+            background: linear-gradient(135deg, #f57c00 0%, #e65100 100%);
+        }
         .main-nav-tab.export-tab.active {
             background: linear-gradient(135deg, #7b1fa2 0%, #4a148c 100%);
         }
@@ -454,6 +458,10 @@
             <button class="main-nav-tab budget-tab" onclick="showMainPage('budget')">
                 <span class="tab-icon">📊</span>
                 <span>予算設定</span>
+            </button>
+            <button class="main-nav-tab simulation-tab" onclick="showMainPage('simulation')">
+                <span class="tab-icon">🧮</span>
+                <span>予算試算</span>
             </button>
             <button class="main-nav-tab export-tab" onclick="showMainPage('export')">
                 <span class="tab-icon">📤</span>
@@ -633,6 +641,129 @@
                 <div class="section-header" style="background:#455a64;color:#fff;">処理ログ</div>
                 <div class="section-body">
                     <div id="preprocessLog" class="preprocess-log">CSVをインポートしてください</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== 予算試算ページ ===== -->
+        <div id="page-simulation" class="main-page">
+            <div class="import-section" style="border-left:4px solid #ff9800;">
+                <h2 style="color:#e65100;font-size:18px;margin-bottom:20px;">🧮 予算試算（What-If分析）</h2>
+                <p style="color:#666;font-size:12px;margin-bottom:20px;">顧客予算値を編集して、ラクミー予算への影響をリアルタイムで確認できます。</p>
+
+                <!-- 店舗選択 -->
+                <div style="background:#fff3e0;padding:15px;border-radius:8px;margin-bottom:20px;border:2px solid #ff9800;">
+                    <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;">
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <label style="font-weight:bold;font-size:12px;color:#e65100;">試算対象店舗:</label>
+                            <select id="simulationStoreSelect" style="padding:8px 12px;border:2px solid #ff9800;border-radius:4px;font-size:12px;min-width:200px;" onchange="loadSimulationData()">
+                                <option value="">-- 店舗を選択 --</option>
+                            </select>
+                        </div>
+                        <button class="btn" style="background:#ff9800;color:#fff;padding:8px 15px;" onclick="resetSimulationData()">
+                            🔄 元に戻す
+                        </button>
+                        <button class="btn" style="background:#4caf50;color:#fff;padding:8px 15px;" onclick="applySimulationToMain()">
+                            ✅ 試算値を本データに反映
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 試算テーブル -->
+                <div id="simulationContent" style="display:none;">
+                    <!-- 統一フィルター -->
+                    <div style="background:#f5f5f5;padding:15px;border-radius:8px;margin-bottom:20px;">
+                        <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <label style="font-size:12px;font-weight:bold;color:#333;">表示期間:</label>
+                                <select id="simYear" style="padding:6px 10px;border:2px solid #ff9800;border-radius:4px;font-size:12px;" onchange="updateSimMonthOptions(); renderLinkedSimulation();">
+                                </select>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <label style="font-size:12px;font-weight:bold;color:#333;">表示モード:</label>
+                                <select id="simDisplayMode" style="padding:6px 10px;border:2px solid #ff9800;border-radius:4px;font-size:12px;min-width:120px;" onchange="changeDisplayMode()">
+                                    <option value="all">全月表示</option>
+                                    <option value="1H">上半期（4-9月）</option>
+                                    <option value="2H">下半期（10-3月）</option>
+                                    <option value="Q1">Q1（4-6月）</option>
+                                    <option value="Q2">Q2（7-9月）</option>
+                                    <option value="Q3">Q3（10-12月）</option>
+                                    <option value="Q4">Q4（1-3月）</option>
+                                    <option value="single">単月選択</option>
+                                    <option value="custom">複数月選択</option>
+                                </select>
+                            </div>
+                            <div id="singleMonthSelector" style="display:none;align-items:center;gap:5px;">
+                                <select id="simMonth" style="padding:6px 10px;border:2px solid #ff9800;border-radius:4px;font-size:12px;min-width:80px;" onchange="renderLinkedSimulation();">
+                                </select>
+                                <button class="btn" style="background:#607d8b;color:#fff;padding:6px 10px;font-size:11px;" onclick="prevSimMonth()">◀</button>
+                                <button class="btn" style="background:#607d8b;color:#fff;padding:6px 10px;font-size:11px;" onclick="nextSimMonth()">▶</button>
+                            </div>
+                            <div style="margin-left:auto;font-size:11px;color:#666;">
+                                <span style="background:#e3f2fd;padding:3px 8px;border-radius:3px;margin-right:5px;">📝 青=顧客予算（入力）</span>
+                                <span style="background:#f3e5f5;padding:3px 8px;border-radius:3px;">📊 紫=ラクミー予算（出力）</span>
+                            </div>
+                        </div>
+                        <!-- 複数月選択用チェックボックス -->
+                        <div id="multiMonthSelector" style="display:none;padding:10px;background:#fff;border:1px solid #ddd;border-radius:4px;">
+                            <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+                                <span style="font-size:11px;color:#666;margin-right:8px;">選択月:</span>
+                                <label style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:11px;padding:4px 8px;background:#e3f2fd;border-radius:3px;">
+                                    <input type="checkbox" class="monthCheck" value="0" onchange="updateCustomMonths()"> 4月
+                                </label>
+                                <label style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:11px;padding:4px 8px;background:#e3f2fd;border-radius:3px;">
+                                    <input type="checkbox" class="monthCheck" value="1" onchange="updateCustomMonths()"> 5月
+                                </label>
+                                <label style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:11px;padding:4px 8px;background:#e3f2fd;border-radius:3px;">
+                                    <input type="checkbox" class="monthCheck" value="2" onchange="updateCustomMonths()"> 6月
+                                </label>
+                                <label style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:11px;padding:4px 8px;background:#e3f2fd;border-radius:3px;">
+                                    <input type="checkbox" class="monthCheck" value="3" onchange="updateCustomMonths()"> 7月
+                                </label>
+                                <label style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:11px;padding:4px 8px;background:#e3f2fd;border-radius:3px;">
+                                    <input type="checkbox" class="monthCheck" value="4" onchange="updateCustomMonths()"> 8月
+                                </label>
+                                <label style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:11px;padding:4px 8px;background:#e3f2fd;border-radius:3px;">
+                                    <input type="checkbox" class="monthCheck" value="5" onchange="updateCustomMonths()"> 9月
+                                </label>
+                                <label style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:11px;padding:4px 8px;background:#f3e5f5;border-radius:3px;">
+                                    <input type="checkbox" class="monthCheck" value="6" onchange="updateCustomMonths()"> 10月
+                                </label>
+                                <label style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:11px;padding:4px 8px;background:#f3e5f5;border-radius:3px;">
+                                    <input type="checkbox" class="monthCheck" value="7" onchange="updateCustomMonths()"> 11月
+                                </label>
+                                <label style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:11px;padding:4px 8px;background:#f3e5f5;border-radius:3px;">
+                                    <input type="checkbox" class="monthCheck" value="8" onchange="updateCustomMonths()"> 12月
+                                </label>
+                                <label style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:11px;padding:4px 8px;background:#f3e5f5;border-radius:3px;">
+                                    <input type="checkbox" class="monthCheck" value="9" onchange="updateCustomMonths()"> 1月
+                                </label>
+                                <label style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:11px;padding:4px 8px;background:#f3e5f5;border-radius:3px;">
+                                    <input type="checkbox" class="monthCheck" value="10" onchange="updateCustomMonths()"> 2月
+                                </label>
+                                <label style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:11px;padding:4px 8px;background:#f3e5f5;border-radius:3px;">
+                                    <input type="checkbox" class="monthCheck" value="11" onchange="updateCustomMonths()"> 3月
+                                </label>
+                                <button class="btn" style="margin-left:10px;background:#2196f3;color:#fff;padding:4px 10px;font-size:10px;" onclick="selectAllMonths()">全選択</button>
+                                <button class="btn" style="background:#9e9e9e;color:#fff;padding:4px 10px;font-size:10px;" onclick="clearAllMonths()">クリア</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 連動比較ビュー -->
+                    <div id="linkedSimulationView"></div>
+
+                    <!-- 試算サマリー -->
+                    <div style="margin-top:20px;background:#fff8e1;border-radius:8px;padding:20px;border:2px solid #ffc107;">
+                        <h3 style="color:#f57c00;font-size:14px;margin-bottom:15px;">📈 試算サマリー（年間合計比較）</h3>
+                        <div id="simulationSummary"></div>
+                    </div>
+                </div>
+
+                <!-- データなしメッセージ -->
+                <div id="simulationNoData" style="text-align:center;padding:50px;color:#888;">
+                    <div style="font-size:50px;margin-bottom:15px;">📋</div>
+                    <div>先にCSVをインポートし、上で店舗を選択してください。</div>
                 </div>
             </div>
         </div>
@@ -926,6 +1057,300 @@
             '9642': { v15No: 65, name: '客単価', category: 'KPI', inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定' }
         };
 
+        // ★ 項目名ベースのマッピング（E列空欄・セル結合解除対応）
+        // コードがない行でも項目名から対応するv17Noを特定
+        var NAME_BASED_MAP = {
+            // === 売上高（No.1-4） ===
+            '店舗売上高': { v17No: 1, category: '売上高' },
+            'フード売上': { v17No: 1, category: '売上高' },
+            'ドリンク売上': { v17No: 2, category: '売上高' },
+            'その他売上高': { v17No: 3, category: '売上高' },
+            'その他売上': { v17No: 3, category: '売上高' },
+            '売上高合計': { v17No: 4, category: '売上高' },
+            '売上高合計（税抜）': { v17No: 4, category: '売上高' },
+            // === 売上原価（No.5-15） ===
+            '食材期首棚': { v17No: 5, category: '売上原価' },
+            '食材仕入高': { v17No: 6, category: '売上原価' },
+            '食材期末棚': { v17No: 7, category: '売上原価' },
+            '食材原価': { v17No: 8, category: '売上原価' },
+            'ドリンク期首棚': { v17No: 9, category: '売上原価' },
+            'ﾄﾞﾘﾝｸ期首棚': { v17No: 9, category: '売上原価' },  // 半角カタカナ対応
+            'ドリンク仕入高': { v17No: 10, category: '売上原価' },
+            'ﾄﾞﾘﾝｸ仕入高': { v17No: 10, category: '売上原価' },  // 半角カタカナ対応
+            'ドリンク期末棚': { v17No: 11, category: '売上原価' },
+            'ﾄﾞﾘﾝｸ期末棚': { v17No: 11, category: '売上原価' },  // 半角カタカナ対応
+            'ドリンク原価': { v17No: 12, category: '売上原価' },
+            'ﾄﾞﾘﾝｸ原価': { v17No: 12, category: '売上原価' },  // 半角カタカナ対応
+            '内部振替': { v17No: 13, category: '売上原価' },
+            '原価合計': { v17No: 14, category: '売上原価' },
+            '売上総利益': { v17No: 15, category: '売上原価' },
+            // === 人件費（No.16-26） ===
+            '給料手当': { v17No: 16, category: '人件費' },
+            '店長料理長昇給': { v17No: 17, category: '人件費' },
+            '社員給与': { v17No: 18, category: '人件費' },
+            '雑給': { v17No: 19, category: '人件費' },
+            'ヘルプ人件費': { v17No: 20, category: '人件費' },
+            '法定福利費': { v17No: 21, category: '人件費' },
+            '通勤交通費': { v17No: 22, category: '人件費' },
+            '賞与引当金繰入': { v17No: 23, category: '人件費' },
+            '社宅家賃': { v17No: 24, category: '人件費' },
+            '休業手当': { v17No: 25, category: '人件費' },
+            '人件費合計': { v17No: 26, category: '人件費' },
+            // === その他変動費（No.27-51） ===
+            '販売促進費': { v17No: 27, category: 'その他変動費' },
+            'メニューコピー': { v17No: 28, category: 'その他変動費' },
+            '調査費': { v17No: 29, category: 'その他変動費' },
+            '衛生費': { v17No: 30, category: 'その他変動費' },
+            'サービス費': { v17No: 31, category: 'その他変動費' },
+            '電気代': { v17No: 32, category: 'その他変動費' },
+            'ガス代': { v17No: 33, category: 'その他変動費' },
+            '水道代': { v17No: 34, category: 'その他変動費' },
+            '消耗品費': { v17No: 35, category: 'その他変動費' },
+            '保守修繕費': { v17No: 36, category: 'その他変動費' },
+            '租税公課': { v17No: 37, category: 'その他変動費' },
+            '接待交際費': { v17No: 38, category: 'その他変動費' },
+            '旅費交通費': { v17No: 39, category: 'その他変動費' },
+            '通信費': { v17No: 40, category: 'その他変動費' },
+            'クレジット手数料': { v17No: 41, category: 'その他変動費' },
+            'ｸﾚｼﾞｯﾄ手数料': { v17No: 41, category: 'その他変動費' },
+            '支払手数料': { v17No: 42, category: 'その他変動費' },
+            '会議費': { v17No: 43, category: 'その他変動費' },
+            '諸会費': { v17No: 44, category: 'その他変動費' },
+            '図書教育費': { v17No: 45, category: 'その他変動費' },
+            '研修費': { v17No: 46, category: 'その他変動費' },
+            '業態研究費': { v17No: 47, category: 'その他変動費' },
+            '採用費': { v17No: 48, category: 'その他変動費' },
+            'IT費': { v17No: 49, category: 'その他変動費' },
+            '外注費': { v17No: 50, category: 'その他変動費' },
+            '雑費': { v17No: 51, category: 'その他変動費' },
+            // === 集計（No.52, 60, 62） ===
+            'その他変動費合計': { v17No: 52, category: '集計' },
+            '固定費合計': { v17No: 60, category: '集計' },
+            '販売管理費合計': { v17No: 62, category: '集計' },
+            // === ロイヤリティ・店舗補填（No.53-54） ===
+            'ロイヤリティ': { v17No: 53, category: '固定費' },
+            '店舗補填': { v17No: 54, category: '固定費' },
+            '店舗補てん': { v17No: 54, category: '固定費' },  // 表記揺れ対応
+            // === 固定費（No.55-59） ===
+            '減価償却費': { v17No: 55, category: '固定費' },
+            '家賃': { v17No: 56, category: '固定費' },
+            '地代家賃': { v17No: 56, category: '固定費' },  // バリエーション
+            '警備料': { v17No: 57, category: '固定費' },
+            'リース料': { v17No: 58, category: '固定費' },
+            'ﾘｰｽ料': { v17No: 58, category: '固定費' },  // 半角カタカナ対応
+            '賃借料': { v17No: 59, category: '固定費' },
+            // === 利益（No.61, 63） ===
+            '店舗営業利益': { v17No: 61, category: '利益' },
+            '営業利益': { v17No: 63, category: '利益' },
+            // === KPI（No.64-70） ===
+            '客数': { v17No: 64, category: 'KPI' },
+            '客単価': { v17No: 65, category: 'KPI' },
+            'ランチ売上比率': { v17No: 66, category: 'KPI' },
+            'ディナー売上比率': { v17No: 67, category: 'KPI' },
+            'フード売上比率': { v17No: 68, category: 'KPI' },
+            'ドリンク売上比率': { v17No: 69, category: 'KPI' },
+            'その他売上比率': { v17No: 70, category: 'KPI' },
+            // === 営業外・経常利益（No.71-74） ===
+            '営業外収益合計': { v17No: 71, category: '営業外' },
+            '営業外費用合計': { v17No: 72, category: '営業外' },
+            '営業外損益合計': { v17No: 73, category: '営業外' },
+            '経常利益': { v17No: 74, category: '利益' }
+        };
+
+        // ★ CODE_BASED_MAP: 勘定科目コード（B列）からv17Noへのマッピング
+        var CODE_BASED_MAP = {
+            // === 売上高（No.1-4） ===
+            '810': { v17No: 1, category: '売上高', name: '店舗売上高' },
+            '811': { v17No: 2, category: '売上高', name: 'ドリンク売上' },
+            '812': { v17No: 3, category: '売上高', name: 'その他売上高' },
+            '999': { v17No: 4, category: '売上高', name: '売上高合計' },
+            // === 売上原価（No.5-15） ===
+            '2028': { v17No: 5, category: '売上原価', name: '食材期首棚' },
+            '461': { v17No: 6, category: '売上原価', name: '食材仕入高' },
+            '2029': { v17No: 7, category: '売上原価', name: '食材期末棚' },
+            '2030': { v17No: 9, category: '売上原価', name: 'ドリンク期首棚' },
+            '462': { v17No: 10, category: '売上原価', name: 'ドリンク仕入高' },
+            '2031': { v17No: 11, category: '売上原価', name: 'ドリンク期末棚' },
+            '463': { v17No: 13, category: '売上原価', name: '内部振替' },
+            // === 人件費（No.16-26） ===
+            '501': { v17No: 16, category: '人件費', name: '給料手当' },
+            '509': { v17No: 19, category: '人件費', name: '雑給' },
+            '503': { v17No: 20, category: '人件費', name: 'ヘルプ人件費' },
+            '504': { v17No: 21, category: '人件費', name: '法定福利費' },
+            '508': { v17No: 22, category: '人件費', name: '通勤交通費' },
+            '506': { v17No: 23, category: '人件費', name: '賞与引当金繰入' },
+            '553': { v17No: 24, category: '人件費', name: '社宅家賃' },
+            '2105': { v17No: 25, category: '人件費', name: '休業手当' },
+            // === その他変動費（No.27-51） ===
+            '510': { v17No: 27, category: 'その他変動費', name: '販売促進費' },
+            '541': { v17No: 28, category: 'その他変動費', name: 'メニューコピー' },
+            '516': { v17No: 29, category: 'その他変動費', name: '調査費' },
+            '514': { v17No: 30, category: 'その他変動費', name: '衛生費' },
+            '542': { v17No: 31, category: 'その他変動費', name: 'サービス費' },
+            '520': { v17No: 32, category: 'その他変動費', name: '電気代' },
+            '521': { v17No: 33, category: 'その他変動費', name: 'ガス代' },
+            '522': { v17No: 34, category: 'その他変動費', name: '水道代' },
+            '523': { v17No: 35, category: 'その他変動費', name: '消耗品費' },
+            '526': { v17No: 36, category: 'その他変動費', name: '保守修繕費' },
+            '527': { v17No: 37, category: 'その他変動費', name: '租税公課' },
+            '529': { v17No: 38, category: 'その他変動費', name: '接待交際費' },
+            '530': { v17No: 39, category: 'その他変動費', name: '旅費交通費' },
+            '531': { v17No: 40, category: 'その他変動費', name: '通信費' },
+            '5321': { v17No: 41, category: 'その他変動費', name: 'クレジット手数料' },
+            '532': { v17No: 42, category: 'その他変動費', name: '支払手数料' },
+            '533': { v17No: 43, category: 'その他変動費', name: '会議費' },
+            '534': { v17No: 44, category: 'その他変動費', name: '諸会費' },
+            '536': { v17No: 45, category: 'その他変動費', name: '図書教育費' },
+            '546': { v17No: 46, category: 'その他変動費', name: '研修費' },
+            '537': { v17No: 47, category: 'その他変動費', name: '業態研究費' },
+            '518': { v17No: 48, category: 'その他変動費', name: '採用費' },
+            '550': { v17No: 49, category: 'その他変動費', name: 'IT費' },
+            '2128': { v17No: 50, category: 'その他変動費', name: '外注費' },
+            '539': { v17No: 51, category: 'その他変動費', name: '雑費' },
+            // === ロイヤリティ・店舗補填（No.53-54） ===
+            '512': { v17No: 53, category: '固定費', name: 'ロイヤリティ' },
+            '2124': { v17No: 53, category: '固定費', name: 'ロイヤリティ' },  // 店舗別ロイヤリティ
+            // === 固定費（No.55-59） ===
+            '528': { v17No: 55, category: '固定費', name: '減価償却費' },
+            '554': { v17No: 56, category: '固定費', name: '家賃' },
+            '552': { v17No: 57, category: '固定費', name: '警備料' },
+            '5241': { v17No: 58, category: '固定費', name: 'リース料' },
+            '524': { v17No: 59, category: '固定費', name: '賃借料' },
+            // === 利益・集計コード ===
+            '9640': { v17No: 63, category: '利益', name: '営業利益' },
+            '9700': { v17No: 74, category: '利益', name: '経常利益' }
+        };
+
+        // 勘定科目コードからv17Noを検索（強化版）
+        function findV17NoByCode(code) {
+            if (!code) return null;
+            var codeStr = String(code).trim();
+
+            // 直接マッチ
+            if (CODE_BASED_MAP[codeStr]) {
+                return CODE_BASED_MAP[codeStr];
+            }
+
+            // 見えない文字を除去して再試行
+            var cleanCode = codeStr.replace(/[^\d]/g, '');
+            if (cleanCode !== codeStr && CODE_BASED_MAP[cleanCode]) {
+                console.log('findV17NoByCode: cleaned "' + codeStr + '" to "' + cleanCode + '"');
+                return CODE_BASED_MAP[cleanCode];
+            }
+
+            // デバッグ：監視対象のコードの場合は警告
+            var debugCodes = ['810', '2030', '2031', '503'];
+            if (debugCodes.indexOf(codeStr) >= 0 || debugCodes.indexOf(cleanCode) >= 0) {
+                console.warn('findV17NoByCode: コード "' + codeStr + '" がCODE_BASED_MAPに見つかりません');
+                console.log('CODE_BASED_MAP keys sample:', Object.keys(CODE_BASED_MAP).slice(0, 10));
+            }
+
+            return null;
+        }
+
+        // 半角カタカナ→全角カタカナ変換
+        function normalizeKatakana(str) {
+            var kanaMap = {
+                'ｱ':'ア','ｲ':'イ','ｳ':'ウ','ｴ':'エ','ｵ':'オ',
+                'ｶ':'カ','ｷ':'キ','ｸ':'ク','ｹ':'ケ','ｺ':'コ',
+                'ｻ':'サ','ｼ':'シ','ｽ':'ス','ｾ':'セ','ｿ':'ソ',
+                'ﾀ':'タ','ﾁ':'チ','ﾂ':'ツ','ﾃ':'テ','ﾄ':'ト',
+                'ﾅ':'ナ','ﾆ':'ニ','ﾇ':'ヌ','ﾈ':'ネ','ﾉ':'ノ',
+                'ﾊ':'ハ','ﾋ':'ヒ','ﾌ':'フ','ﾍ':'ヘ','ﾎ':'ホ',
+                'ﾏ':'マ','ﾐ':'ミ','ﾑ':'ム','ﾒ':'メ','ﾓ':'モ',
+                'ﾔ':'ヤ','ﾕ':'ユ','ﾖ':'ヨ',
+                'ﾗ':'ラ','ﾘ':'リ','ﾙ':'ル','ﾚ':'レ','ﾛ':'ロ',
+                'ﾜ':'ワ','ｦ':'ヲ','ﾝ':'ン',
+                'ﾞ':'゛','ﾟ':'゜',
+                'ｬ':'ャ','ｭ':'ュ','ｮ':'ョ',
+                'ｯ':'ッ','ｰ':'ー'
+            };
+            var result = '';
+            for (var i = 0; i < str.length; i++) {
+                var c = str[i];
+                // 濁点・半濁点の結合処理
+                if (i + 1 < str.length) {
+                    var next = str[i + 1];
+                    if (next === 'ﾞ' && kanaMap[c]) {
+                        var base = kanaMap[c];
+                        var dakuten = {'カ':'ガ','キ':'ギ','ク':'グ','ケ':'ゲ','コ':'ゴ',
+                                       'サ':'ザ','シ':'ジ','ス':'ズ','セ':'ゼ','ソ':'ゾ',
+                                       'タ':'ダ','チ':'ヂ','ツ':'ヅ','テ':'デ','ト':'ド',
+                                       'ハ':'バ','ヒ':'ビ','フ':'ブ','ヘ':'ベ','ホ':'ボ',
+                                       'ウ':'ヴ'};
+                        if (dakuten[base]) {
+                            result += dakuten[base];
+                            i++;
+                            continue;
+                        }
+                    }
+                    if (next === 'ﾟ' && kanaMap[c]) {
+                        var base = kanaMap[c];
+                        var handakuten = {'ハ':'パ','ヒ':'ピ','フ':'プ','ヘ':'ペ','ホ':'ポ'};
+                        if (handakuten[base]) {
+                            result += handakuten[base];
+                            i++;
+                            continue;
+                        }
+                    }
+                }
+                result += kanaMap[c] || c;
+            }
+            return result;
+        }
+
+        // 項目名からv17Noを検索（部分一致対応・強化版）
+        function findV17NoByName(itemName) {
+            if (!itemName) return null;
+            var normalized = normalizeKatakana(itemName.trim());
+
+            // 完全一致
+            if (NAME_BASED_MAP[normalized]) {
+                return NAME_BASED_MAP[normalized];
+            }
+
+            // 空白・全角空白を除去して再試行
+            var noSpace = normalized.replace(/[\s　]/g, '');
+            if (noSpace !== normalized && NAME_BASED_MAP[noSpace]) {
+                return NAME_BASED_MAP[noSpace];
+            }
+
+            // 部分一致（キーワード含む）
+            // ※ 短い項目名（3文字以下）の逆マッチは誤マッチを防ぐため無効
+            for (var key in NAME_BASED_MAP) {
+                // 入力がキーを含む場合（例：「店舗売上高ABC」が「店舗売上高」を含む）
+                if (normalized.indexOf(key) >= 0) {
+                    return NAME_BASED_MAP[key];
+                }
+                // キーが入力を含む場合（例：「店舗売上高」が「売上高」を含む）
+                // → 入力が4文字以上の場合のみ許可（「売上」のような短い名前の誤マッチ防止）
+                if (normalized.length >= 4 && key.indexOf(normalized) >= 0) {
+                    return NAME_BASED_MAP[key];
+                }
+            }
+
+            // さらに柔軟なマッチング：空白除去版での部分一致
+            for (var key in NAME_BASED_MAP) {
+                var keyNoSpace = key.replace(/[\s　]/g, '');
+                // 入力がキーを含む場合
+                if (noSpace.indexOf(keyNoSpace) >= 0) {
+                    return NAME_BASED_MAP[key];
+                }
+                // キーが入力を含む場合 → 入力が4文字以上の場合のみ許可
+                if (noSpace.length >= 4 && keyNoSpace.indexOf(noSpace) >= 0) {
+                    return NAME_BASED_MAP[key];
+                }
+            }
+
+            // デバッグ：監視対象の項目名の場合は警告
+            var debugNames = ['店舗売上高', '食材原価', 'ドリンク原価', 'ドリンク期首棚', 'ドリンク期末棚', 'ヘルプ人件費'];
+            if (debugNames.indexOf(normalized) >= 0) {
+                console.warn('findV17NoByName: 項目名 "' + normalized + '" がNAME_BASED_MAPに見つかりません');
+            }
+
+            return null;
+        }
+
         // ★ 計算ルール（顧客予算 → ラクミー入力への変換）v17準拠
         var CALC_RULES = {
             // === 原価系（率計算）v17 No.8,12 ===
@@ -1037,10 +1462,11 @@
             49: { name: 'IT費', category: 'その他変動費', inputStyle: 'A.そのまま入力' },
             50: { name: '外注費', category: 'その他変動費', inputStyle: 'A.そのまま入力' },
             51: { name: '雑費', category: 'その他変動費', inputStyle: 'A.そのまま入力' },
-            // === 集計（No.52-54, 60, 62） ===
+            // === 集計（No.52） ===
             52: { name: 'その他変動費合計', category: '集計', inputStyle: 'C.自動演算' },
-            53: { name: '変動費合計', category: '集計', inputStyle: 'C.自動演算' },
-            54: { name: '限界利益', category: '集計', inputStyle: 'C.自動演算' },
+            // === ロイヤリティ・店舗補填（No.53-54） ===
+            53: { name: 'ロイヤリティ', category: '固定費', inputStyle: 'A.そのまま入力' },
+            54: { name: '店舗補填', category: '固定費', inputStyle: 'A.そのまま入力' },
             // === 固定費（No.55-59） ===
             55: { name: '減価償却費', category: '固定費', inputStyle: 'A.そのまま入力' },
             56: { name: '家賃', category: '固定費', inputStyle: 'B.合算して入力' },
@@ -1084,7 +1510,7 @@
             event.target.classList.add('active');
         }
 
-        // メインページ（インポート/予算設定/エクスポート）切り替え
+        // メインページ（インポート/予算設定/予算試算/エクスポート）切り替え
         function showMainPage(page) {
             // タブのアクティブ状態を切り替え
             document.querySelectorAll('.main-nav-tab').forEach(function(tab) {
@@ -1101,6 +1527,12 @@
             } else if (page === 'budget') {
                 document.querySelector('.budget-tab').classList.add('active');
                 document.getElementById('page-budget').classList.add('active');
+            } else if (page === 'simulation') {
+                document.querySelector('.simulation-tab').classList.add('active');
+                document.getElementById('page-simulation').classList.add('active');
+                if (typeof updateSimulationStoreSelect === 'function') {
+                    updateSimulationStoreSelect();
+                }
             } else if (page === 'export') {
                 document.querySelector('.export-tab').classList.add('active');
                 document.getElementById('page-export').classList.add('active');
@@ -2103,6 +2535,667 @@
                 chip.onclick = function() { switchStore(name); };
                 listEl.appendChild(chip);
             });
+
+            // 予算試算タブのセレクターも更新
+            updateSimulationStoreSelect();
+        }
+
+        // ★ 予算試算タブの店舗セレクター更新
+        function updateSimulationStoreSelect() {
+            var select = document.getElementById('simulationStoreSelect');
+            if (!select) return;
+
+            var storeNames = Object.keys(allStoresData);
+            select.innerHTML = '<option value="">-- 店舗を選択 --</option>';
+            storeNames.forEach(function(name) {
+                var opt = document.createElement('option');
+                opt.value = name;
+                opt.textContent = name;
+                select.appendChild(opt);
+            });
+        }
+
+        // ★ 予算試算用データ変数
+        var simulationData = {};
+        var simulationOriginal = {};
+
+        // ★ 予算試算データ読み込み
+        function loadSimulationData() {
+            var select = document.getElementById('simulationStoreSelect');
+            var selectedStore = select.value;
+
+            var contentDiv = document.getElementById('simulationContent');
+            var noDataDiv = document.getElementById('simulationNoData');
+
+            if (!selectedStore || !allStoresData[selectedStore]) {
+                if (contentDiv) contentDiv.style.display = 'none';
+                if (noDataDiv) noDataDiv.style.display = 'block';
+                return;
+            }
+
+            // 表示切替
+            if (contentDiv) contentDiv.style.display = 'block';
+            if (noDataDiv) noDataDiv.style.display = 'none';
+
+            // 元データをコピー
+            simulationOriginal = JSON.parse(JSON.stringify(allStoresData[selectedStore]));
+            simulationData = JSON.parse(JSON.stringify(allStoresData[selectedStore]));
+
+            // プルダウン初期化
+            initSimYearMonth();
+
+            // 連動シミュレーション描画
+            renderLinkedSimulation();
+        }
+
+        // ★ 年・月プルダウン初期化
+        function initSimYearMonth() {
+            var simYear = document.getElementById('simYear');
+            var simMonth = document.getElementById('simMonth');
+            if (!simYear || !simMonth) return;
+
+            // 年度オプション（現在年度 ± 1年）
+            var now = new Date();
+            var currentYear = now.getFullYear();
+            var currentMonth = now.getMonth() + 1;
+            var fiscalYear = currentMonth >= 4 ? currentYear : currentYear - 1;
+
+            simYear.innerHTML = '';
+            for (var y = fiscalYear - 1; y <= fiscalYear + 1; y++) {
+                var opt = document.createElement('option');
+                opt.value = y;
+                opt.textContent = y + '年度';
+                if (y === fiscalYear) opt.selected = true;
+                simYear.appendChild(opt);
+            }
+
+            updateSimMonthOptions();
+        }
+
+        // ★ 月プルダウン更新
+        function updateSimMonthOptions() {
+            var simMonth = document.getElementById('simMonth');
+            if (!simMonth) return;
+
+            simMonth.innerHTML = '';
+            var months = ['4月','5月','6月','7月','8月','9月','10月','11月','12月','1月','2月','3月'];
+            months.forEach(function(m, i) {
+                var opt = document.createElement('option');
+                opt.value = i;
+                opt.textContent = m;
+                simMonth.appendChild(opt);
+            });
+        }
+
+        // ★ 表示モード変更
+        var customSelectedMonths = []; // 複数月選択用
+        function changeDisplayMode() {
+            var mode = document.getElementById('simDisplayMode').value;
+            var singleSelector = document.getElementById('singleMonthSelector');
+            var multiSelector = document.getElementById('multiMonthSelector');
+
+            // セレクターの表示/非表示
+            if (singleSelector) singleSelector.style.display = (mode === 'single') ? 'flex' : 'none';
+            if (multiSelector) multiSelector.style.display = (mode === 'custom') ? 'block' : 'none';
+
+            renderLinkedSimulation();
+        }
+
+        // ★ 複数月選択更新
+        function updateCustomMonths() {
+            customSelectedMonths = [];
+            var checkboxes = document.querySelectorAll('.monthCheck:checked');
+            checkboxes.forEach(function(cb) {
+                customSelectedMonths.push(parseInt(cb.value));
+            });
+            customSelectedMonths.sort(function(a, b) { return a - b; });
+            renderLinkedSimulation();
+        }
+
+        // ★ 全月選択
+        function selectAllMonths() {
+            var checkboxes = document.querySelectorAll('.monthCheck');
+            checkboxes.forEach(function(cb) { cb.checked = true; });
+            updateCustomMonths();
+        }
+
+        // ★ 全月クリア
+        function clearAllMonths() {
+            var checkboxes = document.querySelectorAll('.monthCheck');
+            checkboxes.forEach(function(cb) { cb.checked = false; });
+            updateCustomMonths();
+        }
+
+        // ★ 前月・次月ボタン
+        function prevSimMonth() {
+            var simMonth = document.getElementById('simMonth');
+            if (!simMonth) return;
+            var idx = parseInt(simMonth.value);
+            if (idx > 0) {
+                simMonth.value = idx - 1;
+                renderLinkedSimulation();
+            }
+        }
+
+        function nextSimMonth() {
+            var simMonth = document.getElementById('simMonth');
+            if (!simMonth) return;
+            var idx = parseInt(simMonth.value);
+            if (idx < 11) {
+                simMonth.value = idx + 1;
+                renderLinkedSimulation();
+            }
+        }
+
+        // ★ 表示モードから月インデックス配列を取得
+        function getMonthIndicesFromMode() {
+            var mode = document.getElementById('simDisplayMode');
+            var selectedMode = mode ? mode.value : 'all';
+
+            switch (selectedMode) {
+                case 'all': return [0,1,2,3,4,5,6,7,8,9,10,11];
+                case '1H': return [0,1,2,3,4,5]; // 上半期: 4-9月
+                case '2H': return [6,7,8,9,10,11]; // 下半期: 10-3月
+                case 'Q1': return [0,1,2]; // Q1: 4-6月
+                case 'Q2': return [3,4,5]; // Q2: 7-9月
+                case 'Q3': return [6,7,8]; // Q3: 10-12月
+                case 'Q4': return [9,10,11]; // Q4: 1-3月
+                case 'single':
+                    var simMonth = document.getElementById('simMonth');
+                    var idx = simMonth ? parseInt(simMonth.value) : 0;
+                    return [idx];
+                case 'custom':
+                    return customSelectedMonths.length > 0 ? customSelectedMonths : [0];
+                default: return [0,1,2,3,4,5,6,7,8,9,10,11];
+            }
+        }
+
+        // ★ 連動シミュレーション描画（上下分離形式）
+        function renderLinkedSimulation() {
+            var container = document.getElementById('linkedSimulationView');
+            if (!container || !simulationData.annualData) {
+                if (container) container.innerHTML = '<div style="text-align:center;padding:50px;color:#999;">データがありません</div>';
+                return;
+            }
+
+            var allMonths = ['4月','5月','6月','7月','8月','9月','10月','11月','12月','1月','2月','3月'];
+            var get = function(no, m) { return simulationData.annualData[no] ? (simulationData.annualData[no][m] || 0) : 0; };
+
+            // 月選択の取得
+            var monthIndices = getMonthIndicesFromMode();
+
+            // 合計ラベル
+            var modeSelect = document.getElementById('simDisplayMode');
+            var currentMode = modeSelect ? modeSelect.value : 'all';
+            var totalLabel = '合計';
+            switch (currentMode) {
+                case 'all': totalLabel = '年間'; break;
+                case '1H': totalLabel = '上半期'; break;
+                case '2H': totalLabel = '下半期'; break;
+                case 'Q1': totalLabel = 'Q1'; break;
+                case 'Q2': totalLabel = 'Q2'; break;
+                case 'Q3': totalLabel = 'Q3'; break;
+                case 'Q4': totalLabel = 'Q4'; break;
+                case 'custom': totalLabel = '選択期間'; break;
+                default: totalLabel = '';
+            }
+
+            // 顧客予算項目定義（全項目）
+            var customerItems = [
+                // 売上
+                { section: '売上', no: 1, name: '店舗売上高' },
+                { section: '売上', no: 2, name: 'ドリンク売上' },
+                { section: '売上', no: 3, name: 'その他売上高' },
+                { section: '売上', no: 4, name: '売上高合計', highlight: true },
+                // 原価
+                { section: '原価', no: 5, name: '食材期首棚' },
+                { section: '原価', no: 6, name: '食材仕入高' },
+                { section: '原価', no: 7, name: '食材期末棚' },
+                { section: '原価', no: 8, name: '食材原価' },
+                { section: '原価', no: 9, name: 'ドリンク期首棚' },
+                { section: '原価', no: 10, name: 'ドリンク仕入高' },
+                { section: '原価', no: 11, name: 'ドリンク期末棚' },
+                { section: '原価', no: 12, name: 'ドリンク原価' },
+                { section: '原価', no: 13, name: '内部振替' },
+                { section: '原価', no: 14, name: '原価合計', highlight: true },
+                { section: '原価', no: 15, name: '売上総利益', highlight: true },
+                // 人件費
+                { section: '人件費', no: 16, name: '給料手当' },
+                { section: '人件費', no: 17, name: '店長料理長昇給' },
+                { section: '人件費', no: 18, name: '社員給与' },
+                { section: '人件費', no: 19, name: '雑給（PA）' },
+                { section: '人件費', no: 20, name: 'ヘルプ人件費' },
+                { section: '人件費', no: 21, name: '法定福利費' },
+                { section: '人件費', no: 22, name: '通勤交通費' },
+                { section: '人件費', no: 23, name: '賞与引当金繰入' },
+                { section: '人件費', no: 24, name: '社宅家賃' },
+                { section: '人件費', no: 25, name: '休業手当' },
+                { section: '人件費', no: 26, name: '人件費合計', highlight: true },
+                // 固定費（その他経費 + 従来の固定費）
+                { section: '固定費', no: 27, name: '販売促進費' },
+                { section: '固定費', no: 28, name: 'メニューコピー' },
+                { section: '固定費', no: 29, name: '調査費' },
+                { section: '固定費', no: 30, name: '衛生費' },
+                { section: '固定費', no: 31, name: 'サービス費' },
+                { section: '固定費', no: 32, name: '電気代' },
+                { section: '固定費', no: 33, name: 'ガス代' },
+                { section: '固定費', no: 34, name: '水道代' },
+                { section: '固定費', no: 35, name: '消耗品費' },
+                { section: '固定費', no: 36, name: '保守修繕費' },
+                { section: '固定費', no: 37, name: '租税公課' },
+                { section: '固定費', no: 38, name: '接待交際費' },
+                { section: '固定費', no: 39, name: '旅費交通費' },
+                { section: '固定費', no: 40, name: '通信費' },
+                { section: '固定費', no: 41, name: 'クレジット手数料' },
+                { section: '固定費', no: 42, name: '支払手数料' },
+                { section: '固定費', no: 43, name: '会議費' },
+                { section: '固定費', no: 44, name: '諸会費' },
+                { section: '固定費', no: 45, name: '図書教育費' },
+                { section: '固定費', no: 46, name: '研修費' },
+                { section: '固定費', no: 47, name: '業態研究費' },
+                { section: '固定費', no: 48, name: '採用費' },
+                { section: '固定費', no: 49, name: 'IT費' },
+                { section: '固定費', no: 50, name: '外注費' },
+                { section: '固定費', no: 51, name: '雑費' },
+                { section: '固定費', no: 52, name: 'その他経費小計', highlight: true },
+                { section: '固定費', no: 53, name: 'ロイヤリティ' },
+                { section: '固定費', no: 54, name: '店舗補填' },
+                { section: '固定費', no: 55, name: '減価償却費' },
+                { section: '固定費', no: 56, name: '家賃' },
+                { section: '固定費', no: 57, name: '警備料' },
+                { section: '固定費', no: 58, name: 'リース料' },
+                { section: '固定費', no: 59, name: '賃借料' },
+                // 損益
+                { section: '損益', no: 60, name: '販管費合計', highlight: true },
+                { section: '損益', no: 62, name: '営業利益', highlight: true, profit: true }
+            ];
+
+            // ========== ラクミーMQ計算ロジック（CSV仕様準拠） ==========
+            // 年間合計を計算
+            var calcAnnualTotal = function(no) {
+                var total = 0;
+                for (var m = 0; m < 12; m++) total += get(no, m);
+                return total;
+            };
+
+            // 年間売上
+            var annualSales = calcAnnualTotal(4);
+
+            // FD仕入費（食材原価+ドリンク原価）
+            var annualFDCost = calcAnnualTotal(8) + calcAnnualTotal(12);
+            var fdCostRate = annualSales > 0 ? annualFDCost / annualSales : 0;
+
+            // PA人件費（雑給+ヘルプ）
+            var annualPACost = calcAnnualTotal(19) + calcAnnualTotal(20);
+            var paCostRate = annualSales > 0 ? annualPACost / annualSales : 0;
+
+            // 変動費合計 = FD仕入費 + PA人件費
+            var variableCostRate = fdCostRate + paCostRate;
+
+            // 固定人件費（給料手当+店長昇給+社員給与+法定福利費+通勤交通費+賞与引当金+社宅家賃+休業手当）
+            var calcFixedLabor = function(m) {
+                return get(16,m) + get(17,m) + get(18,m) + get(21,m) + get(22,m) + get(23,m) + get(24,m) + get(25,m);
+            };
+            var annualFixedLabor = 0;
+            for (var m = 0; m < 12; m++) annualFixedLabor += calcFixedLabor(m);
+
+            // 地代家賃（家賃+賃借料）
+            var calcRent = function(m) { return get(56,m) + get(59,m); };
+            var annualRent = calcAnnualTotal(56) + calcAnnualTotal(59);
+
+            // 資材費（警備料+リース料）
+            var calcMaterial = function(m) { return get(57,m) + get(58,m); };
+            var annualMaterial = calcAnnualTotal(57) + calcAnnualTotal(58);
+
+            // 減価償却費
+            var annualDepreciation = calcAnnualTotal(55);
+
+            // その他経費（販売促進費〜雑費：No.27-51の合計）- 固定費として扱う
+            var calcOtherExp = function(m) {
+                var sum = 0;
+                for (var i = 27; i <= 51; i++) sum += get(i, m);
+                return sum;
+            };
+            var annualOtherExp = 0;
+            for (var m = 0; m < 12; m++) annualOtherExp += calcOtherExp(m);
+
+            // 固定費合計 = 固定人件費 + 地代家賃 + 資材費 + 減価償却費 + その他経費
+            var annualFixedCost = annualFixedLabor + annualRent + annualMaterial + annualDepreciation + annualOtherExp;
+
+            // 限界利益 = 売上 - 変動費
+            var annualVariableCost = annualSales * variableCostRate;
+            var annualMarginalProfit = annualSales - annualVariableCost;
+
+            // 営業利益 = 限界利益 - 固定費
+            var annualOperatingProfit = annualMarginalProfit - annualFixedCost;
+
+            // 粗利率
+            var grossProfitRate = 1 - variableCostRate;
+
+            // 売上構成比
+            var annualFoodSales = calcAnnualTotal(1);
+            var annualDrinkSales = calcAnnualTotal(2);
+            var annualOtherSales = calcAnnualTotal(3);
+            var foodSalesRate = annualSales > 0 ? annualFoodSales / annualSales : 0;
+            var drinkSalesRate = annualSales > 0 ? annualDrinkSales / annualSales : 0;
+            var otherSalesRate = annualSales > 0 ? annualOtherSales / annualSales : 0;
+
+            // MQ単価計算
+            var avgMonthlySales = annualSales / 12;
+            var assumedCustomers = avgMonthlySales > 0 ? Math.round(avgMonthlySales / 3) : 100;
+            var unitPrice = assumedCustomers > 0 ? avgMonthlySales / assumedCustomers : 0;
+            var variableUnitCost = unitPrice * variableCostRate;
+            var grossProfitUnit = unitPrice - variableUnitCost;
+
+            // ラクミー予算項目（MQ構成 + 顧客予算と同じ項目表示）
+            var rakumyItems = [
+                // 売上予算
+                { section: '売上予算', name: '売上予算（税抜）', highlight: true, calc: function(m) { return get(4, m); } },
+                // 変動費予算（FD仕入費 + PA人件費 = 売上連動）
+                { section: '変動費予算', name: 'FD仕入費', calc: function(m) { return get(4, m) * fdCostRate; } },
+                { section: '変動費予算', name: 'PA人件費', calc: function(m) { return get(4, m) * paCostRate; } },
+                { section: '変動費予算', name: '変動費合計', highlight: true, calc: function(m) { return get(4, m) * variableCostRate; } },
+                // 固定人件費（PA人件費を除く人件費）
+                { section: '固定人件費', name: '給料手当', calc: function(m) { return get(16, m); } },
+                { section: '固定人件費', name: '店長料理長昇給', calc: function(m) { return get(17, m); } },
+                { section: '固定人件費', name: '社員給与', calc: function(m) { return get(18, m); } },
+                { section: '固定人件費', name: '法定福利費', calc: function(m) { return get(21, m); } },
+                { section: '固定人件費', name: '通勤交通費', calc: function(m) { return get(22, m); } },
+                { section: '固定人件費', name: '賞与引当金繰入', calc: function(m) { return get(23, m); } },
+                { section: '固定人件費', name: '社宅家賃', calc: function(m) { return get(24, m); } },
+                { section: '固定人件費', name: '休業手当', calc: function(m) { return get(25, m); } },
+                { section: '固定人件費', name: '固定人件費合計', highlight: true, calc: function(m) { return calcFixedLabor(m); } },
+                // 固定費（その他経費 + 従来の固定費）
+                { section: '固定費', name: '販売促進費', calc: function(m) { return get(27, m); } },
+                { section: '固定費', name: 'メニューコピー', calc: function(m) { return get(28, m); } },
+                { section: '固定費', name: '調査費', calc: function(m) { return get(29, m); } },
+                { section: '固定費', name: '衛生費', calc: function(m) { return get(30, m); } },
+                { section: '固定費', name: 'サービス費', calc: function(m) { return get(31, m); } },
+                { section: '固定費', name: '電気代', calc: function(m) { return get(32, m); } },
+                { section: '固定費', name: 'ガス代', calc: function(m) { return get(33, m); } },
+                { section: '固定費', name: '水道代', calc: function(m) { return get(34, m); } },
+                { section: '固定費', name: '消耗品費', calc: function(m) { return get(35, m); } },
+                { section: '固定費', name: '保守修繕費', calc: function(m) { return get(36, m); } },
+                { section: '固定費', name: '租税公課', calc: function(m) { return get(37, m); } },
+                { section: '固定費', name: '接待交際費', calc: function(m) { return get(38, m); } },
+                { section: '固定費', name: '旅費交通費', calc: function(m) { return get(39, m); } },
+                { section: '固定費', name: '通信費', calc: function(m) { return get(40, m); } },
+                { section: '固定費', name: 'クレジット手数料', calc: function(m) { return get(41, m); } },
+                { section: '固定費', name: '支払手数料', calc: function(m) { return get(42, m); } },
+                { section: '固定費', name: '会議費', calc: function(m) { return get(43, m); } },
+                { section: '固定費', name: '諸会費', calc: function(m) { return get(44, m); } },
+                { section: '固定費', name: '図書教育費', calc: function(m) { return get(45, m); } },
+                { section: '固定費', name: '研修費', calc: function(m) { return get(46, m); } },
+                { section: '固定費', name: '業態研究費', calc: function(m) { return get(47, m); } },
+                { section: '固定費', name: '採用費', calc: function(m) { return get(48, m); } },
+                { section: '固定費', name: 'IT費', calc: function(m) { return get(49, m); } },
+                { section: '固定費', name: '外注費', calc: function(m) { return get(50, m); } },
+                { section: '固定費', name: '雑費', calc: function(m) { return get(51, m); } },
+                { section: '固定費', name: 'その他経費小計', highlight: true, calc: function(m) { return calcOtherExp(m); } },
+                { section: '固定費', name: 'ロイヤリティ', calc: function(m) { return get(53, m); } },
+                { section: '固定費', name: '店舗補填', calc: function(m) { return get(54, m); } },
+                { section: '固定費', name: '減価償却費', calc: function(m) { return get(55, m); } },
+                { section: '固定費', name: '家賃', calc: function(m) { return get(56, m); } },
+                { section: '固定費', name: '警備料', calc: function(m) { return get(57, m); } },
+                { section: '固定費', name: 'リース料', calc: function(m) { return get(58, m); } },
+                { section: '固定費', name: '賃借料', calc: function(m) { return get(59, m); } },
+                { section: '固定費', name: '固定費合計', highlight: true, calc: function(m) {
+                    // 元のMQ計算ロジック維持（ロイヤリティ・店舗補填は含まない）
+                    return calcFixedLabor(m) + calcRent(m) + calcMaterial(m) + get(55, m) + calcOtherExp(m);
+                } },
+                // 損益（MQ計算ロジック維持）
+                { section: '損益', name: '限界利益（売上-変動費）', highlight: true, calc: function(m) {
+                    return get(4, m) - get(4, m) * variableCostRate;
+                } },
+                { section: '損益', name: '営業利益', highlight: true, profit: true, calc: function(m) {
+                    var sales = get(4, m);
+                    var variable = sales * variableCostRate;
+                    // 元のMQ計算ロジック維持（ロイヤリティ・店舗補填は含まない）
+                    var fixed = calcFixedLabor(m) + calcRent(m) + calcMaterial(m) + get(55, m) + calcOtherExp(m);
+                    return sales - variable - fixed;
+                } }
+            ];
+
+            // MQ逆算用の変数
+            var requiredCustomers = grossProfitUnit > 0 ? Math.ceil((annualFixedCost + annualOperatingProfit) / grossProfitUnit / 12) : 0;
+            var requiredSalesPerMonth = requiredCustomers * unitPrice;
+
+            // ラクミー予算の営業利益計算関数（サマリー用）
+            var calcRakumyProfit = function(m) {
+                var sales = get(4, m);
+                var variable = sales * variableCostRate;
+                var fixed = calcFixedLabor(m) + calcRent(m) + calcMaterial(m) + get(55, m) + calcOtherExp(m);
+                return sales - variable - fixed;
+            };
+
+            // テーブル生成関数
+            function buildTable(items, title, bgColor, isEditable) {
+                var html = '<div style="margin-bottom:25px;">';
+                html += '<h3 style="color:' + bgColor + ';font-size:14px;margin-bottom:10px;padding:8px;background:' + (isEditable ? '#e3f2fd' : '#f3e5f5') + ';border-radius:4px;">' + title + '</h3>';
+                html += '<div style="overflow-x:auto;overflow-y:auto;max-height:600px;"><table class="data-table" style="font-size:10px;width:100%;">';
+
+                // ヘッダー
+                html += '<thead style="position:sticky;top:0;z-index:10;"><tr style="background:#f5f5f5;">';
+                html += '<th style="min-width:140px;background:' + bgColor + ';color:#fff;border:1px solid #ddd;">項目</th>';
+                monthIndices.forEach(function(mi) {
+                    html += '<th style="background:' + bgColor + ';color:#fff;border:1px solid #ddd;min-width:' + (isEditable ? '70px' : '60px') + ';">' + allMonths[mi] + '</th>';
+                });
+                html += '<th style="background:#ff9800;color:#fff;border:1px solid #ddd;min-width:80px;">' + totalLabel + '合計</th>';
+                html += '</tr></thead><tbody>';
+
+                var lastSection = '';
+                items.forEach(function(item) {
+                    // セクションヘッダー
+                    if (item.section !== lastSection) {
+                        var cols = monthIndices.length + 2;
+                        var sectionBg = '#607d8b';
+                        if (item.section === 'MQ指標' || item.section === 'MQ逆算') sectionBg = '#9c27b0';
+                        if (item.section === '売上構成比') sectionBg = '#1976d2';
+                        if (item.section === '原価率') sectionBg = '#ff5722';
+                        html += '<tr><td colspan="' + cols + '" style="background:' + sectionBg + ';color:#fff;font-weight:bold;padding:5px 10px;font-size:11px;">' + item.section + '</td></tr>';
+                        lastSection = item.section;
+                    }
+
+                    var rowBg = item.highlight ? '#fff8e1' : '#fff';
+                    if (item.section === '売上構成比') rowBg = '#e3f2fd';
+                    if (item.section === '原価率') rowBg = '#fbe9e7';
+                    if (item.section === 'MQ指標' || item.section === 'MQ逆算') rowBg = '#f3e5f5';
+                    html += '<tr style="background:' + rowBg + ';">';
+
+                    // 項目名
+                    var label = item.no ? '[' + item.no + '] ' + item.name : item.name;
+                    html += '<td style="font-weight:' + (item.highlight ? 'bold' : 'normal') + ';font-size:10px;white-space:nowrap;">' + label + '</td>';
+
+                    // MQ指標・逆算・売上構成比・原価率は年間値のみ（月列は結合）
+                    var isAnnualOnly = item.isRate || item.section === 'MQ指標' || item.section === 'MQ逆算' || item.section === '売上構成比' || item.section === '原価率';
+                    if (isAnnualOnly) {
+                        var mqVal = item.calc ? item.calc() : 0;
+                        var displayVal = item.isRate ? mqVal.toFixed(1) + '%' : fmt(mqVal);
+                        var valColor = item.profit ? (mqVal >= 0 ? '#2e7d32' : '#c62828') : '#7b1fa2';
+                        html += '<td colspan="' + (monthIndices.length + 1) + '" style="text-align:center;font-weight:bold;font-size:14px;color:' + valColor + ';">' + displayVal + '</td>';
+                    } else {
+                        var total = 0;
+                        monthIndices.forEach(function(m) {
+                            var val = item.calc ? item.calc(m) : get(item.no, m);
+                            total += val;
+
+                            if (isEditable && item.no) {
+                                // 編集可能セル
+                                html += '<td style="background:#e3f2fd;padding:2px;"><input type="number" data-no="' + item.no + '" data-month="' + m + '" value="' + val + '" style="width:100%;padding:3px;text-align:right;border:1px solid #90caf9;border-radius:2px;background:#fff;font-size:10px;box-sizing:border-box;" onchange="updateSimulationValue(this)"></td>';
+                            } else {
+                                // 表示のみ
+                                var valColor = item.profit ? (val >= 0 ? '#2e7d32' : '#c62828') : '#333';
+                                html += '<td style="text-align:right;color:' + valColor + ';font-weight:' + (item.highlight ? 'bold' : 'normal') + ';">' + fmt(val) + '</td>';
+                            }
+                        });
+
+                        // 合計
+                        var totalColor = item.profit ? (total >= 0 ? '#2e7d32' : '#c62828') : '#333';
+                        html += '<td style="text-align:right;background:#ffe0b2;font-weight:bold;color:' + totalColor + ';">' + fmt(total) + '</td>';
+                    }
+                    html += '</tr>';
+                });
+
+                html += '</tbody></table></div></div>';
+                return html;
+            }
+
+            // 両テーブルを生成
+            var html = '<div style="display:flex;gap:20px;flex-wrap:wrap;">';
+            html += '<div style="flex:1;min-width:400px;">';
+            html += buildTable(customerItems, '📝 顧客予算（編集可能）', '#1976d2', true);
+            html += '</div>';
+            html += '<div style="flex:1;min-width:400px;">';
+            html += buildTable(rakumyItems, '📊 ラクミー予算（MQ試算結果）', '#7b1fa2', false);
+            html += '</div>';
+            html += '</div>';
+
+            // 差異サマリー（顧客予算 vs MQ試算結果）
+            var custProfit = 0, rakumyProfit = 0;
+            monthIndices.forEach(function(m) {
+                // 顧客予算: 営業利益（CSVから読み込んだ値）
+                custProfit += get(62, m);
+                // ラクミー予算: MQ計算による営業利益（売上 - 変動費 - 固定費）
+                rakumyProfit += calcRakumyProfit(m);
+            });
+            var diff = custProfit - rakumyProfit;
+
+            html += '<div style="margin-top:15px;padding:15px;background:#fff3e0;border-radius:8px;border:2px solid #ff9800;">';
+            html += '<h4 style="color:#e65100;margin-bottom:10px;">' + totalLabel + ' 営業利益比較</h4>';
+            html += '<div style="display:flex;gap:30px;flex-wrap:wrap;">';
+            html += '<div><span style="color:#1976d2;font-weight:bold;">顧客予算:</span> <span style="font-size:18px;font-weight:bold;color:' + (custProfit >= 0 ? '#2e7d32' : '#c62828') + ';">' + fmt(custProfit) + ' 千円</span></div>';
+            html += '<div><span style="color:#7b1fa2;font-weight:bold;">ラクミー予算(MQ):</span> <span style="font-size:18px;font-weight:bold;color:' + (rakumyProfit >= 0 ? '#2e7d32' : '#c62828') + ';">' + fmt(rakumyProfit) + ' 千円</span></div>';
+            html += '<div><span style="font-weight:bold;">差異:</span> <span style="font-size:18px;font-weight:bold;color:' + (diff === 0 ? '#999' : (diff > 0 ? '#1565c0' : '#c62828')) + ';">' + (diff === 0 ? '-' : fmt(diff) + ' 千円') + '</span></div>';
+            html += '</div>';
+            // 売上構成比サマリー
+            html += '<div style="margin-top:10px;padding-top:10px;border-top:1px solid #ffcc80;">';
+            html += '<div style="font-weight:bold;color:#e65100;margin-bottom:5px;">売上構成比</div>';
+            html += '<div style="display:flex;gap:20px;flex-wrap:wrap;font-size:12px;">';
+            html += '<div><span style="color:#1976d2;">フード:</span> <strong>' + (foodSalesRate * 100).toFixed(1) + '%</strong> (' + fmt(annualFoodSales) + '千円)</div>';
+            html += '<div><span style="color:#1976d2;">ドリンク:</span> <strong>' + (drinkSalesRate * 100).toFixed(1) + '%</strong> (' + fmt(annualDrinkSales) + '千円)</div>';
+            html += '<div><span style="color:#1976d2;">その他:</span> <strong>' + (otherSalesRate * 100).toFixed(1) + '%</strong> (' + fmt(annualOtherSales) + '千円)</div>';
+            html += '</div></div>';
+            // MQ構成サマリー
+            html += '<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #ffcc80;">';
+            html += '<div style="font-weight:bold;color:#e65100;margin-bottom:5px;">MQ構成（年間）</div>';
+            html += '<div style="display:flex;gap:20px;flex-wrap:wrap;font-size:12px;">';
+            html += '<div><span style="color:#ff5722;">FD仕入費:</span> <strong>' + fmt(annualFDCost) + '千円</strong> (' + (fdCostRate * 100).toFixed(1) + '%)</div>';
+            html += '<div><span style="color:#ff5722;">PA人件費:</span> <strong>' + fmt(annualPACost) + '千円</strong> (' + (paCostRate * 100).toFixed(1) + '%)</div>';
+            html += '<div><span style="color:#2196f3;">固定人件費:</span> <strong>' + fmt(annualFixedLabor) + '千円</strong></div>';
+            html += '<div><span style="color:#2196f3;">固定費合計:</span> <strong>' + fmt(annualFixedCost) + '千円</strong></div>';
+            html += '</div></div>';
+            // MQ指標サマリー表示
+            html += '<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #ffcc80;">';
+            html += '<div style="font-weight:bold;color:#e65100;margin-bottom:5px;">MQ指標</div>';
+            html += '<div style="display:flex;gap:20px;flex-wrap:wrap;font-size:12px;">';
+            html += '<div><span style="color:#7b1fa2;">PA人件費率:</span> <strong>' + (paCostRate * 100).toFixed(1) + '%</strong></div>';
+            html += '<div><span style="color:#7b1fa2;">変動費率:</span> <strong>' + (variableCostRate * 100).toFixed(1) + '%</strong></div>';
+            html += '<div><span style="color:#7b1fa2;">粗利率:</span> <strong>' + (grossProfitRate * 100).toFixed(1) + '%</strong></div>';
+            html += '<div><span style="color:#9c27b0;">推定客単価:</span> <strong>' + fmt(unitPrice) + '円</strong></div>';
+            html += '<div><span style="color:#9c27b0;">粗利単価:</span> <strong>' + fmt(grossProfitUnit) + '円</strong></div>';
+            html += '</div></div>';
+            html += '</div>';
+
+            container.innerHTML = html;
+
+            // サマリー更新
+            updateSimulationSummary();
+        }
+
+        // ★ 試算サマリー更新
+        function updateSimulationSummary() {
+            var summaryDiv = document.getElementById('simulationSummary');
+            if (!summaryDiv || !simulationData.annualData || !simulationOriginal.annualData) return;
+
+            var calcTotal = function(data, no) {
+                var total = 0;
+                if (data[no]) {
+                    for (var m = 0; m < 12; m++) total += data[no][m] || 0;
+                }
+                return total;
+            };
+
+            var calcProfit = function(data) {
+                var sales = calcTotal(data, 4);
+                var costs = calcTotal(data, 8) + calcTotal(data, 12) + calcTotal(data, 18) + calcTotal(data, 19) + calcTotal(data, 27) + calcTotal(data, 32) + calcTotal(data, 33) + calcTotal(data, 34);
+                return sales - costs;
+            };
+
+            var origSales = calcTotal(simulationOriginal.annualData, 4);
+            var newSales = calcTotal(simulationData.annualData, 4);
+            var origProfit = calcProfit(simulationOriginal.annualData);
+            var newProfit = calcProfit(simulationData.annualData);
+
+            var salesDiff = newSales - origSales;
+            var profitDiff = newProfit - origProfit;
+
+            var html = '<div style="display:flex;gap:20px;flex-wrap:wrap;">';
+            html += '<div style="flex:1;min-width:200px;padding:15px;background:#fff;border-radius:8px;border:2px solid #2196f3;">';
+            html += '<div style="font-size:11px;color:#666;">売上高（年間）</div>';
+            html += '<div style="font-size:18px;font-weight:bold;color:#1565c0;">' + fmt(newSales) + ' 千円</div>';
+            html += '<div style="font-size:11px;color:' + (salesDiff >= 0 ? '#2e7d32' : '#c62828') + ';">' + (salesDiff >= 0 ? '▲' : '▼') + ' ' + fmt(Math.abs(salesDiff)) + ' 千円</div>';
+            html += '</div>';
+
+            html += '<div style="flex:1;min-width:200px;padding:15px;background:#fff;border-radius:8px;border:2px solid ' + (newProfit >= 0 ? '#4caf50' : '#f44336') + ';">';
+            html += '<div style="font-size:11px;color:#666;">営業利益（年間）</div>';
+            html += '<div style="font-size:18px;font-weight:bold;color:' + (newProfit >= 0 ? '#2e7d32' : '#c62828') + ';">' + fmt(newProfit) + ' 千円</div>';
+            html += '<div style="font-size:11px;color:' + (profitDiff >= 0 ? '#2e7d32' : '#c62828') + ';">' + (profitDiff >= 0 ? '▲' : '▼') + ' ' + fmt(Math.abs(profitDiff)) + ' 千円</div>';
+            html += '</div>';
+            html += '</div>';
+
+            summaryDiv.innerHTML = html;
+        }
+
+        // ★ 試算値更新
+        function updateSimulationValue(input) {
+            var no = parseInt(input.dataset.no);
+            var month = parseInt(input.dataset.month);
+            var value = parseFloat(input.value) || 0;
+
+            if (!simulationData.annualData[no]) {
+                simulationData.annualData[no] = {};
+            }
+            simulationData.annualData[no][month] = value;
+
+            // 右側のラクミー予算を再計算
+            renderLinkedSimulation();
+        }
+
+        // ★ 試算データを元に戻す
+        function resetSimulationData() {
+            if (!simulationOriginal.annualData) {
+                showStatus('warn', '元データがありません');
+                return;
+            }
+            simulationData = JSON.parse(JSON.stringify(simulationOriginal));
+            renderLinkedSimulation();
+            showStatus('info', '試算データを元に戻しました');
+        }
+
+        // ★ 試算値を本データに反映
+        function applySimulationData() {
+            var select = document.getElementById('simulationStoreSelect');
+            var selectedStore = select.value;
+
+            if (!selectedStore || !allStoresData[selectedStore]) {
+                showStatus('warn', '店舗が選択されていません');
+                return;
+            }
+
+            if (!confirm('試算値を「' + selectedStore + '」の本データに反映しますか？\n※元に戻せません')) return;
+
+            // 本データを更新
+            allStoresData[selectedStore].annualData = JSON.parse(JSON.stringify(simulationData.annualData));
+
+            // 現在の店舗なら再計算
+            if (currentStoreName === selectedStore) {
+                annualData = allStoresData[selectedStore].annualData;
+                executeCalcRules();
+                generateRakumyInputs();
+                runMQSimulation();
+            }
+
+            showStatus('success', '試算値を本データに反映しました');
         }
 
         // ★ 店舗削除
@@ -2508,13 +3601,15 @@
                     }
                 });
             } else {
-                // 通常モード：マッチした項目のみ表示
-                html += '<tr><th>コード</th><th>項目名</th><th>→</th><th>v15 No</th><th>v15項目名</th><th>カテゴリ</th><th></th></tr>';
+                // 通常モード：マッチした項目のみ表示（連番表示）
+                html += '<tr><th>No.</th><th>項目名</th><th>→</th><th>v17 No</th><th>ラクミー項目名</th><th>カテゴリ</th><th>初月値</th></tr>';
                 if (matchedItems && matchedItems.length > 0) {
-                    matchedItems.forEach(function(item) {
-                        html += '<tr><td>' + item.code + '</td><td>' + item.name + '</td><td style="color:#28a745;">→</td>';
+                    matchedItems.forEach(function(item, idx) {
+                        var dispNo = item.displayIndex || (idx + 1);
+                        var valueStyle = item.hasValue ? '' : 'color:#999;';
+                        html += '<tr><td><strong>[' + dispNo + ']</strong></td><td>' + item.name + '</td><td style="color:#28a745;">→</td>';
                         html += '<td>' + item.v15No + '</td><td>' + item.v15Name + '</td><td>' + item.category + '</td>';
-                        html += '<td><button class="btn btn-danger" style="padding:2px 6px;font-size:9px;" onclick="deleteMapping(\'' + item.code + '\')">削除</button></td></tr>';
+                        html += '<td style="' + valueStyle + '">' + (item.sampleValue || 0).toLocaleString() + '</td></tr>';
                     });
                 } else {
                     html += '<tr><td colspan="7" style="text-align:center;color:#666;padding:20px;">CSVをインポートするとマッチした項目が表示されます</td></tr>';
@@ -3984,108 +5079,196 @@
 
             // 項目名検出用の最初のデータ列
             firstDataCol = Math.min.apply(null, budgetColumnPositions.map(function(p) { return p.budgetCol; }));
+            addLog('項目名検索範囲: cols[0]〜cols[' + (firstDataCol - 1) + ']', 'info');
 
-            // ★ Phase 1: 全行をスキャンして「ヘッダー行」（項目名あり、コードなし）を収集
+            // ★ E列（index 4）を基準とした動的項目名検索
+            // セル結合解除により項目名が左シフトしている場合に対応
+            var ITEM_NAME_COL = 4;  // E列が基準の項目名列
+
+            function findItemNameInRow(cols) {
+                // E列 (index 4) を基準に、左シフトを動的に検出
+                // 優先順位: E列 → D列（1左シフト） → C列（2左シフト） → B列（3左シフト）
+
+                var result = { name: '', col: -1, leftShift: 0, hierarchy: '', allNames: [] };
+
+                // 全ての名前候補列を収集（階層表示用）
+                for (var i = 0; i <= ITEM_NAME_COL && i < cols.length; i++) {
+                    var val = cols[i] ? cols[i].trim() : '';
+                    if (val && val.length > 0 && !isNumericOrEmpty(val)) {
+                        result.allNames.push({ col: i, value: val });
+                    }
+                }
+
+                // E列から左方向に走査して項目名を探す
+                for (var col = ITEM_NAME_COL; col >= 0; col--) {
+                    var cellValue = cols[col] ? cols[col].trim() : '';
+
+                    // 空でなく、数値でもなく、エラー値でもない場合は項目名とみなす
+                    if (cellValue && cellValue.length > 0 && !isNumericOrEmpty(cellValue)) {
+                        result.name = cellValue;
+                        result.col = col;
+                        result.leftShift = ITEM_NAME_COL - col;
+                        result.hierarchy = result.allNames.map(function(n) { return n.value; }).join(' > ');
+                        return result;
+                    }
+                }
+
+                return result;
+            }
+
+            addLog('項目名検索: E列(index ' + ITEM_NAME_COL + ')基準、左シフト対応', 'info');
+
+            // ★ Phase 1: 全行をスキャンして「ヘッダー行」（項目名あり、値なし）を収集
+            // ※ 項目名継承用（Phase 2で項目名が空の行に対して使用）
             addLog('', '');
             addLog('=== Phase 1: ヘッダー行の収集 ===', 'info');
 
             var headerRowNames = {}; // lineIdx -> itemName
-            var lastSeenItemName = '';
 
             for (var lineIdx = 4; lineIdx < lines.length; lineIdx++) {
                 var cols = parseCSVLine(lines[lineIdx]);
                 if (cols.length < 3) continue;
 
-                var fullCode = cols[0].trim();
-                var hasValidCode = fullCode && /^\d{6,}$/.test(fullCode); // 6桁以上の数字
+                // E列基準の動的項目名検索を使用
+                var nameResult = findItemNameInRow(cols);
 
-                // 項目名を探索（列1〜firstDataCol）
-                var nameInfo = extractItemNameFromCols(cols, firstDataCol);
+                // コードがないか、予算値がない行はヘッダー行として登録
+                var hasCode = cols[0] && /^\d{6,}$/.test(cols[0].trim());
+                var hasValue = false;
+                for (var mi = 0; mi < budgetColumnPositions.length && !hasValue; mi++) {
+                    var val = parseCustomNumber(cols[budgetColumnPositions[mi].budgetCol] || '');
+                    if (val !== 0) hasValue = true;
+                }
 
-                if (!hasValidCode && nameInfo.name) {
-                    // ヘッダー行：コードなし、項目名あり
-                    headerRowNames[lineIdx] = nameInfo.name;
-                    lastSeenItemName = nameInfo.name;
-                    addLog('行' + lineIdx + ': ヘッダー行「' + nameInfo.name + '」', 'data');
+                if (nameResult.name && !hasCode && !hasValue) {
+                    // ヘッダー行：コードなし、値なし、項目名あり
+                    headerRowNames[lineIdx] = nameResult.name;
+                    var shiftInfo = nameResult.leftShift > 0 ? ' (' + nameResult.leftShift + '左シフト)' : '';
+                    addLog('行' + lineIdx + ': ヘッダー行「' + nameResult.name + '」' + shiftInfo, 'data');
                 }
             }
 
             addLog('ヘッダー行: ' + Object.keys(headerRowNames).length + '件', 'info');
 
-            // ★ Phase 2: データ行の解析（項目名が空なら直前の行から継承）
+            // ★ Phase 2: データ行の解析（全行を連番で取り込み）
             annualData = {};
             matchedItems = [];
             unmatchedItems = [];
-            var processedCodes = {};
+            var displayIndex = 0;  // 連番表示用インデックス（全行対象）
 
             addLog('', '');
-            addLog('=== Phase 2: データ行の解析 ===', 'info');
+            addLog('=== Phase 2: データ行の解析（コード＋項目名ダブルマッチング）===', 'info');
+
+            // 最初の10行を詳細デバッグ
+            addLog('', '');
+            addLog('=== デバッグ: 先頭データ行の解析 ===', 'info');
+
+            var codeMatchCount = 0;
+            var nameMatchCount = 0;
+
+            // デバッグ用：監視対象のv17No（欠落が報告されている項目）
+            var DEBUG_V17NOS = [1, 8, 9, 11, 12, 20];
+            var debugMatches = {}; // v17No -> マッチ情報
+
+            // デバッグ：CODE_BASED_MAP/NAME_BASED_MAPの確認
+            addLog('', '');
+            addLog('=== 【DEBUG】マッピング定義の確認 ===', 'info');
+            addLog('CODE_BASED_MAP["810"] = ' + JSON.stringify(CODE_BASED_MAP['810'] || 'undefined'), 'data');
+            addLog('CODE_BASED_MAP["2030"] = ' + JSON.stringify(CODE_BASED_MAP['2030'] || 'undefined'), 'data');
+            addLog('CODE_BASED_MAP["2031"] = ' + JSON.stringify(CODE_BASED_MAP['2031'] || 'undefined'), 'data');
+            addLog('CODE_BASED_MAP["503"] = ' + JSON.stringify(CODE_BASED_MAP['503'] || 'undefined'), 'data');
+            addLog('NAME_BASED_MAP["食材原価"] = ' + JSON.stringify(NAME_BASED_MAP['食材原価'] || 'undefined'), 'data');
+            addLog('NAME_BASED_MAP["ドリンク原価"] = ' + JSON.stringify(NAME_BASED_MAP['ドリンク原価'] || 'undefined'), 'data');
 
             for (var lineIdx = 4; lineIdx < lines.length; lineIdx++) {
                 var cols = parseCSVLine(lines[lineIdx]);
-                if (cols.length < 6) continue;
 
-                var fullCode = cols[0].trim();
+                // 最初の25行は全て詳細ログ出力
+                if (lineIdx < 30) {
+                    addLog('【RAW】行' + lineIdx + ': cols.length=' + cols.length + ', cols[0-4]=[' + cols.slice(0, 5).map(function(c) { return '"' + (c || '').substring(0, 12) + '"'; }).join(', ') + ']', 'data');
+                }
 
-                // ヘッダー行の場合はスキップ
-                if (headerRowNames[lineIdx]) {
+                if (cols.length < 6) {
+                    if (lineIdx < 30) {
+                        addLog('【SKIP】行' + lineIdx + ': cols.length=' + cols.length + ' < 6', 'warn');
+                    }
                     continue;
                 }
 
-                if (!fullCode || /^[^\d]/.test(fullCode)) continue;
+                // ★ B列（cols[1]）から勘定科目コードを取得
+                var accountCode = cols[1] ? cols[1].trim() : '';
 
-                var itemCode = extractItemCode(fullCode);
-                if (processedCodes[itemCode]) continue;
-                processedCodes[itemCode] = true;
+                // ★ E列を基準に項目名を動的検索（左シフト対応）
+                var nameResult = findItemNameInRow(cols);
+                var itemName = nameResult.name;
 
-                var nameInfo = extractItemNameFromCols(cols, firstDataCol);
+                // 最初の25行は全て詳細ログ出力
+                if (lineIdx < 30) {
+                    addLog('【PARSE】行' + lineIdx + ': code="' + accountCode + '", name="' + itemName + '" (col' + nameResult.col + ')', 'data');
+                }
 
-                // ★ 項目名が空の場合、直前1〜3行を遡って項目名を探す
-                var finalItemName = nameInfo.name;
+                // 先頭20行のデバッグ出力
+                if (lineIdx < 24) {
+                    var debugCols = 'cols[0-4]: [' + cols.slice(0, 5).map(function(c) { return '"' + (c || '').substring(0, 10) + '"'; }).join(', ') + ']';
+                    addLog('行' + lineIdx + ': code=' + accountCode + ', ' + debugCols + ' → 項目名="' + itemName + '"', 'data');
+                }
+
+                // 項目名が空の場合、直前1〜3行のヘッダー行から継承
                 var inheritedFrom = '';
-                if (!finalItemName) {
-                    // 直前の行から項目名を探す（最大3行まで遡る）
+                if (!itemName) {
                     for (var lookBack = 1; lookBack <= 3 && lineIdx - lookBack >= 4; lookBack++) {
                         var prevLineIdx = lineIdx - lookBack;
                         if (headerRowNames[prevLineIdx]) {
-                            finalItemName = headerRowNames[prevLineIdx];
+                            itemName = headerRowNames[prevLineIdx];
                             inheritedFrom = '(継承:行' + prevLineIdx + ')';
-                            addLog('コード' + itemCode + ': 直前' + lookBack + '行目から継承「' + finalItemName + '」', 'success');
                             break;
                         }
                     }
                 }
 
-                var mapping = CUSTOMER_CODE_MAP[itemCode];
+                // ★ ダブルマッチング: コード優先、次に項目名（C列/D列/E列）
+                var hasValidCode = accountCode && /^\d+$/.test(accountCode);  // B列が数字コードかどうか
+                var codeMatch = hasValidCode ? findV17NoByCode(accountCode) : null;
+                var nameMatch = findV17NoByName(itemName);
 
-                if (mapping) {
-                    var v15No = mapping.v15No;
-                    annualData[v15No] = annualData[v15No] || {};
+                // デバッグ：最初の30行は全てログ出力
+                if (lineIdx < 35) {
+                    var codeMatchInfo = codeMatch ? 'v17No=' + codeMatch.v17No : 'null';
+                    var nameMatchInfo = nameMatch ? 'v17No=' + nameMatch.v17No : 'null';
+                    addLog('【TRACE】行' + lineIdx + ': code="' + accountCode + '"→' + codeMatchInfo + ', name="' + itemName + '"→' + nameMatchInfo, 'data');
+                }
 
-                    for (var mi = 0; mi < budgetColumnPositions.length; mi++) {
-                        var budgetCol = budgetColumnPositions[mi].budgetCol;
-                        var rawValue = cols[budgetCol] || '';
-                        var value = parseCustomNumber(rawValue);
-                        annualData[v15No][mi] = (annualData[v15No][mi] || 0) + value;
+                // マッチ結果を統合（コード優先）
+                var finalMatch = null;
+                var matchType = '';
+                var matchSource = '';  // マッチ元の列情報
+
+                if (codeMatch) {
+                    // B列のコードでマッチ
+                    finalMatch = codeMatch;
+                    matchType = 'code_based';
+                    matchSource = 'B列コード:' + accountCode;
+                    codeMatchCount++;
+                } else if (nameMatch) {
+                    // コードなし → C列/D列/E列の項目名でマッチ
+                    finalMatch = nameMatch;
+                    matchType = 'name_based';
+                    // どの列から項目名を取得したか
+                    var colLetter = ['A', 'B', 'C', 'D', 'E'][nameResult.col] || '?';
+                    matchSource = colLetter + '列項目名';
+                    nameMatchCount++;
+                } else if (hasValidCode) {
+                    // コードマッチ失敗時：CODE_BASED_MAPにないコードを警告
+                    addLog('【WARN】行' + lineIdx + ': コード"' + accountCode + '"はCODE_BASED_MAPに未定義', 'warn');
+                }
+
+                // コードも項目名もマッチしない場合
+                if (!finalMatch) {
+                    // 項目名もない場合はスキップ
+                    if (!itemName) {
+                        continue;
                     }
-
-                    // ★ マッピング済みの場合、CUSTOMER_CODE_MAPの名前を優先（継承名より信頼性が高い）
-                    var displayName = finalItemName || mapping.name;
-                    if (inheritedFrom && displayName !== mapping.name) {
-                        // 継承名とマッピング名が異なる場合、マッピング名を使用
-                        displayName = mapping.name;
-                        addLog('コード' + itemCode + ': マッピング定義名を使用「' + displayName + '」(継承「' + finalItemName + '」は不採用)', 'warn');
-                    }
-
-                    matchedItems.push({
-                        code: itemCode,
-                        name: displayName,
-                        hierarchy: nameInfo.hierarchy || displayName,
-                        v15No: v15No,
-                        v15Name: mapping.name,
-                        category: mapping.category
-                    });
-                } else {
+                    // 未マッチとして記録
                     var hasValue = false;
                     var sampleValue = 0;
                     for (var mi = 0; mi < budgetColumnPositions.length; mi++) {
@@ -4095,20 +5278,236 @@
                             if (mi === 0) sampleValue = val;
                         }
                     }
+                    var debugInfo = ' (code=' + accountCode + ', col=' + nameResult.col + ')';
                     if (hasValue) {
+                        addLog('⚠ 行' + lineIdx + ': 「' + itemName + '」' + inheritedFrom + debugInfo + ' → 未定義', 'warn');
                         unmatchedItems.push({
-                            code: itemCode,
-                            name: finalItemName + inheritedFrom,
-                            sampleValue: sampleValue
+                            code: accountCode || 'NAME:' + itemName,
+                            name: itemName + inheritedFrom,
+                            sampleValue: sampleValue,
+                            lineIdx: lineIdx
                         });
+                    } else {
+                        addLog('  行' + lineIdx + ': 「' + itemName + '」' + debugInfo + ' → 値0、スキップ', 'data');
                     }
+                    continue;
+                }
+
+                // マッチ成功
+                var v17No = finalMatch.v17No;
+                var category = finalMatch.category;
+                var matchedName = finalMatch.name || itemName;
+
+                // デバッグ：監視対象のv17Noがマッチしたか記録
+                if (DEBUG_V17NOS.indexOf(v17No) >= 0) {
+                    debugMatches[v17No] = {
+                        lineIdx: lineIdx,
+                        code: accountCode,
+                        itemName: itemName,
+                        matchType: matchType,
+                        matchSource: matchSource
+                    };
+                    addLog('【DEBUG】v17No.' + v17No + ' マッチ発見: 行' + lineIdx + ', code=' + accountCode + ', name=' + itemName + ', type=' + matchType, 'success');
+                }
+
+                // 月次データを抽出
+                var rowData = {};
+                var hasValue = false;
+                var firstValue = 0;
+
+                for (var mi = 0; mi < budgetColumnPositions.length; mi++) {
+                    var budgetCol = budgetColumnPositions[mi].budgetCol;
+                    var rawValue = cols[budgetCol] || '';
+                    var value = parseCustomNumber(rawValue);
+                    if (value !== 0) {
+                        hasValue = true;
+                        if (firstValue === 0) firstValue = value;
+                    }
+                    rowData[mi] = value;
+                    // annualDataにも累積（計算用）
+                    annualData[v17No] = annualData[v17No] || {};
+                    annualData[v17No][mi] = (annualData[v17No][mi] || 0) + value;
+                }
+
+                // ★ 値がない項目（#DIV/0!や空セルなど）はスキップ
+                if (!hasValue) {
+                    addLog('  行' + lineIdx + ': 「' + matchedName + '」→ v17No.' + v17No + ' マッチするも値0のためスキップ（計算項目）', 'data');
+                    continue;
+                }
+
+                // ★ 全行を連番で登録
+                displayIndex++;
+
+                // 左シフト表示（E列基準）
+                var positionLabel = '';
+                if (nameResult.leftShift === 1) {
+                    positionLabel = '[1左シフト:D列]';
+                } else if (nameResult.leftShift === 2) {
+                    positionLabel = '[2左シフト:C列]';
+                } else if (nameResult.leftShift >= 3) {
+                    positionLabel = '[' + nameResult.leftShift + '左シフト]';
+                }
+
+                // マッチタイプ表示（どの列からマッチしたか明示）
+                var matchLabel = '[' + matchSource + ']';
+                // ★ 同一v17Noの重複チェック（コードマッチ優先）
+                var existingIdx = -1;
+                for (var ei = 0; ei < matchedItems.length; ei++) {
+                    if (matchedItems[ei].v15No === v17No) {
+                        existingIdx = ei;
+                        break;
+                    }
+                }
+
+                if (existingIdx >= 0) {
+                    var existing = matchedItems[existingIdx];
+                    // 既存がname_basedで今回がcode_basedなら置き換え
+                    if (existing.matchType === 'name_based' && matchType === 'code_based') {
+                        addLog('  行' + lineIdx + ': v17No.' + v17No + ' 既存の項目名マッチをコードマッチで上書き', 'data');
+                        // 置き換え処理は下で行う
+                    } else {
+                        // それ以外は重複スキップ
+                        addLog('  行' + lineIdx + ': 「' + matchedName + '」→ v17No.' + v17No + ' 重複のためスキップ（既存: ' + existing.name + '）', 'data');
+                        continue;
+                    }
+                }
+
+                addLog('★ [' + displayIndex + '] 行' + lineIdx + ': 「' + matchedName + '」' + positionLabel + ' ' + matchLabel + ' → v17No.' + v17No + ' (' + category + ') 初月値=' + firstValue, 'success');
+
+                var newItem = {
+                    displayIndex: displayIndex,  // 連番インデックス
+                    lineIdx: lineIdx,            // 元CSV行番号
+                    code: accountCode || 'NAME:' + itemName,
+                    name: matchedName,
+                    hierarchy: nameResult.hierarchy || (category + ' > ' + matchedName),
+                    v15No: v17No,
+                    v15Name: ITEMS[v17No] ? ITEMS[v17No].name : matchedName,
+                    category: category,
+                    matchType: matchType,
+                    sampleValue: firstValue,
+                    hasValue: hasValue,
+                    rowData: rowData  // この行の月次データ
+                };
+
+                // 既存エントリの置き換え or 新規追加
+                if (existingIdx >= 0) {
+                    matchedItems[existingIdx] = newItem;
+                } else {
+                    matchedItems.push(newItem);
+                }
+
+                // 監視対象v17Noの場合、追加確認ログ
+                if (DEBUG_V17NOS.indexOf(v17No) >= 0) {
+                    addLog('【PUSH確認】v17No.' + v17No + ' を matchedItems[' + (matchedItems.length - 1) + '] に追加完了', 'success');
                 }
             }
 
-            addLog('マッチ: ' + matchedItems.length + '項目、未マッチ: ' + unmatchedItems.length + '項目', 'info');
-            document.getElementById('detectedItemCount').textContent = matchedItems.length + '項目';
-            document.getElementById('unmatchedCount').textContent = unmatchedItems.length + '項目';
+            // ★ 社員給与(v17No.18)と給料手当(v17No.16)の優先制御
+            // 両方存在する場合、社員給与を優先し給料手当を削除（二重計上防止）
+            var hasNo16 = false, hasNo18 = false;
+            var no16Idx = -1;
+            for (var pi = 0; pi < matchedItems.length; pi++) {
+                if (matchedItems[pi].v15No === 16) { hasNo16 = true; no16Idx = pi; }
+                if (matchedItems[pi].v15No === 18) { hasNo18 = true; }
+            }
+            if (hasNo16 && hasNo18) {
+                addLog('', '');
+                addLog('★ 重複人件費の優先制御 ★', 'info');
+                addLog('  社員給与(v17No.18)と給料手当(v17No.16)が両方存在', 'info');
+                addLog('  → 給料手当を削除（社員給与を優先）', 'info');
+                matchedItems.splice(no16Idx, 1);
+                // annualDataからも削除
+                delete annualData[16];
+            }
+
+            // 処理結果サマリー
+            addLog('', '');
+            addLog('=== 処理結果サマリー ===', 'info');
+            addLog('総データ行数: ' + (lines.length - 4) + '行', 'info');
+            addLog('マッチ成功: ' + matchedItems.length + '行', 'success');
+            addLog('  ├ コードマッチ (B列): ' + codeMatchCount + '行', 'success');
+            addLog('  └ 項目名マッチ (C/D/E列): ' + nameMatchCount + '行', 'success');
+            addLog('マッピング未定義: ' + unmatchedItems.length + '行', 'warn');
+
+            // 未マッチ項目の詳細
+            if (unmatchedItems.length > 0) {
+                addLog('', '');
+                addLog('--- 未マッチ項目一覧（CODE_BASED_MAP/NAME_BASED_MAPに追加が必要）---', 'warn');
+                unmatchedItems.forEach(function(item) {
+                    addLog('  「' + item.name + '」(code=' + item.code + ', 行' + item.lineIdx + ', 値=' + item.sampleValue + ')', 'warn');
+                });
+            }
+
+            // マッチしたv17Noの一覧
+            var matchedV17Nos = matchedItems.map(function(item) { return item.v15No; });
+            var uniqueV17Nos = matchedV17Nos.filter(function(v, i, a) { return a.indexOf(v) === i; }).sort(function(a, b) { return a - b; });
+            addLog('', '');
+            addLog('使用v17No一覧: [' + uniqueV17Nos.join(', ') + ']（' + uniqueV17Nos.length + '種類）', 'info');
+
+            // デバッグ：監視対象v17Noのマッチ状況サマリー
+            addLog('', '');
+            addLog('=== 【DEBUG】監視対象v17Noのマッチ状況 ===', 'info');
+            DEBUG_V17NOS.forEach(function(v17) {
+                if (debugMatches[v17]) {
+                    var m = debugMatches[v17];
+                    addLog('✓ v17No.' + v17 + ': マッチ成功（行' + m.lineIdx + ', code=' + m.code + ', ' + m.matchType + '）', 'success');
+                } else {
+                    // マッチしなかった理由を調査
+                    var expectedCode = null;
+                    var expectedName = null;
+                    for (var code in CODE_BASED_MAP) {
+                        if (CODE_BASED_MAP[code].v17No === v17) {
+                            expectedCode = code;
+                            break;
+                        }
+                    }
+                    for (var name in NAME_BASED_MAP) {
+                        if (NAME_BASED_MAP[name].v17No === v17) {
+                            expectedName = name;
+                            break;
+                        }
+                    }
+                    addLog('✗ v17No.' + v17 + ': マッチなし（期待コード=' + expectedCode + ', 期待項目名=' + expectedName + '）', 'warn');
+                }
+            });
+
+            document.getElementById('detectedItemCount').textContent = matchedItems.length + '行';
+            document.getElementById('unmatchedCount').textContent = unmatchedItems.length + '行';
+
+            // ★ 最終確認：matchedItemsの全内容をログ出力
+            addLog('', '');
+            addLog('=== 【最終確認】matchedItems配列の内容（パース完了時点）===', 'info');
+            addLog('配列長: ' + matchedItems.length + '件', 'info');
+
+            // v15No別にグループ化して表示
+            var v15NoMap = {};
+            matchedItems.forEach(function(item) {
+                var key = item.v15No || 'undefined';
+                if (!v15NoMap[key]) v15NoMap[key] = [];
+                v15NoMap[key].push(item.name);
+            });
+
+            var sortedV15Nos = Object.keys(v15NoMap).map(function(k) { return parseInt(k) || 0; }).sort(function(a,b) { return a-b; });
+            sortedV15Nos.forEach(function(v15No) {
+                var names = v15NoMap[v15No];
+                addLog('  v17No.' + v15No + ': ' + names.join(', '), 'data');
+            });
+
+            // 監視対象チェック
+            var watchV15Nos = [1, 8, 9, 11, 12, 20];
+            var presentWatch = watchV15Nos.filter(function(n) { return v15NoMap[n]; });
+            var missingWatch = watchV15Nos.filter(function(n) { return !v15NoMap[n]; });
+            addLog('', '');
+            addLog('監視対象v17No存在確認:', 'info');
+            addLog('  存在: [' + presentWatch.join(', ') + ']', presentWatch.length > 0 ? 'success' : 'warn');
+            if (missingWatch.length > 0) {
+                addLog('  欠落: [' + missingWatch.join(', ') + '] ← ここに問題あり！', 'error');
+            } else {
+                addLog('  欠落: なし（全て存在）', 'success');
+            }
         }
+
+        // ================== ここからシミュレーション処理 ==================
 
         // シミュレーション
         function runSimulation() {
@@ -4287,26 +5686,27 @@
             for (var m = 0; m < activeMonths.length; m++) {
                 var get = function(no) { return annualData[no] ? (annualData[no][m] || 0) : 0; };
                 var getCalc = function(name) { return calcResults[m][name] || 0; };
-                var sales = get(5); // 売上高合計（千円）
+                var sales = get(4); // ★ 売上高合計（v17No.4）
 
                 // ★ 目標客数・客単価の計算ロジック改善（ユーザー指定客単価を使用）
                 // 売上（千円）から客数を逆算: 客数 = 売上 × 1000 ÷ 想定客単価
                 var estimatedCustomers = sales > 0 ? Math.round(sales * 1000 / targetUnitPrice) : 3000;
                 // 客単価は売上から客数で逆算: 客単価 = 売上 × 1000 ÷ 客数
-                var estimatedUnitPrice = estimatedCustomers > 0 ? Math.round(sales * 1000 / estimatedCustomers) : targetUnitPrice;
+                // ★ 売上が0の場合はユーザー指定の客単価を使用
+                var estimatedUnitPrice = (sales > 0 && estimatedCustomers > 0) ? Math.round(sales * 1000 / estimatedCustomers) : targetUnitPrice;
 
                 rakumyInputs[m] = {
-                    // 費用予算設定（固定費用）- 29項目
-                    rent: getCalc('地代家賃合計'),
-                    fixedLabor: getCalc('固定人件費合計'),
-                    depreciation: get(46),
-                    material: getCalc('資材費合計'),
-                    promotion: get(21), menuCopy: get(22), survey: get(23), sanitary: get(24), service: get(25),
-                    electricity: get(26), gas: get(27), water: get(28), consumables: get(29), maintenance: get(30),
-                    taxes: get(31), entertainment: get(32), travel: get(33), communication: get(34),
-                    creditFee: get(35), paymentFee: get(36), meeting: get(37), membership: get(38),
-                    education: get(39), training: get(40), research: get(41), recruitment: get(42),
-                    it: get(43), outsource: get(44), misc: get(45),
+                    // 費用予算設定（固定費用）- v17Noに対応
+                    rent: getCalc('地代家賃合計'),         // v17No.56+59
+                    fixedLabor: getCalc('固定人件費合計'), // v17No.16-18,21-25
+                    depreciation: get(55),                 // v17No.55 減価償却費
+                    material: getCalc('資材費合計'),       // v17No.57+58
+                    promotion: get(27), menuCopy: get(28), survey: get(29), sanitary: get(30), service: get(31),
+                    electricity: get(32), gas: get(33), water: get(34), consumables: get(35), maintenance: get(36),
+                    taxes: get(37), entertainment: get(38), travel: get(39), communication: get(40),
+                    creditFee: get(41), paymentFee: get(42), meeting: get(43), membership: get(44),
+                    education: get(45), training: get(46), research: get(47), recruitment: get(48),
+                    it: get(49), outsource: get(50), misc: get(51),
 
                     // 予算設定（変動費用）- MQパラメータ
                     fdRate: getCalc('FD仕入費率'),
@@ -4319,16 +5719,16 @@
                     drinkRatio: getCalc('ドリンク売上比率'),
                     otherRatio: getCalc('その他売上比率'),
 
-                    // 単月費用予算（固定費用）- 28項目（地代家賃除く）
+                    // 単月費用予算（固定費用）- v17Noに対応
                     m_fixedLabor: getCalc('固定人件費合計'),
-                    m_depreciation: get(46),
+                    m_depreciation: get(55),
                     m_material: getCalc('資材費合計'),
-                    m_promotion: get(21), m_menuCopy: get(22), m_survey: get(23), m_sanitary: get(24), m_service: get(25),
-                    m_electricity: get(26), m_gas: get(27), m_water: get(28), m_consumables: get(29), m_maintenance: get(30),
-                    m_taxes: get(31), m_entertainment: get(32), m_travel: get(33), m_communication: get(34),
-                    m_creditFee: get(35), m_paymentFee: get(36), m_meeting: get(37), m_membership: get(38),
-                    m_education: get(39), m_training: get(40), m_research: get(41), m_recruitment: get(42),
-                    m_it: get(43), m_outsource: get(44), m_misc: get(45),
+                    m_promotion: get(27), m_menuCopy: get(28), m_survey: get(29), m_sanitary: get(30), m_service: get(31),
+                    m_electricity: get(32), m_gas: get(33), m_water: get(34), m_consumables: get(35), m_maintenance: get(36),
+                    m_taxes: get(37), m_entertainment: get(38), m_travel: get(39), m_communication: get(40),
+                    m_creditFee: get(41), m_paymentFee: get(42), m_meeting: get(43), m_membership: get(44),
+                    m_education: get(45), m_training: get(46), m_research: get(47), m_recruitment: get(48),
+                    m_it: get(49), m_outsource: get(50), m_misc: get(51),
 
                     // 参考値（顧客予算の売上）
                     budgetSales: sales
@@ -4594,12 +5994,19 @@
 
         // テーブル描画
         function renderAllTables() {
+            console.log('=== renderAllTables 開始 ===');
+            console.log('matchedItems:', matchedItems ? matchedItems.length + '件' : 'null/undefined');
+            console.log('currentStoreName:', currentStoreName);
+            console.log('storeName:', storeName);
+
             renderInputTable();
             renderCalcTable();
             renderRakumyTables();
             renderOutputTable();
             renderBudgetListTable();
             renderSummary();
+
+            console.log('=== renderAllTables 終了 ===');
         }
 
         function createMonthHeaders() {
@@ -4614,20 +6021,75 @@
         function renderInputTable() {
             var table = document.getElementById('inputTable');
             var html = createMonthHeaders();
-            var categories = { '売上': [5, 2, 3, 4], '原価': [6, 7], '人件費': [10, 13, 14, 15, 16, 17, 18, 19], '経費': [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45], '固定費': [46, 47, 48, 49, 50], '利益': [60] };
-            for (var cat in categories) {
-                categories[cat].forEach(function(no) {
-                    if (!ITEMS[no] || !annualData[no]) return;
-                    html += '<tr><td>[' + no + '] ' + ITEMS[no].name + '</td>';
+
+            // デバッグ：matchedItemsの内容を確認（コンソールとUI両方に出力）
+            console.log('=== renderInputTable デバッグ ===');
+            console.log('matchedItems.length =', matchedItems ? matchedItems.length : 'null/undefined');
+
+            if (matchedItems && matchedItems.length > 0) {
+                // 全アイテムのv15No一覧
+                var v15Nos = matchedItems.map(function(item) { return item.v15No; }).sort(function(a,b) { return a-b; });
+                console.log('全v15No値:', v15Nos.join(', '));
+
+                // 監視対象の欠落チェック
+                var watchList = [1, 8, 9, 11, 12, 20];
+                var missing = watchList.filter(function(n) { return v15Nos.indexOf(n) === -1; });
+                var present = watchList.filter(function(n) { return v15Nos.indexOf(n) >= 0; });
+
+                console.log('監視対象(1,8,9,11,12,20)の存在状況:');
+                console.log('  存在:', present.join(', ') || 'なし');
+                console.log('  欠落:', missing.join(', ') || 'なし');
+
+                // 各アイテムの詳細
+                matchedItems.forEach(function(item, idx) {
+                    if (watchList.indexOf(item.v15No) >= 0) {
+                        console.log('  [' + idx + '] v15No=' + item.v15No + ', name=' + item.name + ', code=' + item.code);
+                    }
+                });
+
+                if (missing.length > 0) {
+                    console.warn('警告: 監視対象v17No欠落 =', missing.join(', '));
+                }
+            } else {
+                console.warn('警告: matchedItemsが空または未定義');
+            }
+            console.log('=== デバッグ終了 ===');
+
+            // ★ matchedItemsをv17No順で表示
+            if (matchedItems && matchedItems.length > 0) {
+                // v15No(v17No)でソートして表示
+                var sortedItems = matchedItems.slice().sort(function(a, b) {
+                    return (a.v15No || 0) - (b.v15No || 0);
+                });
+
+                sortedItems.forEach(function(item, idx) {
+                    // v17No（v15No）で表示
+                    var displayNo = item.v15No || (idx + 1);
+                    var itemName = item.name || '不明';
+
+                    // 合計を先に計算（0値の行を非表示にするため）
                     var total = 0;
                     for (var m = 0; m < activeMonths.length; m++) {
-                        var val = annualData[no][m] || 0;
+                        var val = item.rowData ? (item.rowData[m] || 0) : 0;
                         total += val;
-                        html += '<td class="input-cell">' + fmt(val) + '</td>';
                     }
-                    html += '<td class="total-col">' + fmt(total) + '</td><td class="avg-col">' + fmt(total / activeMonths.length) + '</td></tr>';
+
+                    // 合計が0の行はスキップ（非表示）
+                    if (total === 0) return;
+
+                    html += '<tr><td>[' + displayNo + '] ' + itemName + '</td>';
+                    for (var m = 0; m < activeMonths.length; m++) {
+                        // 各行の個別データを使用
+                        var val = item.rowData ? (item.rowData[m] || 0) : 0;
+                        var cellClass = val === 0 ? 'input-cell zero-value' : 'input-cell';
+                        html += '<td class="' + cellClass + '">' + fmt(val) + '</td>';
+                    }
+                    html += '<td class="total-col">' + fmt(total) + '</td><td class="avg-col">' + fmt(Math.round(total / activeMonths.length)) + '</td></tr>';
                 });
+            } else {
+                html += '<tr><td colspan="' + (activeMonths.length + 3) + '" style="text-align:center;color:#999;padding:20px;">CSVをインポートしてください</td></tr>';
             }
+
             table.innerHTML = html;
         }
 
@@ -5264,6 +6726,11 @@
             var historySection = document.getElementById('historySection');
             var historyList = document.getElementById('historyList');
             var history = loadHistory();
+
+            // 要素が存在しない場合は処理をスキップ
+            if (!historySection || !historyList) {
+                return;
+            }
 
             if (history.length === 0) {
                 historySection.style.display = 'none';
