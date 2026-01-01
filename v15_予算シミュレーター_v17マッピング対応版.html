@@ -5080,6 +5080,37 @@
                 addLog('⚠️ 警告: 12ヶ月以上の列が検出されています（' + budgetResults.length + '列）。四半期や累計列が含まれている可能性があります。', 'error');
             }
 
+            // ★ 前年度データ除外チェック（暦年CSVで1月〜3月が4月より前にある場合）
+            // 4月の列番号を取得
+            var aprilCol = -1;
+            for (var ai = 0; ai < budgetResults.length; ai++) {
+                if (budgetResults[ai].month === '4月') {
+                    aprilCol = budgetResults[ai].budgetCol;
+                    break;
+                }
+            }
+
+            // 1月〜3月が4月より左（前年度データ）の場合は除外
+            var excludedMonths = [];
+            var filteredBudgetResults = [];
+            if (aprilCol > 0) {
+                for (var fi = 0; fi < budgetResults.length; fi++) {
+                    var r = budgetResults[fi];
+                    // 1月〜3月で、4月より左にある場合は前年度データとして除外
+                    if ((r.month === '1月' || r.month === '2月' || r.month === '3月') && r.budgetCol < aprilCol) {
+                        excludedMonths.push(r.month + '(列' + r.budgetCol + ')');
+                    } else {
+                        filteredBudgetResults.push(r);
+                    }
+                }
+                if (excludedMonths.length > 0) {
+                    addLog('', '');
+                    addLog('=== 前年度データ除外 ===', 'warn');
+                    addLog('⚠️ 4月(列' + aprilCol + ')より左にある月を前年度データとして除外: ' + excludedMonths.join(', '), 'warn');
+                    budgetResults = filteredBudgetResults;
+                }
+            }
+
             // 会計年度順にソート
             budgetColumnPositions = [];
             activeMonths = [];
