@@ -4783,7 +4783,7 @@
                 }
 
                 // 目標設定
-                addRow('目標設定', '月次目標利益', getMonthlyData(function(m) { return stAnnualData[60] ? (stAnnualData[60][m] || 0) : 0; }), false);
+                addRow('目標設定', '月次目標利益', getMonthlyData(function(m) { return stAnnualData[63] ? (stAnnualData[63][m] || 0) : 0; }), false);
                 addRow('目標設定', '目標FD仕入費率', getMonthlyData(function(m) { return stRakumyInputs[m] ? (stRakumyInputs[m].fdRate || 0) : 0; }), true);
                 addRow('目標設定', '目標PA人件費率', getMonthlyData(function(m) { return stRakumyInputs[m] ? (stRakumyInputs[m].paRate || 0) : 0; }), true);
                 addRow('目標設定', '目標客単価', getMonthlyData(function(m) { return stRakumyInputs[m] ? (stRakumyInputs[m].targetUnitPrice || 0) : 0; }), false);
@@ -4930,11 +4930,11 @@
                 });
 
                 // 顧客予算との比較
-                // 顧客予算売上
+                // 顧客予算売上（No.4 売上高合計）
                 var budgetSalesRow = [stName, '顧客予算売上'];
                 var budgetSalesTotal = 0;
                 for (var m = 0; m < stActiveMonths.length; m++) {
-                    var val = stAnnualData[5] ? (stAnnualData[5][m] || 0) : 0;
+                    var val = stAnnualData[4] ? (stAnnualData[4][m] || 0) : 0;
                     budgetSalesTotal += val;
                     budgetSalesRow.push(Math.round(val));
                 }
@@ -4946,7 +4946,7 @@
                 var salesDiffTotal = 0;
                 for (var m = 0; m < stActiveMonths.length; m++) {
                     var mqSales = stMqOutputs[m] ? (stMqOutputs[m].sales || 0) : 0;
-                    var budgetSales = stAnnualData[5] ? (stAnnualData[5][m] || 0) : 0;
+                    var budgetSales = stAnnualData[4] ? (stAnnualData[4][m] || 0) : 0;
                     var diff = mqSales - budgetSales;
                     salesDiffTotal += diff;
                     salesDiffRow.push((diff >= 0 ? '+' : '') + Math.round(diff));
@@ -4954,11 +4954,11 @@
                 salesDiffRow.push((salesDiffTotal >= 0 ? '+' : '') + Math.round(salesDiffTotal), '-');
                 csv.push(salesDiffRow.join(','));
 
-                // 顧客予算営業利益
+                // 顧客予算営業利益（No.63 営業利益）
                 var budgetProfitRow = [stName, '顧客予算営業利益'];
                 var budgetProfitTotal = 0;
                 for (var m = 0; m < stActiveMonths.length; m++) {
-                    var val = stAnnualData[60] ? (stAnnualData[60][m] || 0) : 0;
+                    var val = stAnnualData[63] ? (stAnnualData[63][m] || 0) : 0;
                     budgetProfitTotal += val;
                     budgetProfitRow.push(Math.round(val));
                 }
