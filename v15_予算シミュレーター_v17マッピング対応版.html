@@ -5057,6 +5057,29 @@
 
             if (budgetResults.length === 0) throw new Error('月の「予算」列が検出できません');
 
+            // ★ 重複検出チェック - 同じ月が複数回検出されていないか
+            addLog('', '');
+            addLog('=== 月列重複チェック ===', 'info');
+            var monthCountMap = {};
+            budgetResults.forEach(function(r) {
+                monthCountMap[r.month] = (monthCountMap[r.month] || 0) + 1;
+            });
+            var hasDuplicates = false;
+            for (var month in monthCountMap) {
+                if (monthCountMap[month] > 1) {
+                    addLog('⚠️ 警告: 「' + month + '」が' + monthCountMap[month] + '回検出されています（最初の列のみ使用）', 'warn');
+                    hasDuplicates = true;
+                }
+            }
+            if (!hasDuplicates) {
+                addLog('✓ 重複なし（各月1回ずつ検出）', 'success');
+            }
+
+            // ★ 検出月数チェック
+            if (budgetResults.length > 12) {
+                addLog('⚠️ 警告: 12ヶ月以上の列が検出されています（' + budgetResults.length + '列）。四半期や累計列が含まれている可能性があります。', 'error');
+            }
+
             // 会計年度順にソート
             budgetColumnPositions = [];
             activeMonths = [];
@@ -5077,6 +5100,15 @@
             addLog('', '');
             addLog('会計年度順: ' + monthLabels.join(' → '), 'month');
             addLog('予算列位置: ' + budgetColumnPositions.map(function(p) { return p.month + ':列' + p.budgetCol; }).join(', '), 'data');
+
+            // ★ 列番号の連続性チェック（大きなギャップがある場合は警告）
+            var sortedCols = budgetColumnPositions.map(function(p) { return p.budgetCol; }).sort(function(a, b) { return a - b; });
+            for (var ci = 1; ci < sortedCols.length; ci++) {
+                var gap = sortedCols[ci] - sortedCols[ci - 1];
+                if (gap > 10) {
+                    addLog('⚠️ 警告: 列' + sortedCols[ci - 1] + 'と列' + sortedCols[ci] + 'の間に大きなギャップがあります（' + gap + '列）', 'warn');
+                }
+            }
 
             document.getElementById('detectedMonthCount').textContent = activeMonths.length + 'ヶ月';
 
