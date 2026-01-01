@@ -52,7 +52,8 @@
 
         .annual-table { width: 100%; border-collapse: collapse; font-size: 10px; }
         .annual-table th, .annual-table td { padding: 5px 6px; text-align: right; border: 1px solid #e0e0e0; white-space: nowrap; }
-        .annual-table th { background: #f5f5f5; font-weight: bold; text-align: center; }
+        .annual-table th { font-weight: bold; text-align: center; }
+        .annual-table thead tr[style*="background"] th { color: inherit; }
         .annual-table th:first-child { text-align: left; min-width: 150px; }
         .annual-table td:first-child { text-align: left; font-weight: bold; }
         .annual-table .month-header { background: #e3f2fd; }
@@ -646,6 +647,54 @@
                     </div>
                 </div>
 
+                <!-- ★★★ MQ設定（予算試算用 - 目標客単価のみ入力）★★★ -->
+                <div id="simMqInputSection" style="display:none;background:#e8f5e9;border-radius:8px;padding:20px;margin-bottom:20px;border:2px solid #4caf50;">
+                    <h4 style="color:#2e7d32;margin:0 0 10px 0;">MQ設定（目標客単価）</h4>
+                    <p style="color:#666;font-size:11px;margin:0 0 15px 0;">目標客単価を編集してMQ再計算を実行（G, FD%, PA%, Fは顧客予算から自動取得）</p>
+
+                    <!-- 自動参照パラメータ（月別表示・動的生成） -->
+                    <div style="background:#fff3e0;border-radius:6px;padding:12px;margin-bottom:15px;">
+                        <div style="font-size:11px;color:#e65100;font-weight:bold;margin-bottom:10px;">MQパラメータ（顧客予算から自動取得・月別表示）</div>
+                        <div style="overflow-x:auto;">
+                            <table class="annual-table" style="font-size:11px;" id="simAutoParamsTable">
+                                <!-- JavaScriptで動的生成 -->
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 月別目標客単価入力テーブル（動的生成） -->
+                    <div style="background:#f5f5f5;border-radius:6px;padding:12px;margin-bottom:15px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                            <div style="font-size:11px;color:#2e7d32;font-weight:bold;">月別目標客単価（<span id="simMonthCountDisplay">0</span>ヶ月分・店舗別デフォルト値設定済み）</div>
+                            <button onclick="resetSimUnitPricesToDefault()" class="btn" style="padding:4px 12px;font-size:10px;background:#4caf50;color:#fff;border:none;border-radius:3px;">
+                                デフォルトにリセット
+                            </button>
+                        </div>
+                        <div style="overflow-x:auto;">
+                            <table class="annual-table" style="font-size:11px;" id="simUnitPriceTable">
+                                <!-- JavaScriptで動的生成 -->
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- MQ再計算ボタン -->
+                    <div style="text-align:center;">
+                        <button onclick="recalculateSimMQ()" class="btn btn-primary" style="padding:10px 40px;font-size:14px;background:#ff9800;border:none;border-radius:6px;">
+                            MQ再計算
+                        </button>
+                    </div>
+
+                    <!-- MQ計算結果サマリー（予算試算用） -->
+                    <div id="simMqResultSummary" style="display:none;margin-top:15px;background:linear-gradient(135deg, #e8f5e9 0%, #fff3e0 100%);border-radius:8px;padding:15px;border:2px solid #4caf50;">
+                        <div style="font-size:12px;font-weight:bold;color:#2e7d32;margin-bottom:12px;">📊 MQ計算結果（月別）</div>
+                        <div style="overflow-x:auto;">
+                            <table class="annual-table" style="font-size:11px;" id="simMqResultTable">
+                                <!-- JavaScriptで動的生成 -->
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- 試算テーブル -->
                 <div id="simulationContent" style="display:none;">
                     <!-- 統一フィルター -->
@@ -845,7 +894,7 @@
             <!-- サブタブ -->
             <div class="tabs">
                 <div class="tab active" onclick="showTab('tab-calc')">【2】入力前演算</div>
-                <div class="tab" onclick="showTab('tab-rakumy')">【3】ラクミー入力値</div>
+                <div class="tab" onclick="showTab('tab-rakumy')">【3】ラクミー設定値</div>
                 <div class="tab" onclick="showTab('tab-output')">【4】MQ出力</div>
                 <div class="tab" onclick="showTab('tab-budget-list')">【5】予算一覧</div>
                 <div class="tab" onclick="showTab('tab-summary')">【6】サマリー</div>
@@ -861,36 +910,77 @@
             </div>
         </div>
 
-        <!-- ラクミー入力値タブ -->
+        <!-- ラクミー設定値タブ（統合版） -->
         <div id="tab-rakumy" class="tab-content">
             <div class="section">
-                <div class="section-header header-rakumy">【3】ラクミー入力値</div>
+                <div class="section-header" style="background:linear-gradient(135deg, #1976d2 0%, #4caf50 100%);color:#fff;">【3】ラクミー設定値</div>
                 <div class="section-body">
-                    <!-- 変換タイプ凡例 -->
-                    <div class="transform-legend">
-                        <span>変換タイプ:</span>
-                        <span><span class="type-direct">直接</span> 顧客予算をそのまま転記</span>
-                        <span><span class="type-sum">合計</span> 複数項目を合算</span>
-                        <span><span class="type-rate">率</span> 売上に対する率を計算</span>
-                        <span><span class="type-input">入力</span> ユーザー入力値</span>
-                        <span><span class="type-output">出力</span> MQ計算で算出（入力不可）</span>
+
+                    <!-- ★★★ MQ設定セクション（目標客単価のみ入力）★★★ -->
+                    <div style="background:#e8f5e9;border-radius:8px;padding:20px;margin-bottom:20px;border:2px solid #4caf50;">
+                        <h4 style="color:#2e7d32;margin:0 0 15px 0;">MQ設定（目標客単価入力 + 自動パラメータ参照）</h4>
+
+                        <!-- 自動参照パラメータ（月別表示・動的生成） -->
+                        <div style="background:#fff3e0;border-radius:6px;padding:12px;margin-bottom:15px;">
+                            <div style="font-size:11px;color:#e65100;font-weight:bold;margin-bottom:10px;">MQパラメータ（顧客予算から自動取得・月別表示）</div>
+                            <div style="overflow-x:auto;">
+                                <table class="annual-table" style="font-size:11px;" id="mqAutoParamsTable">
+                                    <!-- JavaScriptで動的生成 -->
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- 店舗情報・リセットボタン -->
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                            <div id="mqStoreNameDisplay" style="font-size:13px;color:#666;">店舗: 未選択</div>
+                            <button onclick="resetUnitPricesToDefault()" class="btn" style="padding:6px 15px;font-size:11px;background:#4caf50;color:#fff;border:none;border-radius:4px;">
+                                デフォルト値にリセット
+                            </button>
+                        </div>
+
+                        <!-- 月別目標客単価入力テーブル（動的生成） -->
+                        <div style="background:#f5f5f5;border-radius:6px;padding:12px;margin-bottom:15px;">
+                            <div style="font-size:11px;color:#333;font-weight:bold;margin-bottom:10px;">月別目標客単価（<span id="mqMonthCountDisplay">0</span>ヶ月分・前年実績をデフォルト値として設定）</div>
+                            <div style="overflow-x:auto;">
+                                <table class="annual-table" style="font-size:11px;" id="mqUnitPriceTable">
+                                    <!-- JavaScriptで動的生成 -->
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- MQ再計算ボタン -->
+                        <div style="text-align:center;">
+                            <button onclick="recalculateMQ()" class="btn btn-primary" style="padding:12px 50px;font-size:16px;background:#ff9800;border:none;border-radius:6px;color:#fff;font-weight:bold;">
+                                MQ再計算
+                            </button>
+                        </div>
+
+                        <!-- MQ計算結果サマリー -->
+                        <div id="mqResultSummary" style="display:none;margin-top:15px;background:linear-gradient(135deg, #e8f5e9 0%, #fff3e0 100%);border-radius:8px;padding:15px;border:2px solid #4caf50;">
+                            <div style="font-size:12px;font-weight:bold;color:#2e7d32;margin-bottom:12px;">📊 MQ計算結果（月別）</div>
+                            <div style="overflow-x:auto;">
+                                <table class="annual-table" style="font-size:11px;" id="mqResultTable">
+                                    <!-- JavaScriptで動的生成 -->
+                                </table>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- 費用予算設定（固定費用）- 29項目 -->
                     <div class="rakumy-category cost">
-                        <h4>費用予算設定（固定費用）- 29項目（年間デフォルト）</h4>
+                        <h4>費用予算設定（固定費用）- 29項目（年間デフォルト）<span style="font-size:11px;color:#666;font-weight:normal;margin-left:10px;">※顧客予算から自動転記</span></h4>
                         <table class="annual-table" id="rakumyCostTable"></table>
                     </div>
 
                     <!-- 単月費用予算（固定費用）- 28項目 -->
                     <div class="rakumy-category monthly">
-                        <h4>単月費用予算（固定費用）- 28項目（月別調整用、地代家賃除く）</h4>
+                        <h4>単月費用予算（固定費用）- 28項目（月別調整用、地代家賃除く）<span style="font-size:11px;color:#666;font-weight:normal;margin-left:10px;">※顧客予算から自動転記</span></h4>
                         <table class="annual-table" id="rakumyMonthlyTable"></table>
                     </div>
 
                     <!-- 予算設定（変動費用）- MQパラメータ -->
                     <div class="rakumy-category budget">
-                        <h4>予算設定（変動費用）</h4>
+                        <h4>予算設定（変動費用）- 参照<span style="font-size:11px;color:#666;font-weight:normal;margin-left:10px;">※MQ計算結果</span></h4>
                         <table class="annual-table" id="rakumyBudgetTable"></table>
                     </div>
                 </div>
@@ -970,6 +1060,40 @@
         var allStoresData = {}; // { storeName: { annualData, calcResults, rakumyInputs, mqOutputs, judgments, matchedItems, unmatchedItems, activeMonths, monthLabels } }
         var currentStoreName = '';
         var selectedFiles = []; // 選択されたファイル群
+
+        // ★★★ 店舗別デフォルト目標客単価（2025年実績ベース）★★★
+        var DEFAULT_UNIT_PRICES = {
+            'なかめのてっぺん　本店': { total: 5000, lunch: 0, dinner: 5000 },
+            'なかめのてっぺん　丸の内': { total: 5000, lunch: 0, dinner: 5000 },
+            'なかめのてっぺん　横浜みなとみらい': { total: 5000, lunch: 0, dinner: 5000 },
+            'なかめのてっぺん　品川': { total: 5000, lunch: 0, dinner: 5000 },
+            'なかめのてっぺん　名古屋': { total: 5000, lunch: 0, dinner: 5000 },
+            'なかめのてっぺん　渋谷ストリーム': { total: 5000, lunch: 0, dinner: 5000 },
+            'はまぐり屋串左衛門': { total: 5000, lunch: 0, dinner: 5000 },
+            '築地もったいないプロジェクト 魚治': { total: 5000, lunch: 0, dinner: 5000 },
+            '吉次蟹蔵': { total: 5000, lunch: 0, dinner: 5000 },
+            '鮨 つきうだ': { total: 15000, lunch: 0, dinner: 15000 },
+            '鮨 おにかい': { total: 15000, lunch: 0, dinner: 15000 },
+            '鮨 おにかい+1': { total: 15000, lunch: 0, dinner: 15000 },
+            '野毛のおにかい': { total: 15000, lunch: 0, dinner: 15000 },
+            '天婦羅 みやしろ': { total: 15000, lunch: 0, dinner: 15000 },
+            '焼鳥 ひら野': { total: 13400, lunch: 0, dinner: 13400 },
+            '立喰すし 魚河岸 山治': { total: 5000, lunch: 0, dinner: 5000 },
+            '鮨 おにかい×2': { total: 15000, lunch: 0, dinner: 15000 },
+            '居酒屋 うちやま': { total: 11000, lunch: 0, dinner: 11000 },
+            '銀座稲葉（MASA）': { total: 40000, lunch: 0, dinner: 40000 },
+            'ラーメン（業務委託）': { total: 1000, lunch: 1000, dinner: 1000 },
+            '麻布台　粋　稲葉': { total: 12000, lunch: 0, dinner: 12000 },
+            '銀座　炎　たむら': { total: 30000, lunch: 0, dinner: 30000 },
+            '焼鳥　ひら野となり': { total: 30000, lunch: 0, dinner: 30000 },
+            '尾張　粋　稲葉': { total: 20000, lunch: 0, dinner: 20000 },
+            '鮨KOUMEI': { total: 15000, lunch: 0, dinner: 15000 },
+            // デフォルト値（店舗名が見つからない場合）
+            '_default': { total: 5000, lunch: 0, dinner: 5000 }
+        };
+
+        // 店舗別月別目標客単価（ユーザー編集用）
+        var storeUnitPrices = {}; // { storeName: { 0: {total, lunch, dinner}, 1: {...}, ... } }
 
         // 設定データ（v17マッピング準拠）
         // v17: 顧客予算_ラクミー_パイプラインマッピング表_v17_MUGEN限定.csv
@@ -2496,6 +2620,9 @@
             renderMonthColsGrid();
             renderAllTables();
 
+            // ★ 目標客単価を初期化
+            initUnitPricesForStore(name);
+
             // ★ 予算試算タブの店舗セレクトも同期
             var simSelect = document.getElementById('simulationStoreSelect');
             if (simSelect) {
@@ -2569,26 +2696,558 @@
 
             var contentDiv = document.getElementById('simulationContent');
             var noDataDiv = document.getElementById('simulationNoData');
+            var mqInputSection = document.getElementById('simMqInputSection');
 
             if (!selectedStore || !allStoresData[selectedStore]) {
                 if (contentDiv) contentDiv.style.display = 'none';
                 if (noDataDiv) noDataDiv.style.display = 'block';
+                if (mqInputSection) mqInputSection.style.display = 'none';
                 return;
             }
 
             // 表示切替
             if (contentDiv) contentDiv.style.display = 'block';
             if (noDataDiv) noDataDiv.style.display = 'none';
+            if (mqInputSection) mqInputSection.style.display = 'block';  // ★ MQ設定セクションを表示
 
             // 元データをコピー
             simulationOriginal = JSON.parse(JSON.stringify(allStoresData[selectedStore]));
             simulationData = JSON.parse(JSON.stringify(allStoresData[selectedStore]));
 
+            // ★ 店舗別デフォルト客単価を予算試算ページに同期
+            initSimUnitPrices(selectedStore);
+
             // プルダウン初期化
             initSimYearMonth();
 
+            // ★ MQ自動合成値の表示を更新
+            updateSimMqDisplay();
+            updateSimAutoParamsDisplay();
+
             // 連動シミュレーション描画
             renderLinkedSimulation();
+        }
+
+        // ★ 予算試算用MQ表示更新
+        // 互換性のため残す（updateSimRefDisplayに転送）
+        function updateSimMqDisplay() {
+            updateSimRefDisplay();
+        }
+
+        // ★ 予算試算用月別客単価テーブル動的生成
+        function renderSimUnitPriceTable() {
+            var table = document.getElementById('simUnitPriceTable');
+            if (!table) return;
+
+            // 取り込まれた月を取得
+            var stActiveMonths = [];
+            var monthLabels = [];
+            if (simulationData && simulationData.activeMonths) {
+                stActiveMonths = simulationData.activeMonths;
+                monthLabels = simulationData.monthLabels || [];
+            }
+
+            // 月数表示を更新
+            var countEl = document.getElementById('simMonthCountDisplay');
+            if (countEl) countEl.textContent = stActiveMonths.length;
+
+            if (stActiveMonths.length === 0) {
+                table.innerHTML = '<tr><td style="padding:20px;text-align:center;color:#999;">データがありません</td></tr>';
+                return;
+            }
+
+            // 月名マッピング（財務年度: 0=4月, 1=5月, ... 11=3月）
+            var MONTH_NAMES = ['4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月', '1月', '2月', '3月'];
+
+            // ヘッダー行
+            var headerHtml = '<thead><tr style="background:#2e7d32;">';
+            headerHtml += '<th style="min-width:130px;padding:6px;color:#fff;font-weight:bold;">項目</th>';
+            for (var i = 0; i < stActiveMonths.length; i++) {
+                var mi = stActiveMonths[i];
+                var label = monthLabels[i] || MONTH_NAMES[mi] || (mi + 1) + '月';
+                headerHtml += '<th style="min-width:65px;color:#fff;font-weight:bold;">' + label + '</th>';
+            }
+            headerHtml += '<th style="min-width:70px;background:#1b5e20;color:#fff;font-weight:bold;">平均</th>';
+            headerHtml += '</tr></thead>';
+
+            // ボディ行
+            var bodyHtml = '<tbody>';
+
+            // 総合
+            bodyHtml += '<tr style="background:#e8f5e9;"><td style="font-weight:bold;color:#2e7d32;">目標客単価（総合）</td>';
+            for (var i = 0; i < stActiveMonths.length; i++) {
+                var mi = stActiveMonths[i];
+                bodyHtml += '<td><input type="number" id="simP_total_' + mi + '" step="100" style="width:55px;padding:3px;text-align:right;border:1px solid #4caf50;border-radius:3px;" onchange="updateSimUnitPriceAverage(\'total\')"></td>';
+            }
+            bodyHtml += '<td id="simP_total_avg" style="font-weight:bold;text-align:right;background:#c8e6c9;">¥--</td></tr>';
+
+            // ランチ
+            bodyHtml += '<tr><td style="font-weight:bold;color:#1565c0;">目標客単価（ランチ）</td>';
+            for (var i = 0; i < stActiveMonths.length; i++) {
+                var mi = stActiveMonths[i];
+                bodyHtml += '<td><input type="number" id="simP_lunch_' + mi + '" step="100" style="width:55px;padding:3px;text-align:right;border:1px solid #2196f3;border-radius:3px;" onchange="updateSimUnitPriceAverage(\'lunch\')"></td>';
+            }
+            bodyHtml += '<td id="simP_lunch_avg" style="font-weight:bold;text-align:right;background:#e3f2fd;">¥--</td></tr>';
+
+            // ディナー
+            bodyHtml += '<tr style="background:#fff3e0;"><td style="font-weight:bold;color:#e65100;">目標客単価（ディナー）</td>';
+            for (var i = 0; i < stActiveMonths.length; i++) {
+                var mi = stActiveMonths[i];
+                bodyHtml += '<td><input type="number" id="simP_dinner_' + mi + '" step="100" style="width:55px;padding:3px;text-align:right;border:1px solid #ff9800;border-radius:3px;" onchange="updateSimUnitPriceAverage(\'dinner\')"></td>';
+            }
+            bodyHtml += '<td id="simP_dinner_avg" style="font-weight:bold;text-align:right;background:#ffe0b2;">¥--</td></tr>';
+
+            bodyHtml += '</tbody>';
+
+            table.innerHTML = headerHtml + bodyHtml;
+        }
+
+        // ★ 予算試算用目標客単価初期化（月別対応・動的）
+        function initSimUnitPrices(storeName) {
+            // まずテーブルを動的生成
+            renderSimUnitPriceTable();
+
+            var defaults = getDefaultUnitPrice(storeName);
+
+            // 取り込まれた月の分だけ入力欄に値をセット
+            var stActiveMonths = (simulationData && simulationData.activeMonths) ? simulationData.activeMonths : [];
+            for (var i = 0; i < stActiveMonths.length; i++) {
+                var mi = stActiveMonths[i];
+                var totalEl = document.getElementById('simP_total_' + mi);
+                var lunchEl = document.getElementById('simP_lunch_' + mi);
+                var dinnerEl = document.getElementById('simP_dinner_' + mi);
+
+                if (totalEl) totalEl.value = defaults.total;
+                if (lunchEl) lunchEl.value = defaults.lunch;
+                if (dinnerEl) dinnerEl.value = defaults.dinner;
+            }
+
+            // 平均値を更新
+            updateSimUnitPriceAverage('total');
+            updateSimUnitPriceAverage('lunch');
+            updateSimUnitPriceAverage('dinner');
+        }
+
+        // ★ 予算試算用月別客単価の平均計算（動的対応）
+        function updateSimUnitPriceAverage(type) {
+            var total = 0;
+            var count = 0;
+
+            var stActiveMonths = (simulationData && simulationData.activeMonths) ? simulationData.activeMonths : [];
+            for (var i = 0; i < stActiveMonths.length; i++) {
+                var mi = stActiveMonths[i];
+                var el = document.getElementById('simP_' + type + '_' + mi);
+                if (el && el.value) {
+                    var val = parseFloat(el.value) || 0;
+                    if (val > 0) {
+                        total += val;
+                        count++;
+                    }
+                }
+            }
+
+            var avg = count > 0 ? Math.round(total / count) : 0;
+            var avgEl = document.getElementById('simP_' + type + '_avg');
+            if (avgEl) {
+                avgEl.textContent = '¥' + fmt(avg);
+            }
+        }
+
+        // ★ 予算試算用月別客単価取得（動的対応）
+        function getSimUnitPrices() {
+            var result = {};
+            var stActiveMonths = (simulationData && simulationData.activeMonths) ? simulationData.activeMonths : [];
+
+            for (var i = 0; i < stActiveMonths.length; i++) {
+                var mi = stActiveMonths[i];
+                var totalEl = document.getElementById('simP_total_' + mi);
+                var lunchEl = document.getElementById('simP_lunch_' + mi);
+                var dinnerEl = document.getElementById('simP_dinner_' + mi);
+
+                result[mi] = {
+                    total: parseFloat(totalEl?.value) || 0,
+                    lunch: parseFloat(lunchEl?.value) || 0,
+                    dinner: parseFloat(dinnerEl?.value) || 0
+                };
+            }
+            return result;
+        }
+
+        // ★ 予算試算用デフォルトにリセット
+        function resetSimUnitPricesToDefault() {
+            var select = document.getElementById('simulationStoreSelect');
+            var storeName = select ? select.value : '';
+            if (!storeName) {
+                showStatus('warn', '店舗が選択されていません');
+                return;
+            }
+            initSimUnitPrices(storeName);
+            showStatus('info', 'デフォルト値にリセットしました（' + storeName + '）');
+        }
+
+        // ★ 予算試算用自動パラメータテーブル動的生成
+        function renderSimAutoParamsTable() {
+            var table = document.getElementById('simAutoParamsTable');
+            if (!table) return;
+
+            var stActiveMonths = [];
+            var monthLabels = [];
+            if (simulationData && simulationData.activeMonths) {
+                stActiveMonths = simulationData.activeMonths;
+                monthLabels = simulationData.monthLabels || [];
+            }
+
+            if (stActiveMonths.length === 0) {
+                table.innerHTML = '<tr><td style="padding:20px;text-align:center;color:#999;">データがありません</td></tr>';
+                return;
+            }
+
+            var params = getSimMQAutoParams();
+            var MONTH_NAMES = ['4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月', '1月', '2月', '3月'];
+
+            // ヘッダー行
+            var headerHtml = '<thead><tr style="background:#e65100;">';
+            headerHtml += '<th style="min-width:100px;padding:6px;color:#fff;font-weight:bold;">パラメータ</th>';
+            for (var i = 0; i < stActiveMonths.length; i++) {
+                var mi = stActiveMonths[i];
+                var label = monthLabels[i] || MONTH_NAMES[mi] || (mi + 1) + '月';
+                headerHtml += '<th style="min-width:65px;color:#fff;font-weight:bold;">' + label + '</th>';
+            }
+            headerHtml += '<th style="min-width:70px;background:#bf360c;color:#fff;font-weight:bold;">平均</th>';
+            headerHtml += '</tr></thead>';
+
+            // ボディ行
+            var bodyHtml = '<tbody>';
+
+            // G（目標利益）- 月別
+            bodyHtml += '<tr style="background:#fff3e0;"><td style="font-weight:bold;color:#e65100;">【G】目標利益(千円)</td>';
+            var totalG = 0;
+            for (var i = 0; i < stActiveMonths.length; i++) {
+                var mi = stActiveMonths[i];
+                var g = params.monthlyG[mi] || 0;
+                totalG += g;
+                bodyHtml += '<td style="text-align:right;">' + fmt(g) + '</td>';
+            }
+            var avgG = Math.round(totalG / stActiveMonths.length);
+            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#ffe0b2;">' + fmt(avgG) + '</td></tr>';
+
+            // F（固定費）- 月別
+            bodyHtml += '<tr><td style="font-weight:bold;color:#e65100;">【F】固定費(千円)</td>';
+            var totalF = 0;
+            for (var i = 0; i < stActiveMonths.length; i++) {
+                var mi = stActiveMonths[i];
+                var f = params.monthlyF[mi] || 0;
+                totalF += f;
+                bodyHtml += '<td style="text-align:right;">' + fmt(f) + '</td>';
+            }
+            var avgF = Math.round(totalF / stActiveMonths.length);
+            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#ffe0b2;">' + fmt(avgF) + '</td></tr>';
+
+            // FD%（全期間共通）
+            bodyHtml += '<tr style="background:#fff3e0;"><td style="font-weight:bold;color:#e65100;">【FD%】FD率</td>';
+            for (var i = 0; i < stActiveMonths.length; i++) {
+                bodyHtml += '<td style="text-align:right;color:#888;">' + params.fdRate.toFixed(1) + '%</td>';
+            }
+            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#ffe0b2;">' + params.fdRate.toFixed(1) + '%</td></tr>';
+
+            // PA%（全期間共通）
+            bodyHtml += '<tr><td style="font-weight:bold;color:#e65100;">【PA%】PA率</td>';
+            for (var i = 0; i < stActiveMonths.length; i++) {
+                bodyHtml += '<td style="text-align:right;color:#888;">' + params.paRate.toFixed(1) + '%</td>';
+            }
+            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#ffe0b2;">' + params.paRate.toFixed(1) + '%</td></tr>';
+
+            bodyHtml += '</tbody>';
+
+            table.innerHTML = headerHtml + bodyHtml;
+        }
+
+        // ★ 予算試算用自動パラメータ表示更新（動的月対応）
+        function updateSimAutoParamsDisplay() {
+            renderSimAutoParamsTable();
+        }
+
+        // ★ 予算試算用自動パラメータ取得
+        function getSimMQAutoParams() {
+            var result = {
+                monthlyG: {},  // オブジェクト形式に変更（月インデックスをキーに）
+                monthlyF: {},
+                fdRate: 0,
+                paRate: 0,
+                totalG: 0,
+                avgF: 0
+            };
+
+            if (!simulationData || !simulationData.annualData) return result;
+
+            var get = function(no, m) { return simulationData.annualData[no] ? (simulationData.annualData[no][m] || 0) : 0; };
+
+            // 取り込まれた月のみ処理
+            var stActiveMonths = simulationData.activeMonths || [];
+            var monthCount = stActiveMonths.length || 1;
+
+            // 固定費・変動費・売上を計算
+            var totalFixedCost = 0;
+            var totalVariableCost = 0;
+            var totalSales = 0;
+
+            for (var i = 0; i < stActiveMonths.length; i++) {
+                var m = stActiveMonths[i];
+
+                // No.63 = 営業利益
+                var g = get(63, m);
+                result.monthlyG[m] = g;
+                result.totalG += g;
+
+                // 固定費
+                var fixedCost = get(56,m) + get(59,m) + get(16,m) + get(17,m) + get(18,m) + get(21,m) + get(22,m) + get(23,m) + get(24,m) + get(25,m) + get(55,m) + get(57,m) + get(58,m) +
+                    get(27,m) + get(28,m) + get(29,m) + get(30,m) + get(31,m) + get(32,m) + get(33,m) + get(34,m) + get(35,m) + get(36,m) +
+                    get(37,m) + get(38,m) + get(39,m) + get(40,m) + get(41,m) + get(42,m) + get(43,m) + get(44,m) + get(45,m) + get(46,m) +
+                    get(47,m) + get(48,m) + get(49,m) + get(50,m) + get(51,m);
+                result.monthlyF[m] = fixedCost;
+                totalFixedCost += fixedCost;
+
+                // 変動費
+                var variableCost = get(6, m) + get(10, m) + get(19, m);
+                totalVariableCost += variableCost;
+                totalSales += get(4, m);
+            }
+
+            result.avgF = Math.round(totalFixedCost / monthCount);
+
+            // FD%とPA%を計算
+            if (totalSales > 0) {
+                var fdCost = 0, paCost = 0;
+                for (var i = 0; i < stActiveMonths.length; i++) {
+                    var m = stActiveMonths[i];
+                    fdCost += get(6, m) + get(10, m);
+                    paCost += get(19, m);
+                }
+                result.fdRate = Math.round((fdCost / totalSales) * 1000) / 10;
+                result.paRate = Math.round((paCost / totalSales) * 1000) / 10;
+            }
+
+            return result;
+        }
+
+        // ★★★ 予算試算用MQ入力値取得（目標客単価のみ入力、他は自動取得・動的月対応）★★★
+        function getSimMQInputs() {
+            // 目標客単価は月別入力値から取得、G, FD%, PA%, Fは自動計算
+            var unitPrices = getSimUnitPrices();  // 月別客単価を取得（オブジェクト形式）
+            var autoParams = getSimMQAutoParams();
+
+            // 取り込まれた月のみ処理
+            var stActiveMonths = (simulationData && simulationData.activeMonths) ? simulationData.activeMonths : [];
+            var defaults = { total: 5000, lunch: 0, dinner: 5000 };
+
+            var monthlyInputs = {};
+            for (var i = 0; i < stActiveMonths.length; i++) {
+                var mi = stActiveMonths[i];
+                var up = unitPrices[mi] || defaults;
+                monthlyInputs[mi] = {
+                    targetProfit: autoParams.monthlyG[mi] || 0,
+                    fdRate: autoParams.fdRate || 30,
+                    paRate: autoParams.paRate || 10,
+                    targetUnitPrice: up.total,       // 月別総合客単価
+                    targetUnitPriceLunch: up.lunch,  // 月別ランチ客単価
+                    targetUnitPriceDinner: up.dinner, // 月別ディナー客単価
+                    fixedCost: autoParams.monthlyF[mi] || 0
+                };
+            }
+            return monthlyInputs;
+        }
+
+        // ★ 予算試算用費用参照表示を更新
+        function updateSimRefDisplay() {
+            if (!simulationData || !simulationData.annualData) return;
+
+            var totalFixedCost = 0;
+            var totalVariableCost = 0;
+            var totalSales = 0;
+            var get = function(no, m) { return simulationData.annualData[no] ? (simulationData.annualData[no][m] || 0) : 0; };
+
+            for (var m = 0; m < 12; m++) {
+                var fixedCost = get(56,m) + get(59,m) + get(16,m) + get(17,m) + get(18,m) + get(21,m) + get(22,m) + get(23,m) + get(24,m) + get(25,m) + get(55,m) + get(57,m) + get(58,m) +
+                    get(27,m) + get(28,m) + get(29,m) + get(30,m) + get(31,m) + get(32,m) + get(33,m) + get(34,m) + get(35,m) + get(36,m) +
+                    get(37,m) + get(38,m) + get(39,m) + get(40,m) + get(41,m) + get(42,m) + get(43,m) + get(44,m) + get(45,m) + get(46,m) +
+                    get(47,m) + get(48,m) + get(49,m) + get(50,m) + get(51,m);
+                totalFixedCost += fixedCost;
+
+                var variableCost = get(6, m) + get(10, m) + get(19, m);
+                totalVariableCost += variableCost;
+                totalSales += get(4, m);
+            }
+
+            var avgFixedCost = Math.round(totalFixedCost / 12);
+            var variableRate = totalSales > 0 ? (totalVariableCost / totalSales * 100).toFixed(1) : 0;
+
+            var refVarRate = document.getElementById('simRefVariableRate');
+            var refFixedCost = document.getElementById('simRefFixedCost');
+            if (refVarRate) refVarRate.textContent = variableRate + '%';
+            if (refFixedCost) refFixedCost.textContent = fmt(avgFixedCost) + ' 千円';
+        }
+
+        // ★ 予算試算用MQ再計算（動的月対応）
+        function recalculateSimMQ() {
+            if (!simulationData || !simulationData.rakumyInputs) {
+                showStatus('warn', '予算試算データがありません。店舗を選択してください。');
+                return;
+            }
+
+            // ★★★ 月別MQ入力値を取得 ★★★
+            var mqInputs = getSimMQInputs();
+            var stActiveMonths = simulationData.activeMonths || [];
+            var firstMonth = stActiveMonths[0];
+            var defaultInput = mqInputs[firstMonth] || { targetProfit: 0, fdRate: 30, paRate: 10, targetUnitPrice: 5000 };
+
+            // rakumyInputsの全MQパラメータを月別に更新
+            for (var m in simulationData.rakumyInputs) {
+                var monthInput = mqInputs[m] || defaultInput;
+                simulationData.rakumyInputs[m].targetProfit = monthInput.targetProfit;
+                simulationData.rakumyInputs[m].fdRate = monthInput.fdRate;
+                simulationData.rakumyInputs[m].paRate = monthInput.paRate;
+                simulationData.rakumyInputs[m].targetUnitPrice = monthInput.targetUnitPrice;
+            }
+
+            // MQ逆算を再実行
+            runSimMQSimulation();
+
+            // 表示更新
+            updateSimRefDisplay();
+            renderLinkedSimulation();
+
+            // MQ計算結果サマリーを表示
+            renderSimMQResultSummary();
+
+            // 成功メッセージ（最初の月の値を表示）
+            var m0 = defaultInput;
+            showStatus('success', 'MQ再計算完了（' + stActiveMonths.length + 'ヶ月分） - P（総合）:¥' + fmt(m0.targetUnitPrice));
+        }
+
+        // MQ計算結果サマリーを表示（予算試算タブ用）
+        function renderSimMQResultSummary() {
+            var container = document.getElementById('simMqResultSummary');
+            var table = document.getElementById('simMqResultTable');
+            if (!container || !table) return;
+
+            var stActiveMonths = simulationData && simulationData.activeMonths ? simulationData.activeMonths : [];
+            var stMqOutputs = simulationData && simulationData.mqOutputs ? simulationData.mqOutputs : {};
+
+            if (stActiveMonths.length === 0 || Object.keys(stMqOutputs).length === 0) {
+                container.style.display = 'none';
+                return;
+            }
+
+            var MONTH_NAMES = ['4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月', '1月', '2月', '3月'];
+
+            // ヘッダー行
+            var headerHtml = '<thead><tr style="background:#e65100;">';
+            headerHtml += '<th style="min-width:120px;padding:6px;color:#fff;font-weight:bold;">項目</th>';
+            for (var i = 0; i < stActiveMonths.length; i++) {
+                var mi = stActiveMonths[i];
+                headerHtml += '<th style="min-width:70px;color:#fff;font-weight:bold;">' + MONTH_NAMES[mi] + '</th>';
+            }
+            headerHtml += '<th style="min-width:80px;background:#bf360c;color:#fff;font-weight:bold;">合計/平均</th>';
+            headerHtml += '</tr></thead>';
+
+            // ボディ行
+            var bodyHtml = '<tbody>';
+
+            // 目標客数
+            var totalQ = 0;
+            bodyHtml += '<tr style="background:#fff3e0;"><td style="font-weight:bold;color:#e65100;">🎯 目標客数（人）</td>';
+            for (var i = 0; i < stActiveMonths.length; i++) {
+                var mi = stActiveMonths[i];
+                var q = stMqOutputs[mi] ? (stMqOutputs[mi].customers || 0) : 0;
+                totalQ += q;
+                bodyHtml += '<td style="text-align:right;font-weight:bold;">' + fmt(q) + '</td>';
+            }
+            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#ffe0b2;">' + fmt(totalQ) + '</td></tr>';
+
+            // 目標売上
+            var totalS = 0;
+            bodyHtml += '<tr style="background:#e8f5e9;"><td style="font-weight:bold;color:#2e7d32;">💰 目標売上（千円）</td>';
+            for (var i = 0; i < stActiveMonths.length; i++) {
+                var mi = stActiveMonths[i];
+                var s = stMqOutputs[mi] ? (stMqOutputs[mi].sales || 0) : 0;
+                totalS += s;
+                bodyHtml += '<td style="text-align:right;">' + fmt(s) + '</td>';
+            }
+            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#c8e6c9;">' + fmt(totalS) + '</td></tr>';
+
+            // 目標営業利益
+            var totalProfit = 0;
+            bodyHtml += '<tr style="background:#e3f2fd;"><td style="font-weight:bold;color:#1565c0;">📈 目標営業利益（千円）</td>';
+            for (var i = 0; i < stActiveMonths.length; i++) {
+                var mi = stActiveMonths[i];
+                var profit = stMqOutputs[mi] ? (stMqOutputs[mi].operatingProfit || 0) : 0;
+                totalProfit += profit;
+                bodyHtml += '<td style="text-align:right;">' + fmt(profit) + '</td>';
+            }
+            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#bbdefb;">' + fmt(totalProfit) + '</td></tr>';
+
+            // 限界利益単価M（P × (1 - VR)で計算）
+            var totalM = 0;
+            bodyHtml += '<tr><td style="font-weight:bold;color:#7b1fa2;">📊 限界利益単価M（円）</td>';
+            for (var i = 0; i < stActiveMonths.length; i++) {
+                var mi = stActiveMonths[i];
+                var out = stMqOutputs[mi];
+                var m = 0;
+                if (out) {
+                    var vr = (out.variableRate || 0) / 100;
+                    m = Math.round((out.unitPrice || 0) * (1 - vr));
+                }
+                totalM += m;
+                bodyHtml += '<td style="text-align:right;">' + fmt(m) + '</td>';
+            }
+            var avgM = stActiveMonths.length > 0 ? Math.round(totalM / stActiveMonths.length) : 0;
+            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#e1bee7;">' + fmt(avgM) + '</td></tr>';
+
+            bodyHtml += '</tbody>';
+
+            table.innerHTML = headerHtml + bodyHtml;
+            container.style.display = 'block';
+        }
+
+        // ★ 予算試算用MQ逆算
+        function runSimMQSimulation() {
+            if (!simulationData || !simulationData.rakumyInputs) return;
+
+            simulationData.mqOutputs = {};
+            for (var m in simulationData.rakumyInputs) {
+                var r = simulationData.rakumyInputs[m];
+
+                var fixedCost = r.fixedCostTotal || 0;
+                var variableRate = ((r.fdRate || 0) + (r.paRate || 0)) / 100;
+                var targetProfit = r.targetProfit || 0;
+                var targetUnitPrice = r.targetUnitPrice || 4500;
+
+                // MQ逆算式
+                var requiredGrossProfit = fixedCost + targetProfit;
+                var grossProfitRate = 1 - variableRate;
+                var requiredSales = grossProfitRate > 0 ? requiredGrossProfit / grossProfitRate : 0;
+                var targetCustomers = targetUnitPrice > 0 ? Math.round(requiredSales * 1000 / targetUnitPrice) : 0;
+                var sales = targetCustomers * targetUnitPrice / 1000;
+                var variableCost = sales * variableRate;
+                var grossProfit = sales - variableCost;
+                var operatingProfit = grossProfit - fixedCost;
+
+                simulationData.mqOutputs[m] = {
+                    sales: Math.round(sales),
+                    customers: targetCustomers,
+                    unitPrice: targetUnitPrice,
+                    variableCost: Math.round(variableCost),
+                    variableRate: variableRate * 100,
+                    grossProfit: Math.round(grossProfit),
+                    grossProfitRate: sales > 0 ? grossProfit / sales * 100 : 0,
+                    fixedCost: Math.round(fixedCost),
+                    operatingProfit: Math.round(operatingProfit),
+                    operatingProfitRate: sales > 0 ? operatingProfit / sales * 100 : 0,
+                    targetProfit: targetProfit,
+                    requiredGrossProfit: Math.round(requiredGrossProfit),
+                    requiredSales: Math.round(requiredSales)
+                };
+            }
         }
 
         // ★ 年・月プルダウン初期化
@@ -2895,8 +3554,28 @@
                 return simulationData.mqOutputs && simulationData.mqOutputs[m] ? (simulationData.mqOutputs[m][field] || 0) : 0;
             };
 
+            // ★ rakumyInputsを取得する関数
+            var getRI = function(m, field) {
+                return simulationData.rakumyInputs && simulationData.rakumyInputs[m] ? (simulationData.rakumyInputs[m][field] || 0) : 0;
+            };
+
             // ラクミー予算項目（★ MQ計算結果を使用）
             var rakumyItems = [
+                // ★★★ MQ入力パラメータ（月次予算設定の入力値）★★★
+                { section: 'MQ入力', name: '【F】固定費用予算', highlight: true, isInput: true, calc: function(m) { return getRI(m, 'fixedCostTotal'); } },
+                { section: 'MQ入力', name: '【G】目標月次利益', highlight: true, isInput: true, calc: function(m) { return getRI(m, 'targetProfit'); } },
+                { section: 'MQ入力', name: '【FD%】FD仕入費率', isRate: true, isInput: true, calc: function(m) { return getRI(m, 'fdRate'); } },
+                { section: 'MQ入力', name: '【PA%】PA人件費率', isRate: true, isInput: true, calc: function(m) { return getRI(m, 'paRate'); } },
+                { section: 'MQ入力', name: '【VR】変動費率（FD+PA）', isRate: true, isInput: true, calc: function(m) { return getRI(m, 'fdRate') + getRI(m, 'paRate'); } },
+                { section: 'MQ入力', name: '【P】目標客単価（税抜）', isYen: true, isInput: true, calc: function(m) { return getRI(m, 'targetUnitPrice'); } },
+                // ★★★ MQ逆算結果 ★★★
+                { section: 'MQ逆算', name: '【M】粗利単価', isYen: true, isCalc: true, calc: function(m) {
+                    var p = getRI(m, 'targetUnitPrice');
+                    var vr = (getRI(m, 'fdRate') + getRI(m, 'paRate')) / 100;
+                    return Math.round(p * (1 - vr));
+                } },
+                { section: 'MQ逆算', name: '【F+G】必要粗利', highlight: true, isCalc: true, calc: function(m) { return getMQ(m, 'requiredGrossProfit'); } },
+                { section: 'MQ逆算', name: '【Q】目標客数', highlight: true, isPerson: true, isCalc: true, calc: function(m) { return getMQ(m, 'customers'); } },
                 // 売上予算（★ MQ計算: 客数×客単価）
                 { section: '売上予算', name: '売上予算（税抜）', highlight: true, calc: function(m) { return getMQ(m, 'sales'); } },
                 // 変動費予算（★ MQ計算結果を使用）
@@ -2990,7 +3669,9 @@
                     if (item.section !== lastSection) {
                         var cols = monthIndices.length + 2;
                         var sectionBg = '#607d8b';
-                        if (item.section === 'MQ指標' || item.section === 'MQ逆算') sectionBg = '#9c27b0';
+                        if (item.section === 'MQ指標') sectionBg = '#9c27b0';
+                        if (item.section === 'MQ入力') sectionBg = '#4caf50';  // 緑（入力パラメータ）
+                        if (item.section === 'MQ逆算') sectionBg = '#ff9800';  // オレンジ（逆算結果）
                         if (item.section === '売上構成比') sectionBg = '#1976d2';
                         if (item.section === '原価率') sectionBg = '#ff5722';
                         html += '<tr><td colspan="' + cols + '" style="background:' + sectionBg + ';color:#fff;font-weight:bold;padding:5px 10px;font-size:11px;">' + item.section + '</td></tr>';
@@ -3000,15 +3681,18 @@
                     var rowBg = item.highlight ? '#fff8e1' : '#fff';
                     if (item.section === '売上構成比') rowBg = '#e3f2fd';
                     if (item.section === '原価率') rowBg = '#fbe9e7';
-                    if (item.section === 'MQ指標' || item.section === 'MQ逆算') rowBg = '#f3e5f5';
+                    if (item.section === 'MQ指標') rowBg = '#f3e5f5';
+                    if (item.section === 'MQ入力') rowBg = item.highlight ? '#c8e6c9' : '#e8f5e9';  // 緑系
+                    if (item.section === 'MQ逆算') rowBg = item.highlight ? '#ffe0b2' : '#fff3e0';  // オレンジ系
                     html += '<tr style="background:' + rowBg + ';">';
 
                     // 項目名
                     var label = item.no ? '[' + item.no + '] ' + item.name : item.name;
                     html += '<td style="font-weight:' + (item.highlight ? 'bold' : 'normal') + ';font-size:10px;white-space:nowrap;">' + label + '</td>';
 
-                    // MQ指標・逆算・売上構成比・原価率は年間値のみ（月列は結合）
-                    var isAnnualOnly = item.isRate || item.section === 'MQ指標' || item.section === 'MQ逆算' || item.section === '売上構成比' || item.section === '原価率';
+                    // MQ指標・売上構成比・原価率は年間値のみ（月列は結合）
+                    // ★ MQ入力とMQ逆算は月別値を表示するように変更
+                    var isAnnualOnly = item.section === 'MQ指標' || item.section === '売上構成比' || item.section === '原価率';
                     if (isAnnualOnly) {
                         var mqVal = item.calc ? item.calc() : 0;
                         var displayVal = item.isRate ? mqVal.toFixed(1) + '%' : fmt(mqVal);
@@ -3016,23 +3700,47 @@
                         html += '<td colspan="' + (monthIndices.length + 1) + '" style="text-align:center;font-weight:bold;font-size:14px;color:' + valColor + ';">' + displayVal + '</td>';
                     } else {
                         var total = 0;
+                        var isRateItem = item.isRate;
                         monthIndices.forEach(function(m) {
                             var val = item.calc ? item.calc(m) : get(item.no, m);
-                            total += val;
+                            if (!isRateItem) total += val;
+                            else total = val; // 率は最後の値を使用
 
                             if (isEditable && item.no) {
                                 // 編集可能セル（整数表示）
                                 html += '<td style="background:#e3f2fd;padding:2px;"><input type="number" data-no="' + item.no + '" data-month="' + m + '" value="' + Math.round(val) + '" style="width:100%;padding:3px;text-align:right;border:1px solid #90caf9;border-radius:2px;background:#fff;font-size:10px;box-sizing:border-box;" onchange="updateSimulationValue(this)"></td>';
                             } else {
-                                // 表示のみ
+                                // 表示のみ（★ 単位に応じた表示）
                                 var valColor = item.profit ? (val >= 0 ? '#2e7d32' : '#c62828') : '#333';
-                                html += '<td style="text-align:right;color:' + valColor + ';font-weight:' + (item.highlight ? 'bold' : 'normal') + ';">' + fmt(val) + '</td>';
+                                if (item.isInput) valColor = '#2e7d32';  // 入力値は緑
+                                if (item.isCalc) valColor = '#e65100';   // 逆算値はオレンジ
+                                var displayVal;
+                                if (item.isRate) {
+                                    displayVal = val.toFixed(1) + '%';
+                                } else if (item.isYen) {
+                                    displayVal = fmt(val) + '円';
+                                } else if (item.isPerson) {
+                                    displayVal = fmt(val) + '人';
+                                } else {
+                                    displayVal = fmt(val);
+                                }
+                                html += '<td style="text-align:right;color:' + valColor + ';font-weight:' + (item.highlight ? 'bold' : 'normal') + ';">' + displayVal + '</td>';
                             }
                         });
 
                         // 合計
                         var totalColor = item.profit ? (total >= 0 ? '#2e7d32' : '#c62828') : '#333';
-                        html += '<td style="text-align:right;background:#ffe0b2;font-weight:bold;color:' + totalColor + ';">' + fmt(total) + '</td>';
+                        var totalDisplay;
+                        if (item.isRate) {
+                            totalDisplay = '-';  // 率は合計不要
+                        } else if (item.isYen) {
+                            totalDisplay = '-';  // 円単位も合計不要
+                        } else if (item.isPerson) {
+                            totalDisplay = fmt(total) + '人';
+                        } else {
+                            totalDisplay = fmt(total);
+                        }
+                        html += '<td style="text-align:right;background:#ffe0b2;font-weight:bold;color:' + totalColor + ';">' + totalDisplay + '</td>';
                     }
                     html += '</tr>';
                 });
@@ -3158,8 +3866,51 @@
             }
             simulationData.annualData[no][month] = value;
 
+            // ★★★ 顧客予算編集時にrakumyInputs/mqOutputsを自動再計算 ★★★
+            regenerateSimRakumyInputs();
+            runSimMQSimulation();
+            updateSimMqDisplay();
+
             // 右側のラクミー予算を再計算
             renderLinkedSimulation();
+        }
+
+        // ★ 予算試算用rakumyInputs再生成（顧客予算編集時に呼び出し）
+        function regenerateSimRakumyInputs() {
+            if (!simulationData || !simulationData.annualData) return;
+
+            var get = function(no, m) { return simulationData.annualData[no] ? (simulationData.annualData[no][m] || 0) : 0; };
+
+            // ★★★ 月別ユーザー入力値を取得 ★★★
+            var mqInputs = getSimMQInputs();
+
+            simulationData.rakumyInputs = {};
+            for (var m = 0; m < 12; m++) {
+                // 月別MQ入力値を取得
+                var monthInput = mqInputs[m] || mqInputs[0] || { targetProfit: 500, fdRate: 30, paRate: 10, targetUnitPrice: 4500 };
+
+                // 固定費合計（費用予算から自動参照 - 入力不要）
+                var fixedLabor = get(16,m) + get(17,m) + get(18,m) + get(21,m) + get(22,m) + get(23,m) + get(24,m) + get(25,m);
+                var rent = get(56,m) + get(59,m);
+                var material = get(57,m) + get(58,m);
+                var depreciation = get(55,m);
+                var otherExp = 0;
+                for (var i = 27; i <= 51; i++) otherExp += get(i, m);
+                var fixedCostTotal = fixedLabor + rent + material + depreciation + otherExp;
+
+                simulationData.rakumyInputs[m] = {
+                    fixedCostTotal: fixedCostTotal,              // 費用予算から自動参照
+                    fdRate: monthInput.fdRate,                   // ★ 月別ユーザー入力
+                    paRate: monthInput.paRate,                   // ★ 月別ユーザー入力
+                    targetProfit: monthInput.targetProfit,       // ★ 月別ユーザー入力
+                    targetUnitPrice: monthInput.targetUnitPrice, // ★ 月別ユーザー入力
+                    budgetSales: get(4, m),                      // 参照値（顧客予算）
+                    budgetProfit: get(63, m)                     // 参照値（顧客予算）
+                };
+            }
+
+            // 費用参照表示を更新
+            updateSimRefDisplay();
         }
 
         // ★ 試算データを元に戻す
@@ -5786,38 +6537,559 @@
 
         // MQ再計算
         function recalculateMQ() {
+            console.log('=== recalculateMQ 開始 ===');
+
             if (Object.keys(annualData).length === 0) {
                 showStatus('warn', 'データがありません。先にCSVをインポートしてください。');
                 return;
             }
-            generateCalculations();
+
+            console.log('1. executeCalcRules 実行');
+            executeCalcRules();
+
+            console.log('2. generateRakumyInputs 実行');
             generateRakumyInputs();
+            console.log('rakumyInputs[0]:', rakumyInputs[0]);
+
+            console.log('3. runMQSimulation 実行');
             runMQSimulation();
+            console.log('mqOutputs[0]:', mqOutputs[0]);
+
+            console.log('4. renderAllTables 実行');
             renderAllTables();
-            showStatus('success', 'MQシミュレーションを再計算しました（客単価: ' + fmt(getTargetUnitPrice()) + '円）');
+
+            // 年間サマリーを計算
+            var mqInputs = getMQInputs();
+            var totalG = 0, avgFD = 0, avgPA = 0, avgP = 0;
+            for (var m = 0; m < 12; m++) {
+                if (mqInputs[m]) {
+                    totalG += mqInputs[m].targetProfit;
+                    avgFD += mqInputs[m].fdRate;
+                    avgPA += mqInputs[m].paRate;
+                    avgP += mqInputs[m].targetUnitPrice;
+                }
+            }
+            avgFD = (avgFD / 12).toFixed(1);
+            avgPA = (avgPA / 12).toFixed(1);
+            avgP = Math.round(avgP / 12);
+
+            // MQ計算結果サマリーを表示
+            console.log('recalculateMQ: renderMQResultSummary呼び出し前 - mqOutputs:', Object.keys(mqOutputs).length, 'activeMonths:', activeMonths.length);
+            renderMQResultSummary();
+
+            showStatus('success', 'MQ再計算完了（月別） - 年間G:' + fmt(totalG) + '千円 平均FD:' + avgFD + '% PA:' + avgPA + '% P:' + fmt(avgP) + '円');
+        }
+
+        // MQ計算結果サマリーを表示（ラクミー設定値タブ用）
+        function renderMQResultSummary() {
+            console.log('=== renderMQResultSummary 開始 ===');
+            var container = document.getElementById('mqResultSummary');
+            var table = document.getElementById('mqResultTable');
+            console.log('container:', container, 'table:', table);
+            if (!container || !table) {
+                console.log('container または table が見つかりません');
+                return;
+            }
+
+            console.log('activeMonths:', activeMonths, 'length:', activeMonths.length);
+            console.log('mqOutputs keys:', Object.keys(mqOutputs), 'length:', Object.keys(mqOutputs).length);
+            console.log('mqOutputs[0]:', mqOutputs[0]);
+
+            if (activeMonths.length === 0 || Object.keys(mqOutputs).length === 0) {
+                console.log('データなしで早期リターン');
+                container.style.display = 'none';
+                return;
+            }
+
+            var MONTH_NAMES = ['4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月', '1月', '2月', '3月'];
+
+            // ヘッダー行
+            var headerHtml = '<thead><tr style="background:#2e7d32;">';
+            headerHtml += '<th style="min-width:120px;padding:6px;color:#fff;font-weight:bold;">項目</th>';
+            for (var i = 0; i < activeMonths.length; i++) {
+                var mi = activeMonths[i];
+                headerHtml += '<th style="min-width:70px;color:#fff;font-weight:bold;">' + MONTH_NAMES[mi] + '</th>';
+            }
+            headerHtml += '<th style="min-width:80px;background:#1b5e20;color:#fff;font-weight:bold;">合計/平均</th>';
+            headerHtml += '</tr></thead>';
+
+            // ボディ行
+            var bodyHtml = '<tbody>';
+
+            // 目標客数
+            var totalQ = 0;
+            bodyHtml += '<tr style="background:#e8f5e9;"><td style="font-weight:bold;color:#2e7d32;">🎯 目標客数（人）</td>';
+            for (var i = 0; i < activeMonths.length; i++) {
+                var mi = activeMonths[i];
+                var q = mqOutputs[i] ? (mqOutputs[i].customers || 0) : 0;
+                totalQ += q;
+                bodyHtml += '<td style="text-align:right;font-weight:bold;">' + fmt(q) + '</td>';
+            }
+            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#c8e6c9;">' + fmt(totalQ) + '</td></tr>';
+
+            // 目標売上
+            var totalS = 0;
+            bodyHtml += '<tr><td style="font-weight:bold;color:#1565c0;">💰 目標売上（千円）</td>';
+            for (var i = 0; i < activeMonths.length; i++) {
+                var mi = activeMonths[i];
+                var s = mqOutputs[i] ? (mqOutputs[i].sales || 0) : 0;
+                totalS += s;
+                bodyHtml += '<td style="text-align:right;">' + fmt(s) + '</td>';
+            }
+            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#bbdefb;">' + fmt(totalS) + '</td></tr>';
+
+            // 目標営業利益
+            var totalProfit = 0;
+            bodyHtml += '<tr style="background:#fff3e0;"><td style="font-weight:bold;color:#e65100;">📈 目標営業利益（千円）</td>';
+            for (var i = 0; i < activeMonths.length; i++) {
+                var mi = activeMonths[i];
+                var profit = mqOutputs[i] ? (mqOutputs[i].operatingProfit || 0) : 0;
+                totalProfit += profit;
+                bodyHtml += '<td style="text-align:right;">' + fmt(profit) + '</td>';
+            }
+            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#ffe0b2;">' + fmt(totalProfit) + '</td></tr>';
+
+            // 限界利益単価M（P × (1 - VR)で計算）
+            var totalM = 0;
+            bodyHtml += '<tr><td style="font-weight:bold;color:#7b1fa2;">📊 限界利益単価M（円）</td>';
+            for (var i = 0; i < activeMonths.length; i++) {
+                var mi = activeMonths[i];
+                var out = mqOutputs[i];
+                var m = 0;
+                if (out) {
+                    var vr = (out.variableRate || 0) / 100;
+                    m = Math.round((out.unitPrice || 0) * (1 - vr));
+                }
+                totalM += m;
+                bodyHtml += '<td style="text-align:right;">' + fmt(m) + '</td>';
+            }
+            var avgM = activeMonths.length > 0 ? Math.round(totalM / activeMonths.length) : 0;
+            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#e1bee7;">' + fmt(avgM) + '</td></tr>';
+
+            bodyHtml += '</tbody>';
+
+            table.innerHTML = headerHtml + bodyHtml;
+            container.style.display = 'block';
+            console.log('=== renderMQResultSummary 完了 - 表示設定済み ===');
+        }
+
+        // ★★★ MQ入力値取得関数群（目標客単価のみ入力、他は自動取得）★★★
+        function getMQInputs() {
+            // 月別のMQ入力値を取得（取り込まれた月のみ）
+            // G, FD%, PA%, Fは顧客予算から自動計算、Pのみ入力
+            var monthlyInputs = {};
+            var autoParams = getMQAutoParams(); // 顧客予算から自動取得
+            var defaults = getDefaultUnitPrice(currentStoreName);
+
+            for (var i = 0; i < activeMonths.length; i++) {
+                var m = activeMonths[i];
+                // 目標客単価は入力値から取得（総合/ランチ/ディナー）
+                var unitPrice = parseInt(document.getElementById('mqP_total_' + m)?.value) || defaults.total;
+                var lunchUnitPrice = parseInt(document.getElementById('mqP_lunch_' + m)?.value) || defaults.lunch;
+                var dinnerUnitPrice = parseInt(document.getElementById('mqP_dinner_' + m)?.value) || defaults.dinner;
+
+                monthlyInputs[m] = {
+                    targetProfit: autoParams.monthlyG[m] || 0, // 顧客予算No.63の月次値
+                    fdRate: autoParams.fdRate || 30,
+                    paRate: autoParams.paRate || 10,
+                    targetUnitPrice: unitPrice,
+                    targetUnitPriceLunch: lunchUnitPrice,    // ランチ客単価追加
+                    targetUnitPriceDinner: dinnerUnitPrice,  // ディナー客単価追加
+                    fixedCost: autoParams.monthlyF[m] || 0 // 固定費も自動取得
+                };
+            }
+            return monthlyInputs;
+        }
+
+        // 顧客予算から自動パラメータを取得
+        function getMQAutoParams() {
+            var result = {
+                monthlyG: {}, // 月別目標利益（No.63営業利益）- オブジェクト形式
+                monthlyF: {}, // 月別固定費 - オブジェクト形式
+                fdRate: 0,
+                paRate: 0,
+                totalG: 0,
+                avgF: 0
+            };
+
+            if (Object.keys(annualData).length === 0) return result;
+
+            var monthCount = activeMonths.length || 1;
+
+            // 固定費・変動費・売上を計算
+            var totalFixedCost = 0;
+            var totalVariableCost = 0;
+            var totalSales = 0;
+
+            for (var i = 0; i < activeMonths.length; i++) {
+                var m = activeMonths[i];
+                var get = function(no) { return annualData[no] ? (annualData[no][m] || 0) : 0; };
+                var getCalc = function(name) { return calcResults[m] ? (calcResults[m][name] || 0) : 0; };
+
+                // No.63 = 営業利益
+                var g = annualData[63] ? (annualData[63][m] || 0) : 0;
+                result.monthlyG[m] = g;
+                result.totalG += g;
+
+                // 固定費 = 地代家賃 + 固定人件費 + その他販管費
+                var fixedCost = getCalc('地代家賃合計') + getCalc('固定人件費合計') + get(55) + getCalc('資材費合計') +
+                    get(27) + get(28) + get(29) + get(30) + get(31) + get(32) + get(33) + get(34) + get(35) + get(36) +
+                    get(37) + get(38) + get(39) + get(40) + get(41) + get(42) + get(43) + get(44) + get(45) + get(46) +
+                    get(47) + get(48) + get(49) + get(50) + get(51);
+                result.monthlyF[m] = fixedCost;
+                totalFixedCost += fixedCost;
+
+                // 変動費 = 食材仕入 + ドリンク仕入 + PA人件費
+                var variableCost = get(6) + get(10) + get(19);
+                totalVariableCost += variableCost;
+                totalSales += get(4);
+            }
+
+            result.avgF = Math.round(totalFixedCost / monthCount);
+
+            // FD%とPA%を計算
+            if (totalSales > 0) {
+                var fdCost = 0, paCost = 0;
+                for (var i = 0; i < activeMonths.length; i++) {
+                    var m = activeMonths[i];
+                    var get = function(no) { return annualData[no] ? (annualData[no][m] || 0) : 0; };
+                    fdCost += get(6) + get(10); // 食材 + ドリンク
+                    paCost += get(19); // PA人件費
+                }
+                result.fdRate = Math.round((fdCost / totalSales) * 1000) / 10;
+                result.paRate = Math.round((paCost / totalSales) * 1000) / 10;
+            }
+
+            return result;
+        }
+
+        // MQパラメータテーブル動的生成（予算設定タブ用）
+        function renderMQAutoParamsTable() {
+            var table = document.getElementById('mqAutoParamsTable');
+            if (!table) return;
+
+            if (activeMonths.length === 0) {
+                table.innerHTML = '<tr><td style="padding:20px;text-align:center;color:#999;">データがありません</td></tr>';
+                return;
+            }
+
+            var params = getMQAutoParams();
+            var MONTH_NAMES = ['4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月', '1月', '2月', '3月'];
+
+            // ヘッダー行
+            var headerHtml = '<thead><tr style="background:#e65100;">';
+            headerHtml += '<th style="min-width:100px;padding:6px;color:#fff;font-weight:bold;">パラメータ</th>';
+            for (var i = 0; i < activeMonths.length; i++) {
+                var mi = activeMonths[i];
+                var label = MONTH_NAMES[mi] || (mi + 1) + '月';
+                headerHtml += '<th style="min-width:65px;color:#fff;font-weight:bold;">' + label + '</th>';
+            }
+            headerHtml += '<th style="min-width:70px;background:#bf360c;color:#fff;font-weight:bold;">平均</th>';
+            headerHtml += '</tr></thead>';
+
+            // ボディ行
+            var bodyHtml = '<tbody>';
+
+            // G（目標利益）- 月別
+            bodyHtml += '<tr style="background:#fff3e0;"><td style="font-weight:bold;color:#e65100;">【G】目標利益(千円)</td>';
+            var totalG = 0;
+            for (var i = 0; i < activeMonths.length; i++) {
+                var mi = activeMonths[i];
+                var g = params.monthlyG[mi] || 0;
+                totalG += g;
+                bodyHtml += '<td style="text-align:right;">' + fmt(g) + '</td>';
+            }
+            var avgG = Math.round(totalG / activeMonths.length);
+            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#ffe0b2;">' + fmt(avgG) + '</td></tr>';
+
+            // F（固定費）- 月別
+            bodyHtml += '<tr><td style="font-weight:bold;color:#e65100;">【F】固定費(千円)</td>';
+            var totalF = 0;
+            for (var i = 0; i < activeMonths.length; i++) {
+                var mi = activeMonths[i];
+                var f = params.monthlyF[mi] || 0;
+                totalF += f;
+                bodyHtml += '<td style="text-align:right;">' + fmt(f) + '</td>';
+            }
+            var avgF = Math.round(totalF / activeMonths.length);
+            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#ffe0b2;">' + fmt(avgF) + '</td></tr>';
+
+            // FD%（全期間共通）
+            bodyHtml += '<tr style="background:#fff3e0;"><td style="font-weight:bold;color:#e65100;">【FD%】FD率</td>';
+            for (var i = 0; i < activeMonths.length; i++) {
+                bodyHtml += '<td style="text-align:right;color:#888;">' + params.fdRate.toFixed(1) + '%</td>';
+            }
+            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#ffe0b2;">' + params.fdRate.toFixed(1) + '%</td></tr>';
+
+            // PA%（全期間共通）
+            bodyHtml += '<tr><td style="font-weight:bold;color:#e65100;">【PA%】PA率</td>';
+            for (var i = 0; i < activeMonths.length; i++) {
+                bodyHtml += '<td style="text-align:right;color:#888;">' + params.paRate.toFixed(1) + '%</td>';
+            }
+            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#ffe0b2;">' + params.paRate.toFixed(1) + '%</td></tr>';
+
+            bodyHtml += '</tbody>';
+
+            table.innerHTML = headerHtml + bodyHtml;
+        }
+
+        // 自動パラメータ表示を更新
+        function updateMQAutoParamsDisplay() {
+            renderMQAutoParamsTable();
+        }
+
+        // 店舗のデフォルト客単価を取得
+        function getDefaultUnitPrice(storeName) {
+            return DEFAULT_UNIT_PRICES[storeName] || DEFAULT_UNIT_PRICES['_default'];
+        }
+
+        // 目標客単価テーブル動的生成（予算設定タブ用）
+        function renderMQUnitPriceTable() {
+            var table = document.getElementById('mqUnitPriceTable');
+            if (!table) return;
+
+            // 月数表示を更新
+            var countEl = document.getElementById('mqMonthCountDisplay');
+            if (countEl) countEl.textContent = activeMonths.length;
+
+            if (activeMonths.length === 0) {
+                table.innerHTML = '<tr><td style="padding:20px;text-align:center;color:#999;">データがありません</td></tr>';
+                return;
+            }
+
+            var MONTH_NAMES = ['4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月', '1月', '2月', '3月'];
+
+            // ヘッダー行
+            var headerHtml = '<thead><tr style="background:#2e7d32;">';
+            headerHtml += '<th style="min-width:130px;padding:6px;color:#fff;font-weight:bold;">項目</th>';
+            for (var i = 0; i < activeMonths.length; i++) {
+                var mi = activeMonths[i];
+                var label = MONTH_NAMES[mi] || (mi + 1) + '月';
+                headerHtml += '<th style="min-width:65px;color:#fff;font-weight:bold;">' + label + '</th>';
+            }
+            headerHtml += '<th style="min-width:70px;background:#1b5e20;color:#fff;font-weight:bold;">平均</th>';
+            headerHtml += '</tr></thead>';
+
+            // ボディ行
+            var bodyHtml = '<tbody>';
+
+            // 総合
+            bodyHtml += '<tr style="background:#e8f5e9;"><td style="font-weight:bold;color:#2e7d32;">目標客単価（総合）</td>';
+            for (var i = 0; i < activeMonths.length; i++) {
+                var mi = activeMonths[i];
+                bodyHtml += '<td><input type="number" id="mqP_total_' + mi + '" step="100" style="width:55px;padding:3px;text-align:right;border:1px solid #4caf50;border-radius:3px;" onchange="updateUnitPriceAverage(\'total\')"></td>';
+            }
+            bodyHtml += '<td id="mqP_total_avg" style="font-weight:bold;text-align:right;background:#c8e6c9;">¥--</td></tr>';
+
+            // ランチ
+            bodyHtml += '<tr><td style="font-weight:bold;color:#1565c0;">目標客単価（ランチ）</td>';
+            for (var i = 0; i < activeMonths.length; i++) {
+                var mi = activeMonths[i];
+                bodyHtml += '<td><input type="number" id="mqP_lunch_' + mi + '" step="100" style="width:55px;padding:3px;text-align:right;border:1px solid #2196f3;border-radius:3px;" onchange="updateUnitPriceAverage(\'lunch\')"></td>';
+            }
+            bodyHtml += '<td id="mqP_lunch_avg" style="font-weight:bold;text-align:right;background:#e3f2fd;">¥--</td></tr>';
+
+            // ディナー
+            bodyHtml += '<tr style="background:#fff3e0;"><td style="font-weight:bold;color:#e65100;">目標客単価（ディナー）</td>';
+            for (var i = 0; i < activeMonths.length; i++) {
+                var mi = activeMonths[i];
+                bodyHtml += '<td><input type="number" id="mqP_dinner_' + mi + '" step="100" style="width:55px;padding:3px;text-align:right;border:1px solid #ff9800;border-radius:3px;" onchange="updateUnitPriceAverage(\'dinner\')"></td>';
+            }
+            bodyHtml += '<td id="mqP_dinner_avg" style="font-weight:bold;text-align:right;background:#ffe0b2;">¥--</td></tr>';
+
+            bodyHtml += '</tbody>';
+
+            table.innerHTML = headerHtml + bodyHtml;
+        }
+
+        // 目標客単価を初期化（店舗切替時に呼び出し・動的月対応）
+        function initUnitPricesForStore(storeName) {
+            // まずテーブルを動的生成
+            renderMQUnitPriceTable();
+
+            var defaults = getDefaultUnitPrice(storeName);
+
+            // 店舗名を表示
+            var storeDisplay = document.getElementById('mqStoreNameDisplay');
+            if (storeDisplay) storeDisplay.textContent = '店舗: ' + storeName;
+
+            // storeUnitPricesにデータがあればそれを使用、なければデフォルト
+            if (!storeUnitPrices[storeName]) {
+                storeUnitPrices[storeName] = {};
+                for (var i = 0; i < activeMonths.length; i++) {
+                    var m = activeMonths[i];
+                    storeUnitPrices[storeName][m] = {
+                        total: defaults.total,
+                        lunch: defaults.lunch,
+                        dinner: defaults.dinner
+                    };
+                }
+            }
+
+            // UIに値をセット（取り込まれた月のみ）
+            for (var i = 0; i < activeMonths.length; i++) {
+                var m = activeMonths[i];
+                var data = storeUnitPrices[storeName][m] || { total: defaults.total, lunch: defaults.lunch, dinner: defaults.dinner };
+                var totalEl = document.getElementById('mqP_total_' + m);
+                var lunchEl = document.getElementById('mqP_lunch_' + m);
+                var dinnerEl = document.getElementById('mqP_dinner_' + m);
+
+                if (totalEl) totalEl.value = data.total;
+                if (lunchEl) lunchEl.value = data.lunch;
+                if (dinnerEl) dinnerEl.value = data.dinner;
+            }
+
+            // 平均値を更新
+            updateUnitPriceAverage('total');
+            updateUnitPriceAverage('lunch');
+            updateUnitPriceAverage('dinner');
+
+            // 自動パラメータ表示を更新
+            updateMQAutoParamsDisplay();
+        }
+
+        // 目標客単価の平均を更新（動的月対応）
+        function updateUnitPriceAverage(type) {
+            var total = 0;
+            var count = 0;
+
+            for (var i = 0; i < activeMonths.length; i++) {
+                var m = activeMonths[i];
+                var el = document.getElementById('mqP_' + type + '_' + m);
+                if (el) {
+                    var val = parseInt(el.value) || 0;
+                    total += val;
+                    if (val > 0) count++;
+
+                    // storeUnitPricesに保存
+                    if (currentStoreName) {
+                        if (!storeUnitPrices[currentStoreName]) storeUnitPrices[currentStoreName] = {};
+                        if (!storeUnitPrices[currentStoreName][m]) storeUnitPrices[currentStoreName][m] = {};
+                        storeUnitPrices[currentStoreName][m][type] = val;
+                    }
+                }
+            }
+
+            var avg = count > 0 ? Math.round(total / count) : 0;
+            var avgEl = document.getElementById('mqP_' + type + '_avg');
+            if (avgEl) avgEl.textContent = '¥' + fmt(avg);
+        }
+
+        // デフォルト値にリセット（動的月対応）
+        function resetUnitPricesToDefault() {
+            if (!currentStoreName) {
+                showStatus('warn', '店舗が選択されていません');
+                return;
+            }
+
+            var defaults = getDefaultUnitPrice(currentStoreName);
+
+            // storeUnitPricesをリセット（取り込まれた月のみ）
+            storeUnitPrices[currentStoreName] = {};
+            for (var i = 0; i < activeMonths.length; i++) {
+                var m = activeMonths[i];
+                storeUnitPrices[currentStoreName][m] = {
+                    total: defaults.total,
+                    lunch: defaults.lunch,
+                    dinner: defaults.dinner
+                };
+            }
+
+            // UIを更新
+            initUnitPricesForStore(currentStoreName);
+            showStatus('info', 'デフォルト値にリセットしました（' + currentStoreName + '）');
+        }
+
+        // 旧関数互換用
+        function applyDefaultMQValues() {
+            resetUnitPricesToDefault();
+        }
+
+        // 旧関数互換用
+        function updateMQInputSummary() {
+            updateUnitPriceAverage('total');
+            updateUnitPriceAverage('lunch');
+            updateUnitPriceAverage('dinner');
+        }
+
+        // 費用設定確認欄（参照表示）を更新
+        function updateMQRefDisplay() {
+            if (Object.keys(annualData).length === 0) return;
+
+            // 固定費合計を計算（顧客予算から参照）
+            var totalFixedCost = 0;
+            var totalVariableCost = 0;
+            var totalSales = 0;
+            var monthlyFixedCosts = [];
+
+            for (var m = 0; m < activeMonths.length; m++) {
+                var get = function(no) { return annualData[no] ? (annualData[no][m] || 0) : 0; };
+                var getCalc = function(name) { return calcResults[m] ? (calcResults[m][name] || 0) : 0; };
+
+                var fixedCost = getCalc('地代家賃合計') + getCalc('固定人件費合計') + get(55) + getCalc('資材費合計') +
+                    get(27) + get(28) + get(29) + get(30) + get(31) + get(32) + get(33) + get(34) + get(35) + get(36) +
+                    get(37) + get(38) + get(39) + get(40) + get(41) + get(42) + get(43) + get(44) + get(45) + get(46) +
+                    get(47) + get(48) + get(49) + get(50) + get(51);
+                totalFixedCost += fixedCost;
+                monthlyFixedCosts.push(fixedCost);
+
+                var variableCost = get(6) + get(10) + get(19);  // 食材仕入 + ドリンク仕入 + PA人件費
+                totalVariableCost += variableCost;
+                totalSales += get(4);
+            }
+
+            var avgFixedCost = activeMonths.length > 0 ? Math.round(totalFixedCost / activeMonths.length) : 0;
+            var variableRate = totalSales > 0 ? (totalVariableCost / totalSales * 100).toFixed(1) : 0;
+
+            var refVarRate = document.getElementById('mqRefVariableRate');
+            var refFixedCost = document.getElementById('mqRefFixedCost');
+            if (refVarRate) refVarRate.textContent = variableRate + '%';
+            if (refFixedCost) refFixedCost.textContent = fmt(avgFixedCost) + ' 千円';
+
+            // 月別固定費をMQ入力テーブルに表示
+            for (var m = 0; m < 12; m++) {
+                var fEl = document.getElementById('mqF_' + m);
+                if (fEl) {
+                    var val = monthlyFixedCosts[m] || 0;
+                    fEl.textContent = fmt(Math.round(val));
+                }
+            }
+            var fTotal = document.getElementById('mqF_total');
+            if (fTotal) fTotal.textContent = fmt(Math.round(totalFixedCost));
+
+            // MQ入力サマリーも更新
+            updateMQInputSummary();
         }
 
         function generateRakumyInputs() {
             rakumyInputs = {};
-            var targetUnitPrice = getTargetUnitPrice();
+
+            // ★★★ 月別ユーザー入力値を取得 ★★★
+            var mqInputs = getMQInputs();
+
             for (var m = 0; m < activeMonths.length; m++) {
                 var get = function(no) { return annualData[no] ? (annualData[no][m] || 0) : 0; };
                 var getCalc = function(name) { return calcResults[m][name] || 0; };
-                var sales = get(4); // ★ 売上高合計（v17No.4）
 
-                // ★ 目標客数・客単価の計算ロジック改善（ユーザー指定客単価を使用）
-                // 売上（千円）から客数を逆算: 客数 = 売上 × 1000 ÷ 想定客単価
-                var estimatedCustomers = sales > 0 ? Math.round(sales * 1000 / targetUnitPrice) : 3000;
-                // 客単価は売上から客数で逆算: 客単価 = 売上 × 1000 ÷ 客数
-                // ★ 売上が0の場合はユーザー指定の客単価を使用
-                var estimatedUnitPrice = (sales > 0 && estimatedCustomers > 0) ? Math.round(sales * 1000 / estimatedCustomers) : targetUnitPrice;
+                // ★ 月別MQ入力値を取得
+                var monthInput = mqInputs[m] || { targetProfit: 500, fdRate: 30, paRate: 10, targetUnitPrice: 4500 };
+
+                // ★ 顧客予算値（参考値として保存）
+                var budgetSales = get(4);           // 顧客予算の売上高合計（No.4）
+                var budgetProfit = get(63);         // 顧客予算の営業利益（No.63）
+
+                // ★ 固定費用合計（費用予算設定から自動参照 - 入力不要）
+                var fixedCostTotal = getCalc('地代家賃合計') + getCalc('固定人件費合計') + get(55) + getCalc('資材費合計') +
+                    get(27) + get(28) + get(29) + get(30) + get(31) + get(32) + get(33) + get(34) + get(35) + get(36) +
+                    get(37) + get(38) + get(39) + get(40) + get(41) + get(42) + get(43) + get(44) + get(45) + get(46) +
+                    get(47) + get(48) + get(49) + get(50) + get(51);
 
                 rakumyInputs[m] = {
-                    // 費用予算設定（固定費用）- v17Noに対応
-                    rent: getCalc('地代家賃合計'),         // v17No.56+59
-                    fixedLabor: getCalc('固定人件費合計'), // v17No.16-18,21-25
-                    depreciation: get(55),                 // v17No.55 減価償却費
-                    material: getCalc('資材費合計'),       // v17No.57+58
+                    // 費用予算設定（固定費用）- v17Noに対応（参照用）
+                    rent: getCalc('地代家賃合計'),
+                    fixedLabor: getCalc('固定人件費合計'),
+                    depreciation: get(55),
+                    material: getCalc('資材費合計'),
                     promotion: get(27), menuCopy: get(28), survey: get(29), sanitary: get(30), service: get(31),
                     electricity: get(32), gas: get(33), water: get(34), consumables: get(35), maintenance: get(36),
                     taxes: get(37), entertainment: get(38), travel: get(39), communication: get(40),
@@ -5825,18 +7097,23 @@
                     education: get(45), training: get(46), research: get(47), recruitment: get(48),
                     it: get(49), outsource: get(50), misc: get(51),
 
-                    // 予算設定（変動費用）- MQパラメータ
-                    fdRate: getCalc('FD仕入費率'),
-                    paRate: getCalc('PA人件費率'),
-                    targetUnitPrice: estimatedUnitPrice,
-                    targetCustomers: estimatedCustomers,
+                    // ★★★ MQ入力パラメータ（月別ユーザー入力値を使用）★★★
+                    fdRate: monthInput.fdRate,                    // 月別ユーザー入力
+                    paRate: monthInput.paRate,                    // 月別ユーザー入力
+                    targetUnitPrice: monthInput.targetUnitPrice,  // 月別ユーザー入力（総合）
+                    targetUnitPriceLunch: monthInput.targetUnitPriceLunch,    // 月別ユーザー入力（ランチ）
+                    targetUnitPriceDinner: monthInput.targetUnitPriceDinner,  // 月別ユーザー入力（ディナー）
+                    targetProfit: monthInput.targetProfit,        // 月別ユーザー入力
+                    fixedCostTotal: fixedCostTotal,               // 費用予算から自動参照
+
+                    // 売上構成比（参照用）
                     lunchRatio: getCalc('ランチ売上比率'),
                     dinnerRatio: getCalc('ディナー売上比率'),
                     foodRatio: getCalc('フード売上比率'),
                     drinkRatio: getCalc('ドリンク売上比率'),
                     otherRatio: getCalc('その他売上比率'),
 
-                    // 単月費用予算（固定費用）- v17Noに対応
+                    // 単月費用予算（固定費用）- 参照用
                     m_fixedLabor: getCalc('固定人件費合計'),
                     m_depreciation: get(55),
                     m_material: getCalc('資材費合計'),
@@ -5847,28 +7124,77 @@
                     m_education: get(45), m_training: get(46), m_research: get(47), m_recruitment: get(48),
                     m_it: get(49), m_outsource: get(50), m_misc: get(51),
 
-                    // 参考値（顧客予算の売上）
-                    budgetSales: sales
+                    // 参考値（顧客予算値）
+                    budgetSales: budgetSales,
+                    budgetProfit: budgetProfit
                 };
             }
+
+            // 費用設定確認欄を更新
+            updateMQRefDisplay();
         }
 
+        // ★★★ ラクミーMQ計算（逆算式）★★★
+        // 入力: 固定費、変動費率、目標月次利益、目標客単価
+        // 計算: 必要限界利益 → 必要売上 → 目標客数
         function runMQSimulation() {
             mqOutputs = {};
             for (var m = 0; m < activeMonths.length; m++) {
                 var r = rakumyInputs[m];
-                var sales = r.targetCustomers * r.targetUnitPrice / 1000;
-                var variableRate = r.fdRate + r.paRate;
-                var variableCost = sales * variableRate / 100;
+
+                // ★ 入力パラメータ
+                var fixedCost = r.fixedCostTotal;          // 固定費合計
+                var variableRate = (r.fdRate + r.paRate) / 100;  // 変動費率（小数）
+                var targetProfit = r.targetProfit;         // 目標月次利益
+                var targetUnitPrice = r.targetUnitPrice;   // 目標客単価
+
+                // ★★★ MQ逆算式 ★★★
+                // 1. 必要な限界利益 = 固定費 + 目標月次利益
+                var requiredGrossProfit = fixedCost + targetProfit;
+
+                // 2. 必要な売上 = 限界利益 / (1 - 変動費率)
+                //    限界利益 = 売上 × (1 - 変動費率) なので
+                //    売上 = 限界利益 / (1 - 変動費率)
+                var grossProfitRate = 1 - variableRate;  // 限界利益率
+                var requiredSales = grossProfitRate > 0 ? requiredGrossProfit / grossProfitRate : 0;
+
+                // 3. 目標客数 = 売上 / 客単価
+                //    売上は千円単位、客単価は円単位なので: 客数 = 売上 × 1000 / 客単価
+                var targetCustomers = targetUnitPrice > 0 ? Math.round(requiredSales * 1000 / targetUnitPrice) : 0;
+
+                // ★ 検算：客数 × 客単価で売上を再計算（端数調整）
+                var sales = targetCustomers * targetUnitPrice / 1000;
+
+                // ★ MQ計算結果
+                var variableCost = sales * variableRate;
                 var grossProfit = sales - variableCost;
-                var fixedCost = r.rent + r.fixedLabor + r.depreciation + r.material + r.promotion + r.menuCopy + r.survey + r.sanitary + r.service + r.electricity + r.gas + r.water + r.consumables + r.maintenance + r.taxes + r.entertainment + r.travel + r.communication + r.creditFee + r.paymentFee + r.meeting + r.membership + r.education + r.training + r.research + r.recruitment + r.it + r.outsource + r.misc;
                 var operatingProfit = grossProfit - fixedCost;
+
                 mqOutputs[m] = {
-                    sales: Math.round(sales), variableCost: Math.round(variableCost), variableRate: variableRate,
-                    grossProfit: Math.round(grossProfit), grossProfitRate: sales > 0 ? grossProfit / sales * 100 : 0,
-                    fixedCost: Math.round(fixedCost), operatingProfit: Math.round(operatingProfit),
+                    // 売上・客数（MQ逆算結果）
+                    sales: Math.round(sales),
+                    customers: targetCustomers,
+                    unitPrice: targetUnitPrice,
+
+                    // 変動費
+                    variableCost: Math.round(variableCost),
+                    variableRate: variableRate * 100,
+
+                    // 限界利益
+                    grossProfit: Math.round(grossProfit),
+                    grossProfitRate: sales > 0 ? grossProfit / sales * 100 : 0,
+
+                    // 固定費
+                    fixedCost: Math.round(fixedCost),
+
+                    // 営業利益（MQ計算結果）
+                    operatingProfit: Math.round(operatingProfit),
                     operatingProfitRate: sales > 0 ? operatingProfit / sales * 100 : 0,
-                    unitPrice: r.targetUnitPrice, customers: r.targetCustomers
+
+                    // 逆算で使用した目標利益（参考）
+                    targetProfit: targetProfit,
+                    requiredGrossProfit: Math.round(requiredGrossProfit),
+                    requiredSales: Math.round(requiredSales)
                 };
             }
         }
@@ -6119,11 +7445,55 @@
             renderInputTable();
             renderCalcTable();
             renderRakumyTables();
+            renderMqAutoInputsDisplay();  // ★ MQ自動合成入力値の表示
             renderOutputTable();
             renderBudgetListTable();
             renderSummary();
 
             console.log('=== renderAllTables 終了 ===');
+        }
+
+        // ★ MQ自動合成入力値の表示
+        function renderMqAutoInputsDisplay() {
+            var container = document.getElementById('mqAutoInputsDisplay');
+            if (!container) return;
+
+            var html = '';
+
+            // 年間平均値を計算
+            var totalFixedCost = 0, totalTargetProfit = 0, avgFdRate = 0, avgPaRate = 0;
+            var monthCount = activeMonths.length || 1;
+
+            for (var m = 0; m < activeMonths.length; m++) {
+                if (rakumyInputs[m]) {
+                    totalFixedCost += rakumyInputs[m].fixedCostTotal || 0;
+                    totalTargetProfit += rakumyInputs[m].targetProfit || 0;
+                    avgFdRate += rakumyInputs[m].fdRate || 0;
+                    avgPaRate += rakumyInputs[m].paRate || 0;
+                }
+            }
+            avgFdRate = avgFdRate / monthCount;
+            avgPaRate = avgPaRate / monthCount;
+            var avgVR = avgFdRate + avgPaRate;
+
+            // 入力パラメータカード
+            var items = [
+                { label: '【F】固定費用予算（年間）', value: fmt(totalFixedCost), unit: '千円', color: '#2e7d32', desc: '費用予算設定の固定費項目合計' },
+                { label: '【G】目標月次利益（年間）', value: fmt(totalTargetProfit), unit: '千円', color: '#1565c0', desc: '顧客予算の営業利益（No.63）' },
+                { label: '【FD%】FD仕入費率（平均）', value: avgFdRate.toFixed(1), unit: '%', color: '#ff5722', desc: '食材+ドリンク仕入費/売上' },
+                { label: '【PA%】PA人件費率（平均）', value: avgPaRate.toFixed(1), unit: '%', color: '#9c27b0', desc: 'PA人件費/売上' },
+                { label: '【VR】変動費率（FD+PA）', value: avgVR.toFixed(1), unit: '%', color: '#e65100', desc: 'FD仕入費率+PA人件費率' }
+            ];
+
+            items.forEach(function(item) {
+                html += '<div style="background:#fff;border-radius:6px;padding:12px;border-left:4px solid ' + item.color + ';">';
+                html += '<div style="font-size:11px;color:#666;margin-bottom:5px;">' + item.label + '</div>';
+                html += '<div style="font-size:20px;font-weight:bold;color:' + item.color + ';">' + item.value + ' <span style="font-size:12px;font-weight:normal;">' + item.unit + '</span></div>';
+                html += '<div style="font-size:10px;color:#999;margin-top:5px;">' + item.desc + '</div>';
+                html += '</div>';
+            });
+
+            container.innerHTML = html;
         }
 
         function createMonthHeaders() {
@@ -6410,16 +7780,142 @@
         function renderOutputTable() {
             var table = document.getElementById('outputTable');
             var html = createMonthHeaders();
-            var items = [{ key: 'customers', name: '客数' }, { key: 'unitPrice', name: '客単価' }, { key: 'sales', name: '売上' }, { key: 'variableCost', name: '変動費' }, { key: 'variableRate', name: '変動費率', isRate: true }, { key: 'grossProfit', name: '粗利' }, { key: 'grossProfitRate', name: '粗利率', isRate: true }, { key: 'fixedCost', name: '固定費' }, { key: 'operatingProfit', name: '営業利益' }, { key: 'operatingProfitRate', name: '営業利益率', isRate: true }];
-            items.forEach(function(item) {
-                html += '<tr><td>' + item.name + '</td>';
+
+            // ★★★ MQ逆算パイプライン ★★★
+            // === STEP 0: MQ入力パラメータ（費用予算設定から参照） ===
+            html += '<tr style="background:#4caf50;color:white;"><td colspan="' + (activeMonths.length + 3) + '" style="font-weight:bold;text-align:center;padding:12px;font-size:14px;">【STEP 0】MQ入力パラメータ（費用予算設定から参照）</td></tr>';
+
+            // 固定費用予算（F）
+            html += '<tr style="background:#e8f5e9;"><td style="padding-left:10px;"><strong>F</strong> 固定費用予算</td>';
+            var fixedTotal = 0;
+            for (var m = 0; m < activeMonths.length; m++) {
+                var val = rakumyInputs[m] ? rakumyInputs[m].fixedCostTotal : 0;
+                fixedTotal += val;
+                html += '<td class="output-cell" style="background:#e8f5e9;">' + fmt(val) + '</td>';
+            }
+            html += '<td class="total-col" style="background:#c8e6c9;">' + fmt(fixedTotal) + '</td><td class="avg-col" style="background:#c8e6c9;">' + fmt(fixedTotal / activeMonths.length) + '</td></tr>';
+
+            // 変動費率（VR）
+            html += '<tr style="background:#e8f5e9;"><td style="padding-left:10px;"><strong>VR</strong> 変動費率（FD%+PA%）</td>';
+            for (var m = 0; m < activeMonths.length; m++) {
+                var fdRate = rakumyInputs[m] ? rakumyInputs[m].fdRate : 0;
+                var paRate = rakumyInputs[m] ? rakumyInputs[m].paRate : 0;
+                html += '<td class="output-cell" style="background:#e8f5e9;">' + fmtRate(fdRate + paRate) + '%</td>';
+            }
+            html += '<td class="total-col" style="background:#c8e6c9;">-</td><td class="avg-col" style="background:#c8e6c9;">-</td></tr>';
+
+            // === STEP 1-3: MQ入力値（ユーザー入力/顧客予算から合成） ===
+            html += '<tr style="background:#2196f3;color:white;"><td colspan="' + (activeMonths.length + 3) + '" style="font-weight:bold;text-align:center;padding:12px;font-size:14px;">【STEP 1-3】MQ入力値</td></tr>';
+
+            // 目標月次利益（G）
+            html += '<tr style="background:#e3f2fd;"><td style="padding-left:10px;"><strong>G</strong> 目標月次利益</td>';
+            var profitTotal = 0;
+            for (var m = 0; m < activeMonths.length; m++) {
+                var val = rakumyInputs[m] ? rakumyInputs[m].targetProfit : 0;
+                profitTotal += val;
+                html += '<td class="output-cell" style="background:#e3f2fd;">' + fmt(val) + '</td>';
+            }
+            html += '<td class="total-col" style="background:#bbdefb;">' + fmt(profitTotal) + '</td><td class="avg-col" style="background:#bbdefb;">' + fmt(profitTotal / activeMonths.length) + '</td></tr>';
+
+            // FD仕入費率
+            html += '<tr style="background:#e3f2fd;"><td style="padding-left:10px;"><strong>FD%</strong> FD仕入費率</td>';
+            for (var m = 0; m < activeMonths.length; m++) {
+                var val = rakumyInputs[m] ? rakumyInputs[m].fdRate : 0;
+                html += '<td class="output-cell" style="background:#e3f2fd;">' + fmtRate(val) + '%</td>';
+            }
+            html += '<td class="total-col" style="background:#bbdefb;">-</td><td class="avg-col" style="background:#bbdefb;">-</td></tr>';
+
+            // PA人件費率
+            html += '<tr style="background:#e3f2fd;"><td style="padding-left:10px;"><strong>PA%</strong> PA人件費率</td>';
+            for (var m = 0; m < activeMonths.length; m++) {
+                var val = rakumyInputs[m] ? rakumyInputs[m].paRate : 0;
+                html += '<td class="output-cell" style="background:#e3f2fd;">' + fmtRate(val) + '%</td>';
+            }
+            html += '<td class="total-col" style="background:#bbdefb;">-</td><td class="avg-col" style="background:#bbdefb;">-</td></tr>';
+
+            // 目標客単価（P）
+            html += '<tr style="background:#e3f2fd;"><td style="padding-left:10px;"><strong>P</strong> 目標客単価（税抜）</td>';
+            for (var m = 0; m < activeMonths.length; m++) {
+                var val = rakumyInputs[m] ? rakumyInputs[m].targetUnitPrice : 0;
+                html += '<td class="output-cell" style="background:#e3f2fd;">' + fmt(val) + '円</td>';
+            }
+            html += '<td class="total-col" style="background:#bbdefb;">-</td><td class="avg-col" style="background:#bbdefb;">-</td></tr>';
+
+            // === MQ逆算過程 ===
+            html += '<tr style="background:#ff9800;color:white;"><td colspan="' + (activeMonths.length + 3) + '" style="font-weight:bold;text-align:center;padding:12px;font-size:14px;">【MQ逆算】必要粗利 → 必要売上 → 目標客数</td></tr>';
+
+            // 粗利率（MR = 100% - VR）
+            html += '<tr style="background:#fff3e0;"><td style="padding-left:10px;"><strong>MR</strong> 粗利率（100%-VR）</td>';
+            for (var m = 0; m < activeMonths.length; m++) {
+                var vr = mqOutputs[m] ? mqOutputs[m].variableRate : 0;
+                var mr = 100 - vr;
+                html += '<td class="output-cell" style="background:#fff3e0;">' + fmtRate(mr) + '%</td>';
+            }
+            html += '<td class="total-col" style="background:#ffe0b2;">-</td><td class="avg-col" style="background:#ffe0b2;">-</td></tr>';
+
+            // 粗利単価（M = P × MR）
+            html += '<tr style="background:#fff3e0;"><td style="padding-left:10px;"><strong>M</strong> 粗利単価（P×MR）</td>';
+            for (var m = 0; m < activeMonths.length; m++) {
+                var p = rakumyInputs[m] ? rakumyInputs[m].targetUnitPrice : 0;
+                var vr = mqOutputs[m] ? mqOutputs[m].variableRate : 0;
+                var mr = (100 - vr) / 100;
+                var margin = p * mr;
+                html += '<td class="output-cell" style="background:#fff3e0;">' + fmt(Math.round(margin)) + '円</td>';
+            }
+            html += '<td class="total-col" style="background:#ffe0b2;">-</td><td class="avg-col" style="background:#ffe0b2;">-</td></tr>';
+
+            // 必要粗利（F + G）
+            html += '<tr style="background:#fff3e0;"><td style="padding-left:10px;"><strong>F+G</strong> 必要粗利（固定費+目標利益）</td>';
+            var reqGrossTotal = 0;
+            for (var m = 0; m < activeMonths.length; m++) {
+                var val = mqOutputs[m] ? mqOutputs[m].requiredGrossProfit : 0;
+                reqGrossTotal += val;
+                html += '<td class="output-cell" style="background:#fff3e0;font-weight:bold;">' + fmt(val) + '</td>';
+            }
+            html += '<td class="total-col" style="background:#ffe0b2;font-weight:bold;">' + fmt(reqGrossTotal) + '</td><td class="avg-col" style="background:#ffe0b2;">' + fmt(reqGrossTotal / activeMonths.length) + '</td></tr>';
+
+            // 必要売上（(F+G) / MR）
+            html += '<tr style="background:#fff3e0;"><td style="padding-left:10px;"><strong>(F+G)/MR</strong> 必要売上</td>';
+            var reqSalesTotal = 0;
+            for (var m = 0; m < activeMonths.length; m++) {
+                var val = mqOutputs[m] ? mqOutputs[m].requiredSales : 0;
+                reqSalesTotal += val;
+                html += '<td class="output-cell" style="background:#fff3e0;font-weight:bold;">' + fmt(val) + '</td>';
+            }
+            html += '<td class="total-col" style="background:#ffe0b2;font-weight:bold;">' + fmt(reqSalesTotal) + '</td><td class="avg-col" style="background:#ffe0b2;">' + fmt(reqSalesTotal / activeMonths.length) + '</td></tr>';
+
+            // 目標客数（Q = 必要売上×1000 / P）
+            html += '<tr style="background:#ffcc80;"><td style="padding-left:10px;"><strong>Q</strong> 目標客数（必要売上×1000/P）</td>';
+            var customerTotal = 0;
+            for (var m = 0; m < activeMonths.length; m++) {
+                var val = mqOutputs[m] ? mqOutputs[m].customers : 0;
+                customerTotal += val;
+                html += '<td class="output-cell" style="background:#ffcc80;font-weight:bold;color:#e65100;">' + fmt(val) + '人</td>';
+            }
+            html += '<td class="total-col" style="background:#ffb74d;font-weight:bold;color:#e65100;">' + fmt(customerTotal) + '</td><td class="avg-col" style="background:#ffb74d;">' + fmt(customerTotal / activeMonths.length) + '</td></tr>';
+
+            // === STEP 4: MQ出力結果 ===
+            html += '<tr style="background:#9c27b0;color:white;"><td colspan="' + (activeMonths.length + 3) + '" style="font-weight:bold;text-align:center;padding:12px;font-size:14px;">【STEP 4】MQ出力結果（ラクミー予算値）</td></tr>';
+
+            var outputItems = [
+                { key: 'sales', name: '予算売上（P×Q）', highlight: true },
+                { key: 'variableCost', name: '変動費（売上×VR）' },
+                { key: 'grossProfit', name: '粗利（売上-変動費）', highlight: true },
+                { key: 'operatingProfit', name: '営業利益（粗利-F）', highlight: true, profit: true }
+            ];
+            outputItems.forEach(function(item) {
+                var bgColor = item.highlight ? '#f3e5f5' : '#fafafa';
+                var totalBg = item.highlight ? '#e1bee7' : '#f5f5f5';
+                html += '<tr style="background:' + bgColor + ';"><td style="padding-left:10px;' + (item.highlight ? 'font-weight:bold;' : '') + '">' + item.name + '</td>';
                 var total = 0;
                 for (var m = 0; m < activeMonths.length; m++) {
                     var val = mqOutputs[m][item.key] || 0;
                     total += val;
-                    html += '<td class="output-cell">' + (item.isRate ? fmtRate(val) + '%' : fmt(val)) + '</td>';
+                    var textColor = item.profit ? (val >= 0 ? '#2e7d32' : '#c62828') : '#333';
+                    html += '<td class="output-cell" style="background:' + bgColor + ';color:' + textColor + ';' + (item.highlight ? 'font-weight:bold;' : '') + '">' + fmt(val) + '</td>';
                 }
-                html += item.isRate ? '<td class="total-col">-</td><td class="avg-col">' + fmtRate(total / activeMonths.length) + '%</td></tr>' : '<td class="total-col">' + fmt(total) + '</td><td class="avg-col">' + fmt(total / activeMonths.length) + '</td></tr>';
+                var totalColor = item.profit ? (total >= 0 ? '#2e7d32' : '#c62828') : '#333';
+                html += '<td class="total-col" style="background:' + totalBg + ';color:' + totalColor + ';font-weight:bold;">' + fmt(total) + '</td><td class="avg-col" style="background:' + totalBg + ';">' + fmt(total / activeMonths.length) + '</td></tr>';
             });
 
             // === 顧客予算との比較セクション ===
@@ -6508,6 +8004,16 @@
 
         function renderBudgetListTable() {
             var table = document.getElementById('budgetListTable');
+            if (!table) {
+                console.warn('budgetListTable not found');
+                return;
+            }
+
+            console.log('=== renderBudgetListTable 開始 ===');
+            console.log('mqOutputs:', mqOutputs);
+            console.log('rakumyInputs:', rakumyInputs);
+            console.log('activeMonths.length:', activeMonths ? activeMonths.length : 'undefined');
+
             var html = createMonthHeaders();
 
             // ヘルパー関数
@@ -6535,104 +8041,113 @@
             function getMonthlyData(getValue) {
                 var result = [];
                 for (var m = 0; m < activeMonths.length; m++) {
-                    result.push(getValue(m));
+                    try {
+                        result.push(getValue(m));
+                    } catch (e) {
+                        console.error('getMonthlyData error at month ' + m + ':', e);
+                        result.push(0);
+                    }
                 }
                 return result;
+            }
+
+            // 安全なアクセス用ヘルパー
+            function getMqOut(m, key) {
+                return mqOutputs && mqOutputs[m] ? (mqOutputs[m][key] || 0) : 0;
+            }
+            function getRakumy(m, key) {
+                return rakumyInputs && rakumyInputs[m] ? (rakumyInputs[m][key] || 0) : 0;
             }
 
             // ===== 目標設定セクション =====
             addSectionHeader('目標設定', '#1565c0');
             addRow('月次目標利益', getMonthlyData(function(m) { return annualData[63] ? (annualData[63][m] || 0) : 0; }), false);
-            addRow('目標FD仕入費率', getMonthlyData(function(m) { return rakumyInputs[m].fdRate || 0; }), true);
-            addRow('目標PA人件費率', getMonthlyData(function(m) { return rakumyInputs[m].paRate || 0; }), true);
-            addRow('目標客単価', getMonthlyData(function(m) { return rakumyInputs[m].targetUnitPrice || 0; }), false);
-            // ランチ・ディナー客単価は売上構成比から推定
+            addRow('目標FD仕入費率', getMonthlyData(function(m) { return getRakumy(m, 'fdRate'); }), true);
+            addRow('目標PA人件費率', getMonthlyData(function(m) { return getRakumy(m, 'paRate'); }), true);
+            addRow('目標客単価', getMonthlyData(function(m) { return getRakumy(m, 'targetUnitPrice'); }), false);
+            // ランチ・ディナー客単価はラクミー設定値タブの入力値を使用
             addRow('目標客単価（ランチ）', getMonthlyData(function(m) {
-                var unitPrice = rakumyInputs[m].targetUnitPrice || 0;
-                var lunchRatio = rakumyInputs[m].lunchRatio || 0;
-                return lunchRatio > 0 ? Math.round(unitPrice * 0.7) : 0; // ランチは約70%と仮定
+                return getRakumy(m, 'targetUnitPriceLunch');
             }), false);
             addRow('目標客単価（ディナー）', getMonthlyData(function(m) {
-                var unitPrice = rakumyInputs[m].targetUnitPrice || 0;
-                var dinnerRatio = rakumyInputs[m].dinnerRatio || 0;
-                return dinnerRatio > 0 ? Math.round(unitPrice * 1.3) : 0; // ディナーは約130%と仮定
+                return getRakumy(m, 'targetUnitPriceDinner');
             }), false);
 
             // ===== 売上セクション =====
             addSectionHeader('売上', '#2e7d32');
-            addRow('売上 計', getMonthlyData(function(m) { return mqOutputs[m].sales || 0; }), false);
+            addRow('売上 計', getMonthlyData(function(m) { return getMqOut(m, 'sales'); }), false);
             addRow('フード売上 計', getMonthlyData(function(m) {
-                var sales = mqOutputs[m].sales || 0;
-                var foodRatio = rakumyInputs[m].foodRatio || 0;
+                var sales = getMqOut(m, 'sales');
+                var foodRatio = getRakumy(m, 'foodRatio');
                 return Math.round(sales * foodRatio / 100);
             }), false);
             addRow('　フード売上ランチ', getMonthlyData(function(m) {
-                var sales = mqOutputs[m].sales || 0;
-                var foodRatio = rakumyInputs[m].foodRatio || 0;
-                var lunchRatio = rakumyInputs[m].lunchRatio || 0;
+                var sales = getMqOut(m, 'sales');
+                var foodRatio = getRakumy(m, 'foodRatio');
+                var lunchRatio = getRakumy(m, 'lunchRatio');
                 return Math.round(sales * foodRatio / 100 * lunchRatio / 100);
             }), false, 'background:#f5f5f5;');
             addRow('　フード売上ディナー', getMonthlyData(function(m) {
-                var sales = mqOutputs[m].sales || 0;
-                var foodRatio = rakumyInputs[m].foodRatio || 0;
-                var dinnerRatio = rakumyInputs[m].dinnerRatio || 0;
+                var sales = getMqOut(m, 'sales');
+                var foodRatio = getRakumy(m, 'foodRatio');
+                var dinnerRatio = getRakumy(m, 'dinnerRatio');
                 return Math.round(sales * foodRatio / 100 * dinnerRatio / 100);
             }), false, 'background:#f5f5f5;');
             addRow('ドリンク売上 計', getMonthlyData(function(m) {
-                var sales = mqOutputs[m].sales || 0;
-                var drinkRatio = rakumyInputs[m].drinkRatio || 0;
+                var sales = getMqOut(m, 'sales');
+                var drinkRatio = getRakumy(m, 'drinkRatio');
                 return Math.round(sales * drinkRatio / 100);
             }), false);
             addRow('　ドリンク売上ランチ', getMonthlyData(function(m) {
-                var sales = mqOutputs[m].sales || 0;
-                var drinkRatio = rakumyInputs[m].drinkRatio || 0;
-                var lunchRatio = rakumyInputs[m].lunchRatio || 0;
+                var sales = getMqOut(m, 'sales');
+                var drinkRatio = getRakumy(m, 'drinkRatio');
+                var lunchRatio = getRakumy(m, 'lunchRatio');
                 return Math.round(sales * drinkRatio / 100 * lunchRatio / 100);
             }), false, 'background:#f5f5f5;');
             addRow('　ドリンク売上ディナー', getMonthlyData(function(m) {
-                var sales = mqOutputs[m].sales || 0;
-                var drinkRatio = rakumyInputs[m].drinkRatio || 0;
-                var dinnerRatio = rakumyInputs[m].dinnerRatio || 0;
+                var sales = getMqOut(m, 'sales');
+                var drinkRatio = getRakumy(m, 'drinkRatio');
+                var dinnerRatio = getRakumy(m, 'dinnerRatio');
                 return Math.round(sales * drinkRatio / 100 * dinnerRatio / 100);
             }), false, 'background:#f5f5f5;');
             addRow('その他売上 計（サービス料等）', getMonthlyData(function(m) {
-                var sales = mqOutputs[m].sales || 0;
-                var otherRatio = rakumyInputs[m].otherRatio || 0;
+                var sales = getMqOut(m, 'sales');
+                var otherRatio = getRakumy(m, 'otherRatio');
                 return Math.round(sales * otherRatio / 100);
             }), false);
 
             // ===== FLコストセクション =====
             addSectionHeader('FLコスト', '#f57c00');
             addRow('FLコスト 計', getMonthlyData(function(m) {
-                var fdCost = (mqOutputs[m].sales || 0) * (rakumyInputs[m].fdRate || 0) / 100;
-                var fixedLabor = rakumyInputs[m].fixedLabor || 0;
-                var paLabor = (mqOutputs[m].sales || 0) * (rakumyInputs[m].paRate || 0) / 100;
+                var fdCost = getMqOut(m, 'sales') * getRakumy(m, 'fdRate') / 100;
+                var fixedLabor = getRakumy(m, 'fixedLabor');
+                var paLabor = getMqOut(m, 'sales') * getRakumy(m, 'paRate') / 100;
                 return Math.round(fdCost + fixedLabor + paLabor);
             }), false);
             addRow('FD仕入 計', getMonthlyData(function(m) {
-                return Math.round((mqOutputs[m].sales || 0) * (rakumyInputs[m].fdRate || 0) / 100);
+                return Math.round(getMqOut(m, 'sales') * getRakumy(m, 'fdRate') / 100);
             }), false);
             addRow('　フード仕入', getMonthlyData(function(m) {
-                var fdCost = (mqOutputs[m].sales || 0) * (rakumyInputs[m].fdRate || 0) / 100;
-                var foodRatio = rakumyInputs[m].foodRatio || 70;
-                var totalRatio = foodRatio + (rakumyInputs[m].drinkRatio || 30);
+                var fdCost = getMqOut(m, 'sales') * getRakumy(m, 'fdRate') / 100;
+                var foodRatio = getRakumy(m, 'foodRatio') || 70;
+                var totalRatio = foodRatio + (getRakumy(m, 'drinkRatio') || 30);
                 return Math.round(fdCost * foodRatio / totalRatio);
             }), false, 'background:#f5f5f5;');
             addRow('　ドリンク仕入', getMonthlyData(function(m) {
-                var fdCost = (mqOutputs[m].sales || 0) * (rakumyInputs[m].fdRate || 0) / 100;
-                var drinkRatio = rakumyInputs[m].drinkRatio || 30;
-                var totalRatio = (rakumyInputs[m].foodRatio || 70) + drinkRatio;
+                var fdCost = getMqOut(m, 'sales') * getRakumy(m, 'fdRate') / 100;
+                var drinkRatio = getRakumy(m, 'drinkRatio') || 30;
+                var totalRatio = (getRakumy(m, 'foodRatio') || 70) + drinkRatio;
                 return Math.round(fdCost * drinkRatio / totalRatio);
             }), false, 'background:#f5f5f5;');
             addRow('人件費 計', getMonthlyData(function(m) {
-                var fixedLabor = rakumyInputs[m].fixedLabor || 0;
-                var paLabor = (mqOutputs[m].sales || 0) * (rakumyInputs[m].paRate || 0) / 100;
+                var fixedLabor = getRakumy(m, 'fixedLabor');
+                var paLabor = getMqOut(m, 'sales') * getRakumy(m, 'paRate') / 100;
                 var helpLabor = annualData[20] ? (annualData[20][m] || 0) : 0;  // No.20 ヘルプ人件費
                 return Math.round(fixedLabor + paLabor + helpLabor);
             }), false);
-            addRow('　固定人件費', getMonthlyData(function(m) { return rakumyInputs[m].fixedLabor || 0; }), false, 'background:#f5f5f5;');
+            addRow('　固定人件費', getMonthlyData(function(m) { return getRakumy(m, 'fixedLabor'); }), false, 'background:#f5f5f5;');
             addRow('　PA人件費', getMonthlyData(function(m) {
-                return Math.round((mqOutputs[m].sales || 0) * (rakumyInputs[m].paRate || 0) / 100);
+                return Math.round(getMqOut(m, 'sales') * getRakumy(m, 'paRate') / 100);
             }), false, 'background:#f5f5f5;');
             addRow('　ヘルプ人件費', getMonthlyData(function(m) { return annualData[20] ? (annualData[20][m] || 0) : 0; }), false, 'background:#f5f5f5;');
 
@@ -6647,7 +8162,7 @@
             addRow('その他経費 計', getMonthlyData(function(m) {
                 var total = 0;
                 otherExpenseItems.forEach(function(key) {
-                    total += rakumyInputs[m][key] || 0;
+                    total += getRakumy(m, key);
                 });
                 return total;
             }), false);
@@ -6676,23 +8191,26 @@
             ];
 
             expenseMapping.forEach(function(exp) {
-                addRow('　' + exp.name, getMonthlyData(function(m) { return rakumyInputs[m][exp.key] || 0; }), false, 'background:#f5f5f5;');
+                addRow('　' + exp.name, getMonthlyData(function(m) { return getRakumy(m, exp.key); }), false, 'background:#f5f5f5;');
             });
 
             // ===== 営業利益セクション =====
             addSectionHeader('営業利益', '#c62828');
-            addRow('営業利益', getMonthlyData(function(m) { return mqOutputs[m].operatingProfit || 0; }), false, 'font-weight:bold;');
+            addRow('営業利益', getMonthlyData(function(m) { return getMqOut(m, 'operatingProfit'); }), false, 'font-weight:bold;');
 
             table.innerHTML = html;
+            console.log('=== renderBudgetListTable 完了 ===');
         }
 
         function renderSummary() {
             var totalSales = 0, totalProfit = 0, totalCustomers = 0, totalVariableRate = 0;
             for (var m = 0; m < activeMonths.length; m++) {
-                totalSales += mqOutputs[m].sales || 0;
-                totalProfit += mqOutputs[m].operatingProfit || 0;
-                totalCustomers += mqOutputs[m].customers || 0;
-                totalVariableRate += mqOutputs[m].variableRate || 0;
+                if (mqOutputs && mqOutputs[m]) {
+                    totalSales += mqOutputs[m].sales || 0;
+                    totalProfit += mqOutputs[m].operatingProfit || 0;
+                    totalCustomers += mqOutputs[m].customers || 0;
+                    totalVariableRate += mqOutputs[m].variableRate || 0;
+                }
             }
             document.getElementById('summaryGrid').innerHTML = '<div class="summary-card"><div class="summary-label">年間売上</div><div class="summary-value">' + fmt(totalSales) + '</div><div class="summary-sub">千円</div></div><div class="summary-card"><div class="summary-label">年間営業利益</div><div class="summary-value">' + fmt(totalProfit) + '</div><div class="summary-sub">千円</div></div><div class="summary-card"><div class="summary-label">営業利益率</div><div class="summary-value">' + fmtRate(totalSales > 0 ? totalProfit / totalSales * 100 : 0) + '%</div></div><div class="summary-card"><div class="summary-label">年間客数</div><div class="summary-value">' + fmt(totalCustomers) + '</div><div class="summary-sub">人</div></div><div class="summary-card"><div class="summary-label">平均客単価</div><div class="summary-value">' + fmt(totalCustomers > 0 ? Math.round(totalSales * 1000 / totalCustomers) : 0) + '</div><div class="summary-sub">円</div></div><div class="summary-card"><div class="summary-label">変動費率</div><div class="summary-value">' + fmtRate(totalVariableRate / activeMonths.length) + '%</div></div>';
 
