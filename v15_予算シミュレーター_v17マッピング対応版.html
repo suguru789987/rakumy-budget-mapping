@@ -3024,8 +3024,8 @@
                             total += val;
 
                             if (isEditable && item.no) {
-                                // 編集可能セル
-                                html += '<td style="background:#e3f2fd;padding:2px;"><input type="number" data-no="' + item.no + '" data-month="' + m + '" value="' + val + '" style="width:100%;padding:3px;text-align:right;border:1px solid #90caf9;border-radius:2px;background:#fff;font-size:10px;box-sizing:border-box;" onchange="updateSimulationValue(this)"></td>';
+                                // 編集可能セル（整数表示）
+                                html += '<td style="background:#e3f2fd;padding:2px;"><input type="number" data-no="' + item.no + '" data-month="' + m + '" value="' + Math.round(val) + '" style="width:100%;padding:3px;text-align:right;border:1px solid #90caf9;border-radius:2px;background:#fff;font-size:10px;box-sizing:border-box;" onchange="updateSimulationValue(this)"></td>';
                             } else {
                                 // 表示のみ
                                 var valColor = item.profit ? (val >= 0 ? '#2e7d32' : '#c62828') : '#333';
@@ -5785,7 +5785,7 @@
 
             // 月別差異
             for (var m = 0; m < activeMonths.length; m++) {
-                var budgetSales = annualData[5] ? (annualData[5][m] || 0) : 0;
+                var budgetSales = annualData[4] ? (annualData[4][m] || 0) : 0;  // No.4 売上高合計（税抜）
                 var mqSales = mqOutputs[m] ? (mqOutputs[m].sales || 0) : 0;
                 var diff = mqSales - budgetSales;
                 var diffRate = budgetSales > 0 ? (diff / budgetSales * 100) : 0;
@@ -5868,7 +5868,7 @@
             for (var m = 0; m < activeMonths.length; m++) {
                 var r = rakumyInputs[m];
                 if (r) {
-                    var budgetSales = annualData[5] ? (annualData[5][m] || 0) : 0;
+                    var budgetSales = annualData[4] ? (annualData[4][m] || 0) : 0;  // No.4 売上高合計（税抜）
                     var expectedVarCost = budgetSales * (r.fdRate + r.paRate) / 100;
                     var actualVarCost = mqOutputs[m] ? mqOutputs[m].variableCost : 0;
                     var varDiff = Math.abs(actualVarCost - expectedVarCost);
@@ -6328,11 +6328,11 @@
             }
             html += '<td class="total-col" style="background:#bbdefb;font-weight:bold;color:#1565c0;">' + fmt(mqSalesTotal) + '</td><td class="avg-col" style="background:#bbdefb;">' + fmt(mqSalesTotal / activeMonths.length) + '</td></tr>';
 
-            // 顧客予算売上（Item 5）
+            // 顧客予算売上（Item 4 = 売上高合計（税抜））
             html += '<tr style="background:#fff8e1;border-left:4px solid #f57c00;"><td style="padding-left:20px;font-weight:bold;">顧客予算（売上）</td>';
             var budgetSalesTotal = 0;
             for (var m = 0; m < activeMonths.length; m++) {
-                var val = annualData[5] ? (annualData[5][m] || 0) : 0;
+                var val = annualData[4] ? (annualData[4][m] || 0) : 0;
                 budgetSalesTotal += val;
                 html += '<td class="output-cell" style="background:#fff8e1;font-weight:bold;color:#e65100;">' + fmt(val) + '</td>';
             }
@@ -6343,7 +6343,7 @@
             var salesDiffTotal = 0;
             for (var m = 0; m < activeMonths.length; m++) {
                 var mqSales = mqOutputs[m].sales || 0;
-                var budgetSales = annualData[5] ? (annualData[5][m] || 0) : 0;
+                var budgetSales = annualData[4] ? (annualData[4][m] || 0) : 0;  // No.4 売上高合計（税抜）
                 var diff = mqSales - budgetSales;
                 salesDiffTotal += diff;
                 var color = diff >= 0 ? '#2e7d32' : '#c62828';
