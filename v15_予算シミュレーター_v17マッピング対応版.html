@@ -1123,8 +1123,9 @@
             'IT費': { v17No: 49, category: 'その他変動費' },
             '外注費': { v17No: 50, category: 'その他変動費' },
             '雑費': { v17No: 51, category: 'その他変動費' },
-            // === 集計（No.52, 60, 62） ===
+            // === 集計（No.52, 60, 62, 75） ===
             'その他変動費合計': { v17No: 52, category: '集計' },
+            '限界利益': { v17No: 75, category: '集計' },  // 売上 - 変動費
             '固定費合計': { v17No: 60, category: '集計' },
             '販売管理費合計': { v17No: 62, category: '集計' },
             // === ロイヤリティ・店舗補填（No.53-54） ===
@@ -1360,12 +1361,12 @@
             // === 人件費系（合計・率計算）v17 No.16-25 ===
             '固定人件費合計': {
                 type: 'sum',
-                items: [16, 17, 18, 21, 22, 23, 24, 25],
-                desc: '給料手当+店長昇給+社員給与+法定福利費+通勤交通費+賞与引当金(年額÷12)+社宅家賃+休業手当',
+                items: [16, 17, 18, 21, 22, 23, 24, 25],  // ヘルプ人件費(20)は独立項目として別途計上
+                desc: '給料手当+店長昇給+社員給与+法定福利費+通勤交通費+賞与引当金+社宅家賃+休業手当',
                 v17Ref: 'No.16-18,21-25'
             },
-            'PA人件費合計': { type: 'sum', items: [19, 20], desc: '雑給+ヘルプ人件費', v17Ref: 'No.19-20' },
-            'PA人件費率': { type: 'rate', numerator: 'PA人件費合計', denominator: 'item:4', desc: '(雑給+ヘルプ人件費)÷売上合計×100', v17Ref: 'No.19入力前準備' },
+            'PA人件費合計': { type: 'sum', items: [19], desc: '雑給（パート・アルバイト）', v17Ref: 'No.19' },  // ヘルプ人件費(20)は固定費として別途計上
+            'PA人件費率': { type: 'rate', numerator: 'PA人件費合計', denominator: 'item:4', desc: '雑給÷売上合計×100', v17Ref: 'No.19入力前準備' },
 
             // === 固定費系（合計）v17 No.56,59 / No.57,58 ===
             '地代家賃合計': { type: 'sum', items: [56, 59], desc: '家賃+賃借料', v17Ref: 'No.56,59' },
@@ -1486,7 +1487,10 @@
             67: { name: 'ディナー売上比率', category: 'KPI', inputStyle: 'A.そのまま入力' },
             68: { name: 'フード売上比率', category: 'KPI', inputStyle: 'C.自動演算' },
             69: { name: 'ドリンク売上比率', category: 'KPI', inputStyle: 'A.そのまま入力' },
-            70: { name: 'その他売上比率', category: 'KPI', inputStyle: 'A.そのまま入力' }
+            70: { name: 'その他売上比率', category: 'KPI', inputStyle: 'A.そのまま入力' },
+            // === 追加集計項目 ===
+            74: { name: '経常利益', category: '利益', inputStyle: 'C.自動演算' },
+            75: { name: '限界利益', category: '集計', inputStyle: 'C.自動演算' }
         };
 
         // ユーティリティ
@@ -2825,8 +2829,8 @@
             var annualFDCost = calcAnnualTotal(8) + calcAnnualTotal(12);
             var fdCostRate = annualSales > 0 ? annualFDCost / annualSales : 0;
 
-            // PA人件費（雑給+ヘルプ）
-            var annualPACost = calcAnnualTotal(19) + calcAnnualTotal(20);
+            // PA人件費（雑給のみ。ヘルプ人件費は社員応援費用のため固定費として別途計上）
+            var annualPACost = calcAnnualTotal(19);
             var paCostRate = annualSales > 0 ? annualPACost / annualSales : 0;
 
             // 変動費合計 = FD仕入費 + PA人件費
@@ -3957,8 +3961,8 @@
         var CATEGORY_RULES = {
             '売上': ['売上', '収入', '収益', 'フード', 'ドリンク', 'ランチ', 'ディナー', 'その他売上'],
             '原価': ['仕入', '原価', '食材', '材料', 'FD', 'フード仕入', 'ドリンク仕入'],
-            '固定人件費': ['給料', '給与', '賞与', '法定福利', '社宅', '通勤', '休業手当', '福利厚生'],
-            'PA人件費': ['PA', 'パート', 'アルバイト', '雑給', 'ヘルプ人件費'],
+            '固定人件費': ['給料', '給与', '賞与', '法定福利', '社宅', '通勤', '休業手当', '福利厚生', 'ヘルプ人件費'],  // ヘルプ人件費は社員応援費用
+            'PA人件費': ['PA', 'パート', 'アルバイト', '雑給'],  // 雑給のみ（売上連動）
             '経費': ['販促', '広告', '衛生', '消耗品', '電気', 'ガス', '水道', '通信', '手数料',
                     'クレジット', '会議', '交際', '旅費', '図書', '研修', '採用', 'IT', '外注', '雑費',
                     'サービス', 'メニュー', '調査', '保守', '修繕', '租税', '諸会費'],
@@ -4014,7 +4018,7 @@
             '設定>費用予算設定': {
                 categories: ['人件費', 'その他変動費', '固定費'],
                 v17Range: [16, 59],  // No.16-25(固定人件費), No.27-51(その他変動費), No.55-59(固定費)
-                excludeItems: [19, 20, 26],  // PA人件費(19,20)と人件費合計(26)は除外
+                excludeItems: [19, 26],  // PA人件費(19)は月次予算で率入力、人件費合計(26)は集計項目。ヘルプ人件費(20)は独立項目として入力
                 description: '固定費用予算（年間デフォルト設定、金額or％入力、設定タイプ選択）',
                 inputType: '金額or％',
                 hasMonthlyOverride: true  // 単月費用予算で月別上書き可
@@ -5330,9 +5334,14 @@
                 }
 
                 // ★ 値がない項目（#DIV/0!や空セルなど）はスキップ
-                if (!hasValue) {
+                // ただし、監視対象v17Noは0値でも記録する（差異分析のため）
+                var watchV17Nos = [1, 8, 9, 11, 12, 20];
+                if (!hasValue && watchV17Nos.indexOf(v17No) < 0) {
                     addLog('  行' + lineIdx + ': 「' + matchedName + '」→ v17No.' + v17No + ' マッチするも値0のためスキップ（計算項目）', 'data');
                     continue;
+                }
+                if (!hasValue && watchV17Nos.indexOf(v17No) >= 0) {
+                    addLog('  行' + lineIdx + ': 「' + matchedName + '」→ v17No.' + v17No + ' 値0だが監視対象のため記録', 'warn');
                 }
 
                 // ★ 全行を連番で登録
@@ -6508,14 +6517,14 @@
             addRow('人件費 計', getMonthlyData(function(m) {
                 var fixedLabor = rakumyInputs[m].fixedLabor || 0;
                 var paLabor = (mqOutputs[m].sales || 0) * (rakumyInputs[m].paRate || 0) / 100;
-                var helpLabor = annualData[19] ? (annualData[19][m] || 0) : 0;
+                var helpLabor = annualData[20] ? (annualData[20][m] || 0) : 0;  // No.20 ヘルプ人件費
                 return Math.round(fixedLabor + paLabor + helpLabor);
             }), false);
             addRow('　固定人件費', getMonthlyData(function(m) { return rakumyInputs[m].fixedLabor || 0; }), false, 'background:#f5f5f5;');
             addRow('　PA人件費', getMonthlyData(function(m) {
                 return Math.round((mqOutputs[m].sales || 0) * (rakumyInputs[m].paRate || 0) / 100);
             }), false, 'background:#f5f5f5;');
-            addRow('　ヘルプ人件費', getMonthlyData(function(m) { return annualData[19] ? (annualData[19][m] || 0) : 0; }), false, 'background:#f5f5f5;');
+            addRow('　ヘルプ人件費', getMonthlyData(function(m) { return annualData[20] ? (annualData[20][m] || 0) : 0; }), false, 'background:#f5f5f5;');
 
             // ===== その他経費セクション =====
             addSectionHeader('その他経費', '#7b1fa2');
