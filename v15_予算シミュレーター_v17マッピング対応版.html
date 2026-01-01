@@ -1534,8 +1534,20 @@
             } else if (page === 'simulation') {
                 document.querySelector('.simulation-tab').classList.add('active');
                 document.getElementById('page-simulation').classList.add('active');
+                // ★ 現在の店舗データを保存してから予算試算タブを表示（最新データを連動）
+                if (typeof saveCurrentStoreData === 'function' && currentStoreName) {
+                    saveCurrentStoreData();
+                }
                 if (typeof updateSimulationStoreSelect === 'function') {
                     updateSimulationStoreSelect();
+                }
+                // ★ 現在の店舗があれば自動的にデータをロード（インポートタブとの連動確保）
+                var simSelect = document.getElementById('simulationStoreSelect');
+                if (simSelect && currentStoreName && allStoresData[currentStoreName]) {
+                    simSelect.value = currentStoreName;
+                    if (typeof loadSimulationData === 'function') {
+                        loadSimulationData();
+                    }
                 }
             } else if (page === 'export') {
                 document.querySelector('.export-tab').classList.add('active');
@@ -2506,6 +2518,16 @@
             renderUnmatchedItems();
             renderMonthColsGrid();
             renderAllTables();
+
+            // ★ 予算試算タブの店舗セレクトも同期
+            var simSelect = document.getElementById('simulationStoreSelect');
+            if (simSelect) {
+                simSelect.value = name;
+                // simulationDataを更新（予算試算タブとの連動を確保）
+                if (typeof loadSimulationData === 'function') {
+                    loadSimulationData();
+                }
+            }
 
             showStatus('info', '店舗「' + name + '」を表示中');
         }
@@ -6088,11 +6110,13 @@
                     // v17No（v15No）で表示
                     var displayNo = item.v15No || (idx + 1);
                     var itemName = item.name || '不明';
+                    var v17No = item.v15No;
 
+                    // ★ annualDataから値を取得（全テーブルで統一されたデータソース）
                     // 合計を先に計算（0値の行を非表示にするため）
                     var total = 0;
                     for (var m = 0; m < activeMonths.length; m++) {
-                        var val = item.rowData ? (item.rowData[m] || 0) : 0;
+                        var val = annualData[v17No] ? (annualData[v17No][m] || 0) : 0;
                         total += val;
                     }
 
@@ -6101,8 +6125,8 @@
 
                     html += '<tr><td>[' + displayNo + '] ' + itemName + '</td>';
                     for (var m = 0; m < activeMonths.length; m++) {
-                        // 各行の個別データを使用
-                        var val = item.rowData ? (item.rowData[m] || 0) : 0;
+                        // ★ annualDataから値を取得（matchedItems.rowDataではなく）
+                        var val = annualData[v17No] ? (annualData[v17No][m] || 0) : 0;
                         var cellClass = val === 0 ? 'input-cell zero-value' : 'input-cell';
                         html += '<td class="' + cellClass + '">' + fmt(val) + '</td>';
                     }
