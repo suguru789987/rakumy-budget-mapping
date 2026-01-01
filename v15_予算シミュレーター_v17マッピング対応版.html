@@ -3386,16 +3386,51 @@
             addLog('3行目（月名行）列数: ' + row2.length, 'data');
             addLog('4行目（サブヘッダー行）列数: ' + row3.length, 'data');
 
-            // まず、すべての月名の位置を検出
+            // ★ 除外パターン（四半期、累計など）
+            var SKIP_PATTERNS = [
+                /^\d*[QqＱｑ]$/,           // 1Q, 2Q, Q1, Q2, Ｑ１など
+                /^[上下]期$/,              // 上期, 下期
+                /^半期/,                   // 半期
+                /累計/,                    // 上期累計, 下期累計, 通期累計
+                /合計/,                    // 年間合計, 合計
+                /^通期/,                   // 通期
+                /^年[度計間]/,             // 年度, 年計, 年間
+                /^期[首末]/                // 期首, 期末
+            ];
+
+            function shouldSkip(cellValue) {
+                for (var p = 0; p < SKIP_PATTERNS.length; p++) {
+                    if (SKIP_PATTERNS[p].test(cellValue)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            // まず、すべての月名の位置を検出（四半期・累計は除外）
             var monthNamePositions = [];
+            var skippedColumns = [];
             for (var i = 0; i < row2.length; i++) {
                 var cell = row2[i].trim();
+                if (!cell) continue;
+
+                // 四半期・累計パターンはスキップ
+                if (shouldSkip(cell)) {
+                    skippedColumns.push(cell + '(列' + i + ')');
+                    continue;
+                }
+
+                // 月名パターンにマッチするか
                 if (CALENDAR_MONTHS.indexOf(cell) >= 0) {
                     monthNamePositions.push({ month: cell, col: i });
                 }
             }
 
-            addLog('月名検出: ' + monthNamePositions.length + '個', 'info');
+            // スキップした列をログ出力
+            if (skippedColumns.length > 0) {
+                addLog('✓ 除外（四半期・累計）: ' + skippedColumns.join(', '), 'warn');
+            }
+            addLog('✓ 月名検出: ' + monthNamePositions.length + '個 (' + monthNamePositions.map(function(m) { return m.month; }).join(', ') + ')', 'success');
 
             // 各月について、「予算」列を探す
             var results = [];
