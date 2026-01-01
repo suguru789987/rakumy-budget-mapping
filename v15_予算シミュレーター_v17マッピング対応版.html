@@ -2890,14 +2890,19 @@
             var variableUnitCost = unitPrice * variableCostRate;
             var grossProfitUnit = unitPrice - variableUnitCost;
 
-            // ラクミー予算項目（MQ構成 + 顧客予算と同じ項目表示）
+            // ★ MQ計算結果を取得する関数
+            var getMQ = function(m, field) {
+                return simulationData.mqOutputs && simulationData.mqOutputs[m] ? (simulationData.mqOutputs[m][field] || 0) : 0;
+            };
+
+            // ラクミー予算項目（★ MQ計算結果を使用）
             var rakumyItems = [
-                // 売上予算
-                { section: '売上予算', name: '売上予算（税抜）', highlight: true, calc: function(m) { return get(4, m); } },
-                // 変動費予算（FD仕入費 + PA人件費 = 売上連動）
-                { section: '変動費予算', name: 'FD仕入費', calc: function(m) { return get(4, m) * fdCostRate; } },
-                { section: '変動費予算', name: 'PA人件費', calc: function(m) { return get(4, m) * paCostRate; } },
-                { section: '変動費予算', name: '変動費合計', highlight: true, calc: function(m) { return get(4, m) * variableCostRate; } },
+                // 売上予算（★ MQ計算: 客数×客単価）
+                { section: '売上予算', name: '売上予算（税抜）', highlight: true, calc: function(m) { return getMQ(m, 'sales'); } },
+                // 変動費予算（★ MQ計算結果を使用）
+                { section: '変動費予算', name: 'FD仕入費', calc: function(m) { return getMQ(m, 'sales') * fdCostRate; } },
+                { section: '変動費予算', name: 'PA人件費', calc: function(m) { return getMQ(m, 'sales') * paCostRate; } },
+                { section: '変動費予算', name: '変動費合計', highlight: true, calc: function(m) { return getMQ(m, 'variableCost'); } },
                 // 固定人件費（PA人件費を除く人件費）
                 { section: '固定人件費', name: '給料手当', calc: function(m) { return get(16, m); } },
                 { section: '固定人件費', name: '店長料理長昇給', calc: function(m) { return get(17, m); } },
@@ -2946,16 +2951,12 @@
                     // 元のMQ計算ロジック維持（ロイヤリティ・店舗補填は含まない）
                     return calcFixedLabor(m) + calcRent(m) + calcMaterial(m) + get(55, m) + calcOtherExp(m);
                 } },
-                // 損益（MQ計算ロジック維持）
+                // 損益（★ MQ計算結果を使用）
                 { section: '損益', name: '限界利益（売上-変動費）', highlight: true, calc: function(m) {
-                    return get(4, m) - get(4, m) * variableCostRate;
+                    return getMQ(m, 'grossProfit');
                 } },
                 { section: '損益', name: '営業利益', highlight: true, profit: true, calc: function(m) {
-                    var sales = get(4, m);
-                    var variable = sales * variableCostRate;
-                    // 元のMQ計算ロジック維持（ロイヤリティ・店舗補填は含まない）
-                    var fixed = calcFixedLabor(m) + calcRent(m) + calcMaterial(m) + get(55, m) + calcOtherExp(m);
-                    return sales - variable - fixed;
+                    return getMQ(m, 'operatingProfit');
                 } }
             ];
 
@@ -2963,12 +2964,9 @@
             var requiredCustomers = grossProfitUnit > 0 ? Math.ceil((annualFixedCost + annualOperatingProfit) / grossProfitUnit / 12) : 0;
             var requiredSalesPerMonth = requiredCustomers * unitPrice;
 
-            // ラクミー予算の営業利益計算関数（サマリー用）
+            // ラクミー予算の営業利益計算関数（サマリー用）★ MQ計算結果を使用
             var calcRakumyProfit = function(m) {
-                var sales = get(4, m);
-                var variable = sales * variableCostRate;
-                var fixed = calcFixedLabor(m) + calcRent(m) + calcMaterial(m) + get(55, m) + calcOtherExp(m);
-                return sales - variable - fixed;
+                return getMQ(m, 'operatingProfit');
             };
 
             // テーブル生成関数
