@@ -5328,9 +5328,7 @@
                         if (firstValue === 0) firstValue = value;
                     }
                     rowData[mi] = value;
-                    // annualDataにも累積（計算用）
-                    annualData[v17No] = annualData[v17No] || {};
-                    annualData[v17No][mi] = (annualData[v17No][mi] || 0) + value;
+                    // ★ annualDataへの格納は重複チェック後に行う（ここでは行わない）
                 }
 
                 // ★ 値がない項目（#DIV/0!や空セルなど）はスキップ
@@ -5373,15 +5371,28 @@
                     // 既存がname_basedで今回がcode_basedなら置き換え
                     if (existing.matchType === 'name_based' && matchType === 'code_based') {
                         addLog('  行' + lineIdx + ': v17No.' + v17No + ' 既存の項目名マッチをコードマッチで上書き', 'data');
+                        // ★ annualDataから既存の値を減算（置き換えのため）
+                        if (annualData[v17No] && existing.rowData) {
+                            for (var rmi = 0; rmi < budgetColumnPositions.length; rmi++) {
+                                var oldValue = existing.rowData[rmi] || 0;
+                                annualData[v17No][rmi] = (annualData[v17No][rmi] || 0) - oldValue;
+                            }
+                        }
                         // 置き換え処理は下で行う
                     } else {
-                        // それ以外は重複スキップ
+                        // それ以外は重複スキップ（annualDataにも追加しない）
                         addLog('  行' + lineIdx + ': 「' + matchedName + '」→ v17No.' + v17No + ' 重複のためスキップ（既存: ' + existing.name + '）', 'data');
                         continue;
                     }
                 }
 
                 addLog('★ [' + displayIndex + '] 行' + lineIdx + ': 「' + matchedName + '」' + positionLabel + ' ' + matchLabel + ' → v17No.' + v17No + ' (' + category + ') 初月値=' + firstValue, 'success');
+
+                // ★ annualDataに格納（重複チェック通過後のみ）
+                for (var ami = 0; ami < budgetColumnPositions.length; ami++) {
+                    annualData[v17No] = annualData[v17No] || {};
+                    annualData[v17No][ami] = (annualData[v17No][ami] || 0) + rowData[ami];
+                }
 
                 var newItem = {
                     displayIndex: displayIndex,  // 連番インデックス
