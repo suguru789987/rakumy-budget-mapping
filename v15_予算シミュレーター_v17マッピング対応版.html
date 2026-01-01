@@ -2811,7 +2811,7 @@
                 { section: '固定費', no: 59, name: '賃借料' },
                 // 損益
                 { section: '損益', no: 60, name: '販管費合計', highlight: true },
-                { section: '損益', no: 62, name: '営業利益', highlight: true, profit: true }
+                { section: '損益', no: 63, name: '営業利益', highlight: true, profit: true }
             ];
 
             // ========== ラクミーMQ計算ロジック（CSV仕様準拠） ==========
@@ -3057,8 +3057,8 @@
             // 差異サマリー（顧客予算 vs MQ試算結果）
             var custProfit = 0, rakumyProfit = 0;
             monthIndices.forEach(function(m) {
-                // 顧客予算: 営業利益（CSVから読み込んだ値）
-                custProfit += get(62, m);
+                // 顧客予算: 営業利益（CSVから読み込んだ値）- No.63が正しい営業利益
+                custProfit += get(63, m);
                 // ラクミー予算: MQ計算による営業利益（売上 - 変動費 - 固定費）
                 rakumyProfit += calcRakumyProfit(m);
             });
@@ -6367,11 +6367,11 @@
             }
             html += '<td class="total-col" style="background:#bbdefb;font-weight:bold;color:#1565c0;">' + fmt(mqProfitTotal) + '</td><td class="avg-col" style="background:#bbdefb;">' + fmt(mqProfitTotal / activeMonths.length) + '</td></tr>';
 
-            // 顧客予算営業利益（Item 60 = 店舗営業利益）
+            // 顧客予算営業利益（Item 63 = 営業利益）
             html += '<tr style="background:#fff8e1;border-left:4px solid #f57c00;"><td style="padding-left:20px;font-weight:bold;">顧客予算（営業利益）</td>';
             var budgetProfitTotal = 0;
             for (var m = 0; m < activeMonths.length; m++) {
-                var val = annualData[60] ? (annualData[60][m] || 0) : 0;
+                var val = annualData[63] ? (annualData[63][m] || 0) : 0;
                 budgetProfitTotal += val;
                 html += '<td class="output-cell" style="background:#fff8e1;font-weight:bold;color:#e65100;">' + fmt(val) + '</td>';
             }
@@ -6382,7 +6382,7 @@
             var profitDiffTotal = 0;
             for (var m = 0; m < activeMonths.length; m++) {
                 var mqProfit = mqOutputs[m].operatingProfit || 0;
-                var budgetProfit = annualData[60] ? (annualData[60][m] || 0) : 0;
+                var budgetProfit = annualData[63] ? (annualData[63][m] || 0) : 0;
                 var diff = mqProfit - budgetProfit;
                 profitDiffTotal += diff;
                 var color = diff >= 0 ? '#2e7d32' : '#c62828';
@@ -6432,7 +6432,7 @@
 
             // ===== 目標設定セクション =====
             addSectionHeader('目標設定', '#1565c0');
-            addRow('月次目標利益', getMonthlyData(function(m) { return annualData[60] ? (annualData[60][m] || 0) : 0; }), false);
+            addRow('月次目標利益', getMonthlyData(function(m) { return annualData[63] ? (annualData[63][m] || 0) : 0; }), false);
             addRow('目標FD仕入費率', getMonthlyData(function(m) { return rakumyInputs[m].fdRate || 0; }), true);
             addRow('目標PA人件費率', getMonthlyData(function(m) { return rakumyInputs[m].paRate || 0; }), true);
             addRow('目標客単価', getMonthlyData(function(m) { return rakumyInputs[m].targetUnitPrice || 0; }), false);
