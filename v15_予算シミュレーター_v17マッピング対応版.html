@@ -4185,7 +4185,10 @@
             html += '</div>';
 
             html += '</div>';
-            html += '<div style="text-align:right;font-size:9px;color:#999;margin-top:8px;">※営業日数 ' + CUST_OPERATING_DAYS + '日/月 想定</div>';
+            html += '<div style="text-align:right;font-size:9px;color:#999;margin-top:8px;line-height:1.6;">';
+            html += '※営業日数 ' + CUST_OPERATING_DAYS + '日/月 想定<br>';
+            html += '※月平均＝年間合計÷取込月数　日平均＝月平均÷' + CUST_OPERATING_DAYS + '日';
+            html += '</div>';
             html += '</div>';
 
             // 顧客予算編集テーブル（主要項目のみ表示）
@@ -4245,7 +4248,10 @@
             html += '</div>';
 
             html += '</div>';
-            html += '<div style="text-align:right;font-size:9px;color:#999;margin-top:8px;">※営業日数 ' + OPERATING_DAYS + '日/月 想定</div>';
+            html += '<div style="text-align:right;font-size:9px;color:#999;margin-top:8px;line-height:1.6;">';
+            html += '※営業日数 ' + OPERATING_DAYS + '日/月 想定<br>';
+            html += '※月平均＝年間合計÷取込月数　日平均＝月平均÷' + OPERATING_DAYS + '日';
+            html += '</div>';
             html += '</div>';
 
             // MQ結果月別テーブル
