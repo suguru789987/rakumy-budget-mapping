@@ -1867,23 +1867,49 @@
             }
         }
 
+        // ★★★ サブタブ切替関数（早期定義） ★★★
+        function switchImportSubtab(tabName) {
+            // サブタブボタンの状態を更新
+            document.querySelectorAll('.import-subtabs .subtab').forEach(function(btn) {
+                btn.classList.remove('active');
+            });
+            var activeBtn = document.querySelector('.import-subtabs .subtab[onclick*="' + tabName + '"]');
+            if (activeBtn) activeBtn.classList.add('active');
+
+            // サブタブコンテンツの表示を更新
+            document.querySelectorAll('.import-subtab-content').forEach(function(content) {
+                content.classList.remove('active');
+            });
+            var targetContent = document.getElementById('import-subtab-' + tabName);
+            if (targetContent) targetContent.classList.add('active');
+
+            // 設定タブ表示時にリストを更新
+            if (tabName === 'settings') {
+                if (typeof updateCurrentStoreList === 'function') updateCurrentStoreList();
+                if (typeof updateCurrentMappingList === 'function') updateCurrentMappingList();
+            }
+        }
+
         // ドラッグ＆ドロップ処理
         function handleDragOver(event) {
             event.preventDefault();
             event.stopPropagation();
-            document.getElementById('dropZone').classList.add('drag-over');
+            var zone = document.getElementById('dropZone');
+            if (zone) zone.classList.add('drag-over');
         }
 
         function handleDragLeave(event) {
             event.preventDefault();
             event.stopPropagation();
-            document.getElementById('dropZone').classList.remove('drag-over');
+            var zone = document.getElementById('dropZone');
+            if (zone) zone.classList.remove('drag-over');
         }
 
         function handleDrop(event) {
             event.preventDefault();
             event.stopPropagation();
-            document.getElementById('dropZone').classList.remove('drag-over');
+            var zone = document.getElementById('dropZone');
+            if (zone) zone.classList.remove('drag-over');
 
             var files = event.dataTransfer.files;
             if (files.length > 0) {
@@ -5651,27 +5677,6 @@
             link.click();
 
             showStatus('success', 'マッピングCSVをエクスポートしました');
-        }
-
-        // ★★★ サブタブ切替関数 ★★★
-        function switchImportSubtab(tabName) {
-            // サブタブボタンの状態を更新
-            document.querySelectorAll('.import-subtabs .subtab').forEach(function(btn) {
-                btn.classList.remove('active');
-            });
-            document.querySelector('.import-subtabs .subtab[onclick*="' + tabName + '"]').classList.add('active');
-
-            // サブタブコンテンツの表示を更新
-            document.querySelectorAll('.import-subtab-content').forEach(function(content) {
-                content.classList.remove('active');
-            });
-            document.getElementById('import-subtab-' + tabName).classList.add('active');
-
-            // 設定タブ表示時にリストを更新
-            if (tabName === 'settings') {
-                updateCurrentStoreList();
-                updateCurrentMappingList();
-            }
         }
 
         // ★★★ 予算テンプレートダウンロード ★★★
