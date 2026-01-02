@@ -5617,7 +5617,8 @@
             reader.onload = function(e) {
                 var content = e.target.result;
                 var lines = content.split('\n');
-                var importCount = 0;
+                var codeImportCount = 0;
+                var nameImportCount = 0;
                 var errorCount = 0;
 
                 // ヘッダー行をスキップ（最初の行）
@@ -5633,22 +5634,37 @@
 
                     var code = cols[0].trim();
                     var name = cols[1].trim();
-                    var v15No = parseInt(cols[2].trim());
+                    var v17No = parseInt(cols[2].trim());
                     var category = cols[3].trim();
 
-                    if (!code || !name || isNaN(v15No)) {
+                    // 項目名とv17Noは必須
+                    if (!name || isNaN(v17No)) {
                         errorCount++;
                         continue;
                     }
 
-                    CUSTOMER_CODE_MAP[code] = { v15No: v15No, name: name, category: category };
-                    ITEMS[v15No] = { name: name, category: category };
-                    importCount++;
+                    if (code) {
+                        // コードあり → CUSTOMER_CODE_MAPに追加
+                        CUSTOMER_CODE_MAP[code] = { v15No: v17No, name: name, category: category };
+                        ITEMS[v17No] = { name: name, category: category };
+                        codeImportCount++;
+                    } else {
+                        // コードなし → NAME_BASED_MAPに追加（項目名でマッピング）
+                        NAME_BASED_MAP[name] = { v17No: v17No, category: category };
+                        ITEMS[v17No] = { name: name, category: category };
+                        nameImportCount++;
+                    }
                 }
 
                 renderMappingTable();
                 updateCurrentMappingList();  // 設定タブの一覧も更新
-                showStatus('success', 'マッピングCSVをインポートしました: ' + importCount + '件' + (errorCount > 0 ? '（エラー: ' + errorCount + '件）' : ''));
+
+                var msg = 'マッピングCSVをインポートしました: ';
+                var parts = [];
+                if (codeImportCount > 0) parts.push('コード付き ' + codeImportCount + '件');
+                if (nameImportCount > 0) parts.push('名前ベース ' + nameImportCount + '件');
+                if (errorCount > 0) parts.push('エラー ' + errorCount + '件');
+                showStatus('success', msg + parts.join('、'));
 
                 // ファイル選択をリセット
                 event.target.value = '';
@@ -5736,26 +5752,36 @@
             var BOM = '\uFEFF';
 
             // ヘッダー行
-            csv.push('コード,項目名,v17No,カテゴリ,入力スタイル');
+            csv.push('コード,項目名,v17No,カテゴリ');
 
-            // 現在のマッピング定義から出力
+            // 1. コードベースマッピング（CUSTOMER_CODE_MAP）から出力
             var sortedCodes = Object.keys(CUSTOMER_CODE_MAP).sort(function(a, b) {
                 return CUSTOMER_CODE_MAP[a].v15No - CUSTOMER_CODE_MAP[b].v15No;
             });
 
             sortedCodes.forEach(function(code) {
                 var item = CUSTOMER_CODE_MAP[code];
-                var inputStyle = item.inputStyle || 'B.通常入力';
-                csv.push([code, item.name, item.v15No, item.category, inputStyle].join(','));
+                csv.push([code, item.name, item.v15No, item.category].join(','));
+            });
+
+            // 2. 名前ベースマッピング（NAME_BASED_MAP）から出力（コード空欄）
+            var sortedNames = Object.keys(NAME_BASED_MAP).sort(function(a, b) {
+                return NAME_BASED_MAP[a].v17No - NAME_BASED_MAP[b].v17No;
+            });
+
+            sortedNames.forEach(function(name) {
+                var item = NAME_BASED_MAP[name];
+                // コード欄は空、項目名がキー
+                csv.push(['', name, item.v17No, item.category || ''].join(','));
             });
 
             var blob = new Blob([BOM + csv.join('\n')], { type: 'text/csv;charset=utf-8' });
             var link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = '予算項目コードテンプレート_' + new Date().toISOString().slice(0,10) + '.csv';
+            link.download = '予算項目マッピング_' + new Date().toISOString().slice(0,10) + '.csv';
             link.click();
 
-            showStatus('success', '予算項目コードテンプレートをダウンロードしました');
+            showStatus('success', '予算項目マッピングをダウンロードしました（コード付き: ' + sortedCodes.length + '件、名前ベース: ' + sortedNames.length + '件）');
         }
 
         // ★★★ 店番インポート関連 ★★★
@@ -5869,28 +5895,51 @@
             var container = document.getElementById('currentMappingList');
             if (!container) return;
 
+            var html = '';
+
+            // === コードベースマッピング（CUSTOMER_CODE_MAP） ===
             var sortedCodes = Object.keys(CUSTOMER_CODE_MAP).sort(function(a, b) {
                 return CUSTOMER_CODE_MAP[a].v15No - CUSTOMER_CODE_MAP[b].v15No;
             });
 
-            var html = '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
-            html += '<tr style="background:#e65100;color:#fff;"><th style="padding:8px;text-align:left;">コード</th><th style="padding:8px;text-align:left;">項目名</th><th style="padding:8px;text-align:center;">v17No</th><th style="padding:8px;text-align:left;">カテゴリ</th><th style="padding:8px;text-align:left;">入力スタイル</th></tr>';
+            html += '<h4 style="color:#e65100;margin:0 0 10px 0;font-size:13px;">コードベースマッピング（CUSTOMER_CODE_MAP）</h4>';
+            html += '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:20px;">';
+            html += '<tr style="background:#e65100;color:#fff;"><th style="padding:8px;text-align:left;">コード</th><th style="padding:8px;text-align:left;">項目名</th><th style="padding:8px;text-align:center;">v17No</th><th style="padding:8px;text-align:left;">カテゴリ</th></tr>';
 
             sortedCodes.forEach(function(code, index) {
                 var item = CUSTOMER_CODE_MAP[code];
                 var bgColor = index % 2 === 0 ? '#fff' : '#fff8e1';
-                var inputStyle = item.inputStyle || 'B.通常入力';
                 html += '<tr style="background:' + bgColor + ';">';
                 html += '<td style="padding:6px 8px;font-family:monospace;">' + escapeHtml(code) + '</td>';
                 html += '<td style="padding:6px 8px;">' + escapeHtml(item.name) + '</td>';
                 html += '<td style="padding:6px 8px;text-align:center;">' + item.v15No + '</td>';
                 html += '<td style="padding:6px 8px;">' + escapeHtml(item.category) + '</td>';
-                html += '<td style="padding:6px 8px;font-size:11px;color:#666;">' + escapeHtml(inputStyle) + '</td>';
                 html += '</tr>';
             });
-
             html += '</table>';
-            html += '<div style="margin-top:10px;font-size:11px;color:#666;">合計: ' + sortedCodes.length + '項目</div>';
+            html += '<div style="font-size:11px;color:#666;margin-bottom:15px;">コード付き: ' + sortedCodes.length + '項目</div>';
+
+            // === 名前ベースマッピング（NAME_BASED_MAP）===
+            var sortedNames = Object.keys(NAME_BASED_MAP).sort(function(a, b) {
+                return NAME_BASED_MAP[a].v17No - NAME_BASED_MAP[b].v17No;
+            });
+
+            html += '<h4 style="color:#1565c0;margin:0 0 10px 0;font-size:13px;">名前ベースマッピング（NAME_BASED_MAP）</h4>';
+            html += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+            html += '<tr style="background:#1565c0;color:#fff;"><th style="padding:8px;text-align:left;">項目名（キー）</th><th style="padding:8px;text-align:center;">v17No</th><th style="padding:8px;text-align:left;">カテゴリ</th></tr>';
+
+            sortedNames.forEach(function(name, index) {
+                var item = NAME_BASED_MAP[name];
+                var bgColor = index % 2 === 0 ? '#fff' : '#e3f2fd';
+                html += '<tr style="background:' + bgColor + ';">';
+                html += '<td style="padding:6px 8px;">' + escapeHtml(name) + '</td>';
+                html += '<td style="padding:6px 8px;text-align:center;">' + item.v17No + '</td>';
+                html += '<td style="padding:6px 8px;">' + escapeHtml(item.category || '-') + '</td>';
+                html += '</tr>';
+            });
+            html += '</table>';
+            html += '<div style="font-size:11px;color:#666;margin-top:10px;">名前ベース: ' + sortedNames.length + '項目</div>';
+
             container.innerHTML = html;
         }
 
