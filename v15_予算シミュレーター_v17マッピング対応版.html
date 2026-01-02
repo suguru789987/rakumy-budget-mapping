@@ -4333,11 +4333,11 @@
             html += '<p style="font-size:9px;color:#888;margin:10px 0 0 0;">※ FD率・PA率・固定費・目標利益は顧客予算を編集すると自動更新されます</p>';
             html += '</div></details>';
 
-            // 客単価変更ボタン
+            // MQ再計算ボタン（顧客予算編集・客単価変更の両方に対応）
             html += '<div style="text-align:center;padding:15px;border-top:1px solid #ffcc80;">';
-            html += '<p style="font-size:11px;color:#e65100;margin:0 0 10px 0;">客単価を変更してMQ結果を再計算できます</p>';
+            html += '<p style="font-size:11px;color:#e65100;margin:0 0 10px 0;">顧客予算の編集内容・客単価変更をMQ結果に反映します</p>';
             html += '<button onclick="showUnitPriceConfirmModal()" class="btn" style="padding:10px 30px;font-size:13px;background:linear-gradient(135deg, #ff9800 0%, #f57c00 100%);border:none;border-radius:6px;color:#fff;font-weight:bold;box-shadow:0 2px 8px rgba(255,152,0,0.3);cursor:pointer;">';
-            html += '🔧 客単価を変更してMQ再計算';
+            html += '🔄 MQ再計算を実行';
             html += '</button>';
             html += '</div>';
 
