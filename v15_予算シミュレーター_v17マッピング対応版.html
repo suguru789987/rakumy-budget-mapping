@@ -647,7 +647,7 @@
                         <button class="btn" style="background:#ff9800;color:#fff;padding:8px 15px;" onclick="resetSimulationData()">
                             🔄 元に戻す
                         </button>
-                        <button class="btn" style="background:#4caf50;color:#fff;padding:8px 15px;" onclick="applySimulationToMain()">
+                        <button class="btn" style="background:#4caf50;color:#fff;padding:8px 15px;" onclick="applySimulationData()">
                             ✅ 試算値を本データに反映
                         </button>
                     </div>
@@ -4732,20 +4732,34 @@
                 return;
             }
 
+            if (!simulationData || !simulationData.annualData) {
+                showStatus('warn', '試算データがありません');
+                return;
+            }
+
             if (!confirm('試算値を「' + selectedStore + '」の本データに反映しますか？\n※元に戻せません')) return;
 
-            // 本データを更新
+            // 本データを更新（annualData、rakumyInputs、mqOutputsすべて反映）
             allStoresData[selectedStore].annualData = JSON.parse(JSON.stringify(simulationData.annualData));
+            if (simulationData.rakumyInputs) {
+                allStoresData[selectedStore].rakumyInputs = JSON.parse(JSON.stringify(simulationData.rakumyInputs));
+            }
+            if (simulationData.mqOutputs) {
+                allStoresData[selectedStore].mqOutputs = JSON.parse(JSON.stringify(simulationData.mqOutputs));
+            }
 
-            // 現在の店舗なら再計算
+            // 現在の店舗ならグローバル変数も更新して再計算
             if (currentStoreName === selectedStore) {
                 annualData = allStoresData[selectedStore].annualData;
+                rakumyInputs = allStoresData[selectedStore].rakumyInputs || {};
+                mqOutputs = allStoresData[selectedStore].mqOutputs || {};
                 executeCalcRules();
                 generateRakumyInputs();
                 runMQSimulation();
+                saveCurrentStoreData();
             }
 
-            showStatus('success', '試算値を本データに反映しました');
+            showStatus('success', '試算値を本データに反映しました（エクスポートに反映されます）');
         }
 
         // ★ 店舗削除
