@@ -1409,8 +1409,7 @@
             '552': { v15No: 57, name: '警備料', category: '固定費', inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
             '5241': { v15No: 58, name: 'リース料', category: '固定費', inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
             '524': { v15No: 59, name: '賃借料', category: '固定費', inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
-            // === 利益（No.63）営業利益は自動計算（店舗営業利益-販売管理費合計） ===
-            '9640': { v15No: 63, name: '営業利益', category: '利益', inputStyle: 'C.自動演算', screen: '設定>月次予算設定' },
+            // === 利益（No.63）営業利益はNAME_BASED_MAPで取得（コード9640は不正確な値のため削除） ===
             // === KPI（No.64-70） ===
             '9641': { v15No: 64, name: '客数', category: 'KPI', inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定' },
             '9642': { v15No: 65, name: '客単価', category: 'KPI', inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定' }
@@ -1776,7 +1775,7 @@
             '5241': { v17No: 58, category: '固定費', name: 'リース料' },
             '524': { v17No: 59, category: '固定費', name: '賃借料' },
             // === 利益・集計コード ===
-            '9640': { v17No: 63, category: '利益', name: '営業利益' },
+            // 9640は削除（不正確な値のため）- 営業利益はNAME_BASED_MAPで取得
             '9700': { v17No: 74, category: '利益', name: '経常利益' }
         };
 
@@ -8254,19 +8253,26 @@
             }
 
             // ★ 営業利益（No.63）の取り込みロジック
-            // 営業利益は常に計算で取得（CSVの値は信頼性が低いため）
-            // 計算式: 店舗営業利益(No.61) - 販売管理費合計(No.62)
-            if (calcResults[0] && calcResults[0]['営業利益'] !== undefined) {
-                var csvNo63 = annualData[63] ? JSON.parse(JSON.stringify(annualData[63])) : null;
+            // 方法1（優先）: NAME_BASED_MAP経由でCSVから直接インポート
+            // 方法2（フォールバック）: CALC_RULES経由で計算（店舗営業利益 - 販売管理費合計）
+            // ※ コード9640は不正確な値のため削除済み
+            var hasNo63FromCSV = annualData[63] && activeMonths.some(function(m) {
+                return annualData[63][m] !== undefined && annualData[63][m] !== null && annualData[63][m] !== 0;
+            });
+
+            if (hasNo63FromCSV) {
+                // 方法1: NAME_BASED_MAPでCSVから直接取り込み済み
+                console.log('【営業利益 No.63】方法1採用: NAME_BASED_MAPでCSVから直接インポート');
+                console.log('  インポート値:', JSON.stringify(annualData[63]));
+            } else if (calcResults[0] && calcResults[0]['営業利益'] !== undefined) {
+                // 方法2: 計算で生成（CSVに「営業利益」行がない場合のフォールバック）
                 if (!annualData[63]) annualData[63] = {};
                 for (var m = 0; m < activeMonths.length; m++) {
                     var calcValue = calcResults[m]['営業利益'] || 0;
                     annualData[63][m] = calcValue;
                 }
-                console.log('【営業利益 No.63】計算で取得: 店舗営業利益(No.61) - 販売管理費合計(No.62)');
-                if (csvNo63) {
-                    console.log('  CSVインポート値（上書き）:', JSON.stringify(csvNo63));
-                }
+                console.log('【営業利益 No.63】方法2採用: 計算で生成（CALC_RULES経由）');
+                console.log('  計算式: 店舗営業利益(No.61) - 販売管理費合計(No.62)');
                 console.log('  計算結果:', JSON.stringify(annualData[63]));
             }
         }
