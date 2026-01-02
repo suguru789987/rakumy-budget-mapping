@@ -698,22 +698,6 @@
                             <p style="color:#666;font-size:11px;text-align:center;padding:20px;">履歴がありません</p>
                         </div>
                     </div>
-
-                    <!-- ===== MQ試算結果比較（顧客予算 vs MQ予算）===== -->
-                    <div id="simMqResultSection" style="display:none;background:linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);border-radius:8px;padding:20px;margin-bottom:20px;border:2px solid #2196f3;">
-                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
-                            <h4 style="color:#1565c0;margin:0;font-size:14px;">📊 MQ試算結果（顧客予算 vs MQ予算）</h4>
-                            <span id="simMqResultStatus" style="font-size:11px;padding:4px 12px;border-radius:4px;"></span>
-                        </div>
-                        <div style="overflow-x:auto;margin-bottom:15px;">
-                            <table class="annual-table" style="font-size:11px;" id="simMqResultTable">
-                                <!-- JavaScriptで動的生成 -->
-                            </table>
-                        </div>
-                        <div id="simMqComparisonSummary" style="background:#fff;border-radius:6px;padding:12px;border:1px solid #ddd;">
-                            <!-- 比較サマリーがここに動的生成 -->
-                        </div>
-                    </div>
                 </div>
 
                 <!-- ===== 目標客単価確認モーダル ===== -->
@@ -847,8 +831,24 @@
                         </div>
                     </div>
 
-                    <!-- 連動比較ビュー -->
+                    <!-- 連動比較ビュー（STEP1/STEP2パネル） -->
                     <div id="linkedSimulationView"></div>
+
+                    <!-- ===== MQ試算結果比較（顧客予算 vs MQ予算）===== -->
+                    <div id="simMqResultSection" style="display:none;background:linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);border-radius:8px;padding:20px;margin:20px 0;border:2px solid #2196f3;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+                            <h4 style="color:#1565c0;margin:0;font-size:14px;">📊 MQ試算結果比較（顧客予算 vs MQ予算）</h4>
+                            <span id="simMqResultStatus" style="font-size:11px;padding:4px 12px;border-radius:4px;"></span>
+                        </div>
+                        <div style="overflow-x:auto;margin-bottom:15px;">
+                            <table class="annual-table" style="font-size:11px;" id="simMqResultTable">
+                                <!-- JavaScriptで動的生成 -->
+                            </table>
+                        </div>
+                        <div id="simMqComparisonSummary" style="background:#fff;border-radius:6px;padding:12px;border:1px solid #ddd;">
+                            <!-- 比較サマリーがここに動的生成 -->
+                        </div>
+                    </div>
 
                     <!-- 試算サマリー -->
                     <div style="margin-top:20px;background:#fff8e1;border-radius:8px;padding:20px;border:2px solid #ffc107;">
