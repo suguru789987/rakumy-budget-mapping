@@ -6712,14 +6712,12 @@
             var stores = item.unitPrices || item.stores;
             var storeNames = Object.keys(stores).filter(function(n) { return n !== '_default'; });
 
-            if (selectedHistoryCategory === 'all' || selectedHistoryCategory === 'stores' || selectedHistoryCategory === 'prices') {
-                // 店舗リストのプレビュー
+            if (selectedHistoryCategory === 'all' || selectedHistoryCategory === 'stores') {
+                // 店舗リストのプレビュー（すべて・店番マスタカテゴリ）
                 if (storeNames.length > 0) {
                     html += '<div style="margin-top:12px;max-height:150px;overflow-y:auto;background:#fff;border-radius:4px;padding:8px;">';
                     if (selectedHistoryCategory === 'stores') {
                         html += '<div style="font-size:10px;color:#666;margin-bottom:5px;">🏪 店番一覧（先頭5件）:</div>';
-                    } else if (selectedHistoryCategory === 'prices') {
-                        html += '<div style="font-size:10px;color:#666;margin-bottom:5px;">💰 客単価一覧（先頭5件）:</div>';
                     } else {
                         html += '<div style="font-size:10px;color:#666;margin-bottom:5px;">店舗一覧（先頭5件）:</div>';
                     }
@@ -6729,13 +6727,53 @@
                         html += '<div style="font-size:11px;padding:2px 0;border-bottom:1px solid #eee;">';
                         html += '<span style="color:#4caf50;font-weight:bold;">' + (storeCode || String(i+1).padStart(3,'0')) + '</span> ';
                         html += escapeHtml(name);
-                        if (selectedHistoryCategory === 'prices' || selectedHistoryCategory === 'all') {
+                        if (selectedHistoryCategory === 'all') {
                             html += ' <span style="color:#1565c0;">' + (prices.total || 0).toLocaleString() + '円</span>';
                         }
                         html += '</div>';
                     });
                     if (storeNames.length > 5) {
                         html += '<div style="font-size:10px;color:#999;padding-top:5px;">...他 ' + (storeNames.length - 5) + '件</div>';
+                    }
+                    html += '</div>';
+                }
+            }
+
+            if (selectedHistoryCategory === 'prices') {
+                // 客単価カテゴリ: 月別表示
+                var MONTH_NAMES = ['4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月', '1月', '2月', '3月'];
+                if (storeNames.length > 0) {
+                    html += '<div style="margin-top:12px;max-height:300px;overflow-y:auto;background:#fff;border-radius:4px;padding:8px;">';
+                    html += '<div style="font-size:10px;color:#666;margin-bottom:8px;">💰 客単価一覧（先頭3店舗・月別）:</div>';
+                    storeNames.slice(0, 3).forEach(function(name, i) {
+                        var prices = stores[name];
+                        var storeCode = prices.storeCode || '';
+                        html += '<div style="margin-bottom:10px;padding:8px;background:#e3f2fd;border-radius:4px;">';
+                        html += '<div style="font-weight:bold;color:#1565c0;margin-bottom:5px;">';
+                        html += '<span style="color:#4caf50;">' + (storeCode || String(i+1).padStart(3,'0')) + '</span> ';
+                        html += escapeHtml(name);
+                        html += ' <span style="font-weight:normal;color:#666;">（平均: ' + (prices.total || 0).toLocaleString() + '円）</span>';
+                        html += '</div>';
+                        // 月別データがある場合は表示
+                        if (prices.monthly && Object.keys(prices.monthly).length > 0) {
+                            html += '<div style="display:flex;flex-wrap:wrap;gap:4px;font-size:10px;">';
+                            for (var mi = 0; mi < 12; mi++) {
+                                var monthData = prices.monthly[mi];
+                                if (monthData) {
+                                    var val = monthData.total || 0;
+                                    html += '<span style="background:#fff;padding:2px 6px;border-radius:3px;border:1px solid #90caf9;">';
+                                    html += MONTH_NAMES[mi] + ':' + val.toLocaleString() + '円';
+                                    html += '</span>';
+                                }
+                            }
+                            html += '</div>';
+                        } else {
+                            html += '<div style="font-size:10px;color:#999;">（月別データなし・全月共通値）</div>';
+                        }
+                        html += '</div>';
+                    });
+                    if (storeNames.length > 3) {
+                        html += '<div style="font-size:10px;color:#999;padding-top:5px;">...他 ' + (storeNames.length - 3) + '店舗</div>';
                     }
                     html += '</div>';
                 }
