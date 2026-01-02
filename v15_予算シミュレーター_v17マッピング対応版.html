@@ -593,23 +593,9 @@
 
                 <!-- 取り込みデータ履歴ボタン -->
                 <div style="margin-top:20px;padding-top:20px;border-top:2px solid #e0e0e0;">
-                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
-                        <button class="btn" style="background:linear-gradient(135deg, #1565c0 0%, #0d47a1 100%);color:#fff;padding:15px 20px;flex:1;font-size:14px;border-radius:8px;" onclick="showDataHistoryPage()">
-                            📋 取り込みデータ履歴を見る (<span id="importedStoreCount">0</span>件)
-                        </button>
-                        <button class="btn" style="background:linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);color:#fff;padding:15px 20px;font-size:14px;border-radius:8px;" onclick="saveCurrentImportData()">
-                            💾 現在の取り込みデータを保存
-                        </button>
-                    </div>
-                </div>
-
-                <!-- 保存済み取り込みデータ履歴 -->
-                <div id="historySection" style="margin-top:20px;display:none;">
-                    <div style="background:linear-gradient(135deg, #7b1fa2 0%, #4a148c 100%);color:#fff;padding:12px 20px;border-radius:8px 8px 0 0;display:flex;justify-content:space-between;align-items:center;">
-                        <h4 style="margin:0;font-size:14px;">📂 保存済み取り込みデータ履歴</h4>
-                        <button onclick="clearAllHistory()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;padding:5px 10px;border-radius:4px;cursor:pointer;font-size:11px;">🗑 全削除</button>
-                    </div>
-                    <div id="historyList" style="background:#f3e5f5;border:2px solid #7b1fa2;border-top:none;border-radius:0 0 8px 8px;max-height:300px;overflow-y:auto;"></div>
+                    <button class="btn" style="background:linear-gradient(135deg, #1565c0 0%, #0d47a1 100%);color:#fff;padding:15px 30px;width:100%;font-size:16px;border-radius:8px;" onclick="showDataHistoryPage()">
+                        📋 取り込みデータ履歴を見る (<span id="importedStoreCount">0</span>件)
+                    </button>
                 </div>
 
                 <!-- 検出結果表示 -->
@@ -1376,7 +1362,23 @@
                 <button class="btn btn-secondary" onclick="hideDataHistoryPage()">✕ 閉じる</button>
             </div>
             <div class="data-history-content">
-                <div id="dataHistoryList" class="data-history-list"></div>
+                <!-- 現在のセッション（メモリ上のデータ） -->
+                <div style="margin-bottom:30px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+                        <h3 style="margin:0;color:#1565c0;font-size:18px;">📂 現在の取り込みデータ（未保存）</h3>
+                        <button class="btn" style="background:#4caf50;color:#fff;padding:10px 20px;" onclick="saveCurrentImportData()">💾 現在のデータを保存</button>
+                    </div>
+                    <div id="dataHistoryList" class="data-history-list"></div>
+                </div>
+
+                <!-- 保存済みデータ（LocalStorage） -->
+                <div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+                        <h3 style="margin:0;color:#7b1fa2;font-size:18px;">💾 保存済み取り込みデータ履歴</h3>
+                        <button class="btn" style="background:#f44336;color:#fff;padding:8px 15px;font-size:12px;" onclick="clearAllHistory()">🗑 全削除</button>
+                    </div>
+                    <div id="savedHistoryList" class="data-history-list"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -2348,6 +2350,7 @@
             document.getElementById('dataHistoryPage').style.display = 'block';
             document.body.style.overflow = 'hidden'; // スクロール無効化
             renderDataHistoryList();
+            renderSavedHistoryList();
         }
 
         // 取り込みデータ履歴一覧画面を非表示
@@ -2403,6 +2406,55 @@
             container.innerHTML = html;
         }
 
+        // 保存済み履歴一覧を描画
+        function renderSavedHistoryList() {
+            var container = document.getElementById('savedHistoryList');
+            if (!container) return;
+
+            var history = loadHistory();
+
+            if (history.length === 0) {
+                container.innerHTML = '<div class="empty-message" style="background:#fff;border-radius:10px;padding:30px;">保存済みデータはありません。<br><br>「💾 現在のデータを保存」で保存できます。</div>';
+                return;
+            }
+
+            var html = '';
+            history.forEach(function(entry) {
+                html += '<div class="history-data-item" style="border-left:4px solid #7b1fa2;">';
+                html += '  <div class="item-info">';
+                html += '    <div class="item-name" style="color:#7b1fa2;">💾 ' + escapeHtml(entry.title) + '</div>';
+                html += '    <div class="item-meta">';
+                html += '      <span>📅 保存日時: ' + new Date(entry.savedAt).toLocaleString('ja-JP') + '</span>';
+                html += '      <span>🏪 ' + entry.storeCount + '店舗</span>';
+                if (entry.storeNames && entry.storeNames.length > 0) {
+                    html += '      <span>(' + entry.storeNames.slice(0, 2).join(', ');
+                    if (entry.storeNames.length > 2) html += ' 他' + (entry.storeNames.length - 2) + '店舗';
+                    html += ')</span>';
+                }
+                html += '    </div>';
+                html += '  </div>';
+                html += '  <div class="item-actions">';
+                html += '    <button class="btn-view" onclick="loadFromHistoryAndClose(\'' + entry.id + '\')">読み込み</button>';
+                html += '    <button class="btn-delete" onclick="deleteFromHistoryAndRefresh(\'' + entry.id + '\')">削除</button>';
+                html += '  </div>';
+                html += '</div>';
+            });
+
+            container.innerHTML = html;
+        }
+
+        // 履歴から読み込んで画面を閉じる
+        function loadFromHistoryAndClose(id) {
+            loadFromHistory(id);
+            hideDataHistoryPage();
+        }
+
+        // 履歴を削除してリスト更新
+        function deleteFromHistoryAndRefresh(id) {
+            deleteFromHistory(id);
+            renderSavedHistoryList();
+        }
+
         // JavaScript用エスケープ
         function escapeJs(str) {
             return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
@@ -2448,7 +2500,7 @@
             try {
                 localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
                 showStatus('success', '保存しました: ' + saveName);
-                renderHistoryList();
+                renderSavedHistoryList();
                 alert('保存完了: ' + saveName);
             } catch (e) {
                 alert('保存に失敗しました。ストレージ容量が不足している可能性があります。');
@@ -10901,7 +10953,7 @@
             try {
                 localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
                 showStatus('success', '履歴に保存しました: ' + title);
-                renderHistoryList();
+                renderSavedHistoryList();
             } catch (e) {
                 alert('保存に失敗しました。ストレージ容量が不足している可能性があります。');
                 console.error(e);
@@ -10973,7 +11025,7 @@
             history = history.filter(function(h) { return h.id !== id; });
 
             localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
-            renderHistoryList();
+            renderSavedHistoryList();
             showStatus('info', '履歴を削除しました');
         }
 
@@ -10984,7 +11036,7 @@
             }
 
             localStorage.removeItem(HISTORY_KEY);
-            renderHistoryList();
+            renderSavedHistoryList();
             showStatus('info', '全履歴を削除しました');
         }
 
@@ -11043,7 +11095,7 @@
 
         // 履歴初期化
         function initHistory() {
-            renderHistoryList();
+            renderSavedHistoryList();
         }
 
         // 初期化
