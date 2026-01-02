@@ -3778,6 +3778,8 @@
         // ★★★ 編集した客単価をマスタに保存してからMQ試算実行 ★★★
         function saveAndExecuteSimMQ() {
             saveSimUnitPricesToMaster();
+            // マスタ履歴にも自動保存（LocalStorage永続化）
+            saveMasterDataToHistory();
             hideUnitPriceEditModal();
             executeSimMQAndShowResult();
         }
