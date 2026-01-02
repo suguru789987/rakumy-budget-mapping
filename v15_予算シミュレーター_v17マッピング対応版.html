@@ -765,6 +765,43 @@
                     </div>
                 </div>
 
+                <!-- 月別客単価インポートセクション -->
+                <div class="import-section" style="border-left:4px solid #2196f3;">
+                    <h2 style="color:#1565c0;font-size:18px;margin-bottom:20px;">💰 月別客単価インポート</h2>
+
+                    <!-- 月別客単価テンプレートダウンロード -->
+                    <div style="margin-bottom:20px;padding:15px;background:#e3f2fd;border-radius:8px;border:1px solid #90caf9;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                            <div style="font-size:12px;color:#1565c0;">
+                                <strong>月別客単価テンプレート</strong><br>
+                                店舗別・月別（4月〜3月）の目標客単価をCSVでダウンロード/インポートできます
+                            </div>
+                            <button class="btn" style="background:#2196f3;color:#fff;padding:8px 16px;font-size:12px;" onclick="downloadUnitPriceMonthlyTemplate()">
+                                📄 月別客単価テンプレートをダウンロード
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 月別客単価CSVドラッグ＆ドロップエリア -->
+                    <div id="unitPriceDropZone" class="drop-zone" ondrop="handleUnitPriceDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" style="border-color:#2196f3;">
+                        <div class="drop-zone-content">
+                            <div style="font-size:50px;margin-bottom:15px;">💰</div>
+                            <div style="font-size:16px;font-weight:bold;margin-bottom:8px;">月別客単価CSVをここにドラッグ＆ドロップ</div>
+                            <div style="font-size:12px;color:#666;margin-bottom:15px;">または</div>
+                            <input type="file" id="unitPriceCSVFile" accept=".csv" onchange="handleUnitPriceFileSelect(event)" style="display:none;">
+                            <button class="btn" style="background:#2196f3;color:#fff;padding:12px 30px;font-size:14px;" onclick="document.getElementById('unitPriceCSVFile').click()">ファイルを選択</button>
+                        </div>
+                    </div>
+                    <div id="unitPriceImportStatus" style="margin-top:10px;"></div>
+
+                    <!-- CSVフォーマット説明 -->
+                    <div style="margin-top:15px;padding:10px;background:#e3f2fd;border-radius:8px;font-size:11px;color:#1565c0;">
+                        <strong>CSVフォーマット</strong><br>
+                        1行目: 店番,店舗名,客単価タイプ,4月,5月,6月,7月,8月,9月,10月,11月,12月,1月,2月,3月<br>
+                        2行目以降: 001,店舗名,総合,5000,5000,5000,... / 001,店舗名,ランチ,1000,... / 001,店舗名,ディナー,5000,...
+                    </div>
+                </div>
+
                 <!-- マスタ設定セクション -->
                 <div class="import-section" style="border-left:4px solid #9c27b0;margin-top:20px;">
                     <h2 style="color:#7b1fa2;font-size:18px;margin-bottom:20px;">⚙️ マスタ設定</h2>
@@ -1328,33 +1365,33 @@
 
         // ★★★ 店舗別デフォルト目標客単価（2025年実績ベース）★★★
         var DEFAULT_UNIT_PRICES = {
-            'なかめのてっぺん　本店': { total: 5000, lunch: 0, dinner: 5000 },
-            'なかめのてっぺん　丸の内': { total: 5000, lunch: 0, dinner: 5000 },
-            'なかめのてっぺん　横浜みなとみらい': { total: 5000, lunch: 0, dinner: 5000 },
-            'なかめのてっぺん　品川': { total: 5000, lunch: 0, dinner: 5000 },
-            'なかめのてっぺん　名古屋': { total: 5000, lunch: 0, dinner: 5000 },
-            'なかめのてっぺん　渋谷ストリーム': { total: 5000, lunch: 0, dinner: 5000 },
-            'はまぐり屋串左衛門': { total: 5000, lunch: 0, dinner: 5000 },
-            '築地もったいないプロジェクト 魚治': { total: 5000, lunch: 0, dinner: 5000 },
-            '吉次蟹蔵': { total: 5000, lunch: 0, dinner: 5000 },
-            '鮨 つきうだ': { total: 15000, lunch: 0, dinner: 15000 },
-            '鮨 おにかい': { total: 15000, lunch: 0, dinner: 15000 },
-            '鮨 おにかい+1': { total: 15000, lunch: 0, dinner: 15000 },
-            '野毛のおにかい': { total: 15000, lunch: 0, dinner: 15000 },
-            '天婦羅 みやしろ': { total: 15000, lunch: 0, dinner: 15000 },
-            '焼鳥 ひら野': { total: 13400, lunch: 0, dinner: 13400 },
-            '立喰すし 魚河岸 山治': { total: 5000, lunch: 0, dinner: 5000 },
-            '鮨 おにかい×2': { total: 15000, lunch: 0, dinner: 15000 },
-            '居酒屋 うちやま': { total: 11000, lunch: 0, dinner: 11000 },
-            '銀座稲葉（MASA）': { total: 40000, lunch: 0, dinner: 40000 },
-            'ラーメン（業務委託）': { total: 1000, lunch: 1000, dinner: 1000 },
-            '麻布台　粋　稲葉': { total: 12000, lunch: 0, dinner: 12000 },
-            '銀座　炎　たむら': { total: 30000, lunch: 0, dinner: 30000 },
-            '焼鳥　ひら野となり': { total: 30000, lunch: 0, dinner: 30000 },
-            '尾張　粋　稲葉': { total: 20000, lunch: 0, dinner: 20000 },
-            '鮨KOUMEI': { total: 15000, lunch: 0, dinner: 15000 },
+            'なかめのてっぺん　本店': { storeCode: '101', total: 5000, lunch: 0, dinner: 5000 },
+            'なかめのてっぺん　丸の内': { storeCode: '103', total: 5000, lunch: 0, dinner: 5000 },
+            'なかめのてっぺん　横浜みなとみらい': { storeCode: '104', total: 5000, lunch: 0, dinner: 5000 },
+            'なかめのてっぺん　品川': { storeCode: '105', total: 5000, lunch: 0, dinner: 5000 },
+            'なかめのてっぺん　名古屋': { storeCode: '106', total: 5000, lunch: 0, dinner: 5000 },
+            'なかめのてっぺん　渋谷ストリーム': { storeCode: '107', total: 5000, lunch: 0, dinner: 5000 },
+            'はまぐり屋串左衛門': { storeCode: '201', total: 5000, lunch: 0, dinner: 5000 },
+            '築地もったいないプロジェクト 魚治': { storeCode: '301', total: 5000, lunch: 0, dinner: 5000 },
+            '吉次蟹蔵': { storeCode: '401', total: 5000, lunch: 0, dinner: 5000 },
+            '鮨 つきうだ': { storeCode: '501', total: 15000, lunch: 0, dinner: 15000 },
+            '鮨 おにかい': { storeCode: '502', total: 15000, lunch: 0, dinner: 15000 },
+            '鮨 おにかい+1': { storeCode: '503', total: 15000, lunch: 0, dinner: 15000 },
+            '野毛のおにかい': { storeCode: '505', total: 15000, lunch: 0, dinner: 15000 },
+            '天婦羅 みやしろ': { storeCode: '901', total: 15000, lunch: 0, dinner: 15000 },
+            '焼鳥 ひら野': { storeCode: '1201', total: 13400, lunch: 0, dinner: 13400 },
+            '立喰すし 魚河岸 山治': { storeCode: '507', total: 5000, lunch: 0, dinner: 5000 },
+            '鮨 おにかい×2': { storeCode: '508', total: 15000, lunch: 0, dinner: 15000 },
+            '居酒屋 うちやま': { storeCode: '1301', total: 11000, lunch: 0, dinner: 11000 },
+            '銀座稲葉（MASA）': { storeCode: '1800', total: 40000, lunch: 0, dinner: 40000 },
+            'ラーメン（業務委託）': { storeCode: '8001', total: 1000, lunch: 1000, dinner: 1000 },
+            '麻布台　粋　稲葉': { storeCode: '', total: 12000, lunch: 0, dinner: 12000 },
+            '銀座　炎　たむら': { storeCode: '', total: 30000, lunch: 0, dinner: 30000 },
+            '焼鳥　ひら野となり': { storeCode: '', total: 30000, lunch: 0, dinner: 30000 },
+            '尾張　粋　稲葉': { storeCode: '', total: 20000, lunch: 0, dinner: 20000 },
+            '鮨KOUMEI': { storeCode: '', total: 15000, lunch: 0, dinner: 15000 },
             // デフォルト値（店舗名が見つからない場合）
-            '_default': { total: 5000, lunch: 0, dinner: 5000 }
+            '_default': { storeCode: '', total: 5000, lunch: 0, dinner: 5000 }
         };
 
         // 店舗別月別目標客単価（ユーザー編集用）
@@ -5990,14 +6027,15 @@
             var csv = [];
             var BOM = '\uFEFF';
 
-            // ヘッダー行
-            csv.push('店番,店舗名');
+            // ヘッダー行（参考ファイルと同じ形式）
+            csv.push('店番,店名');
 
-            // 既存の店舗リストから出力
-            var storeNames = Object.keys(DEFAULT_UNIT_PRICES);
-            storeNames.forEach(function(storeName, index) {
-                var storeNo = String(index + 1).padStart(3, '0');
-                csv.push([storeNo, storeName].join(','));
+            // 既存の店舗リストから出力（_default除く）
+            var storeNames = Object.keys(DEFAULT_UNIT_PRICES).filter(function(name) { return name !== '_default'; });
+            storeNames.forEach(function(storeName) {
+                var prices = DEFAULT_UNIT_PRICES[storeName];
+                var storeCode = prices.storeCode || '';
+                csv.push([storeCode, storeName].join(','));
             });
 
             var blob = new Blob([BOM + csv.join('\n')], { type: 'text/csv;charset=utf-8' });
@@ -6006,7 +6044,7 @@
             link.download = '店番テンプレート_' + new Date().toISOString().slice(0,10) + '.csv';
             link.click();
 
-            showStatus('success', '店番テンプレートをダウンロードしました');
+            showStatus('success', '店番テンプレートをダウンロードしました（' + storeNames.length + '店舗）');
         }
 
         // ★★★ 予算項目コードテンプレートダウンロード ★★★
@@ -6047,6 +6085,168 @@
             showStatus('success', '予算項目マッピングをダウンロードしました（コード付き: ' + sortedCodes.length + '件、名前ベース: ' + sortedNames.length + '件）');
         }
 
+        // ★★★ 月別客単価テンプレートダウンロード ★★★
+        function downloadUnitPriceMonthlyTemplate() {
+            var csv = [];
+            var BOM = '\uFEFF';
+            var months = ['4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月', '1月', '2月', '3月'];
+            var types = ['総合', 'ランチ', 'ディナー'];
+            var typeKeys = { '総合': 'total', 'ランチ': 'lunch', 'ディナー': 'dinner' };
+
+            // ヘッダー行
+            csv.push(['店番', '店名', '客単価タイプ'].concat(months).join(','));
+
+            // 既存の店舗リストから出力
+            var storeNames = Object.keys(DEFAULT_UNIT_PRICES).filter(function(name) { return name !== '_default'; });
+            storeNames.forEach(function(storeName) {
+                var prices = DEFAULT_UNIT_PRICES[storeName];
+                var storeCode = prices.storeCode || '';  // 実際の店番（空欄可）
+                var monthlyData = prices.monthly || {};
+
+                types.forEach(function(typeName) {
+                    var typeKey = typeKeys[typeName];
+                    var defaultValue = prices[typeKey] || 0;
+                    var row = [storeCode, storeName, typeName];
+
+                    // 12ヶ月分の値を追加
+                    for (var m = 0; m < 12; m++) {
+                        var monthValue = monthlyData[m] ? (monthlyData[m][typeKey] || defaultValue) : defaultValue;
+                        row.push(monthValue);
+                    }
+                    csv.push(row.join(','));
+                });
+            });
+
+            var blob = new Blob([BOM + csv.join('\n')], { type: 'text/csv;charset=utf-8' });
+            var link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = '月別客単価テンプレート_' + new Date().toISOString().slice(0,10) + '.csv';
+            link.click();
+
+            showStatus('success', '月別客単価テンプレートをダウンロードしました（' + storeNames.length + '店舗 × 3タイプ = ' + (storeNames.length * 3) + '行）');
+        }
+
+        // ★★★ 月別客単価インポート関連 ★★★
+        function handleUnitPriceDrop(event) {
+            event.preventDefault();
+            event.currentTarget.classList.remove('drag-over');
+
+            var files = event.dataTransfer.files;
+            if (files.length > 0 && files[0].name.endsWith('.csv')) {
+                importUnitPriceMonthlyCSV(files[0]);
+            } else {
+                showUnitPriceImportStatus('error', 'CSVファイルをドロップしてください');
+            }
+        }
+
+        function handleUnitPriceFileSelect(event) {
+            var file = event.target.files[0];
+            if (file) {
+                importUnitPriceMonthlyCSV(file);
+            }
+        }
+
+        function showUnitPriceImportStatus(type, message) {
+            var container = document.getElementById('unitPriceImportStatus');
+            var bgColor = type === 'success' ? '#e8f5e9' : type === 'error' ? '#ffebee' : '#fff3e0';
+            var color = type === 'success' ? '#2e7d32' : type === 'error' ? '#c62828' : '#e65100';
+            container.innerHTML = '<div style="padding:10px;background:' + bgColor + ';border-radius:4px;color:' + color + ';font-size:12px;">' + message + '</div>';
+        }
+
+        function importUnitPriceMonthlyCSV(file) {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                var content = e.target.result;
+                var lines = content.split(/\r?\n/).filter(function(line) { return line.trim() !== ''; });
+
+                if (lines.length < 2) {
+                    showUnitPriceImportStatus('error', 'CSVファイルにデータがありません');
+                    return;
+                }
+
+                // ヘッダー確認
+                var headers = lines[0].split(',');
+                if (headers.length < 15) {
+                    showUnitPriceImportStatus('error', 'CSVフォーマットが正しくありません（15列必要: 店番,店名,客単価タイプ,4月〜3月）');
+                    return;
+                }
+
+                var typeKeys = { '総合': 'total', 'ランチ': 'lunch', 'ディナー': 'dinner' };
+                var importedData = {}; // storeName -> { storeCode, total, lunch, dinner, monthly: { 0-11: { total, lunch, dinner } } }
+                var importCount = 0;
+                var errorCount = 0;
+
+                for (var i = 1; i < lines.length; i++) {
+                    var cols = lines[i].split(',');
+                    if (cols.length < 15) continue;
+
+                    var storeCode = cols[0].trim();  // 店番（空欄可）
+                    var storeName = cols[1].trim();  // 店名
+                    var typeName = cols[2].trim();
+                    var typeKey = typeKeys[typeName];
+
+                    if (!storeName || !typeKey) {
+                        errorCount++;
+                        continue;
+                    }
+
+                    // 店舗データ初期化
+                    if (!importedData[storeName]) {
+                        importedData[storeName] = {
+                            storeCode: storeCode,  // 店番を保存
+                            total: 0, lunch: 0, dinner: 0,
+                            monthly: {}
+                        };
+                    } else if (storeCode && !importedData[storeName].storeCode) {
+                        // 店番が未設定の場合は更新
+                        importedData[storeName].storeCode = storeCode;
+                    }
+
+                    // 月別データ取り込み
+                    for (var m = 0; m < 12; m++) {
+                        var value = parseInt(cols[3 + m], 10) || 0;
+                        if (!importedData[storeName].monthly[m]) {
+                            importedData[storeName].monthly[m] = { total: 0, lunch: 0, dinner: 0 };
+                        }
+                        importedData[storeName].monthly[m][typeKey] = value;
+                    }
+
+                    // デフォルト値として4月の値を使用
+                    importedData[storeName][typeKey] = parseInt(cols[3], 10) || 0;
+
+                    importCount++;
+                }
+
+                // DEFAULT_UNIT_PRICESに反映
+                Object.keys(importedData).forEach(function(storeName) {
+                    var data = importedData[storeName];
+                    if (!DEFAULT_UNIT_PRICES[storeName]) {
+                        DEFAULT_UNIT_PRICES[storeName] = { storeCode: data.storeCode || '', total: 5000, lunch: 0, dinner: 5000 };
+                    }
+                    // 店番を更新（インポートデータに店番がある場合）
+                    if (data.storeCode) {
+                        DEFAULT_UNIT_PRICES[storeName].storeCode = data.storeCode;
+                    }
+                    DEFAULT_UNIT_PRICES[storeName].total = data.total;
+                    DEFAULT_UNIT_PRICES[storeName].lunch = data.lunch;
+                    DEFAULT_UNIT_PRICES[storeName].dinner = data.dinner;
+                    DEFAULT_UNIT_PRICES[storeName].monthly = data.monthly;
+                });
+
+                var storeCount = Object.keys(importedData).length;
+                showUnitPriceImportStatus('success', '月別客単価をインポートしました（' + storeCount + '店舗、' + importCount + '行読み込み' + (errorCount > 0 ? '、' + errorCount + '行エラー' : '') + '）');
+
+                // マスタ履歴モーダルの表示を更新
+                renderMasterPricesContent();
+            };
+
+            reader.onerror = function() {
+                showUnitPriceImportStatus('error', 'ファイル読み込みエラー');
+            };
+
+            reader.readAsText(file, 'UTF-8');
+        }
+
         // ★★★ 店番インポート関連 ★★★
         function handleStoreDrop(event) {
             event.preventDefault();
@@ -6075,6 +6275,8 @@
                 var content = e.target.result;
                 var lines = content.split('\n');
                 var importCount = 0;
+                var updateCount = 0;
+                var newCount = 0;
                 var errorCount = 0;
 
                 for (var i = 1; i < lines.length; i++) {
@@ -6087,25 +6289,33 @@
                         continue;
                     }
 
-                    var storeNo = cols[0].trim();
-                    var storeName = cols[1].trim();
+                    var storeCode = cols[0].trim(); // 店番（空欄可）
+                    var storeName = cols[1].trim(); // 店名
 
                     if (!storeName) {
                         errorCount++;
                         continue;
                     }
 
-                    // 店舗がまだ登録されていなければ追加
+                    // 店舗がまだ登録されていなければ追加、既存なら店番を更新
                     if (!DEFAULT_UNIT_PRICES[storeName]) {
-                        DEFAULT_UNIT_PRICES[storeName] = { total: 5000, lunch: 0, dinner: 5000 };
+                        DEFAULT_UNIT_PRICES[storeName] = { storeCode: storeCode, total: 5000, lunch: 0, dinner: 5000 };
+                        newCount++;
+                    } else {
+                        // 既存店舗の店番を更新
+                        DEFAULT_UNIT_PRICES[storeName].storeCode = storeCode;
+                        updateCount++;
                     }
                     importCount++;
                 }
 
                 updateCurrentStoreList();
+                var msg = '店番CSVをインポートしました: ' + importCount + '件';
+                if (newCount > 0) msg += '（新規: ' + newCount + '件）';
+                if (updateCount > 0) msg += '（更新: ' + updateCount + '件）';
+                if (errorCount > 0) msg += '（エラー: ' + errorCount + '件）';
                 document.getElementById('storeImportStatus').innerHTML =
-                    '<span style="color:#4caf50;font-weight:bold;">店番CSVをインポートしました: ' + importCount + '件' +
-                    (errorCount > 0 ? '（エラー: ' + errorCount + '件）' : '') + '</span>';
+                    '<span style="color:#4caf50;font-weight:bold;">' + msg + '</span>';
             };
             reader.readAsText(file, 'UTF-8');
         }
@@ -6132,19 +6342,20 @@
             var container = document.getElementById('currentStoreList');
             if (!container) return;
 
-            var storeNames = Object.keys(DEFAULT_UNIT_PRICES);
+            var storeNames = Object.keys(DEFAULT_UNIT_PRICES).filter(function(name) { return name !== '_default'; });
             var html = '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
-            html += '<tr style="background:#2e7d32;color:#fff;"><th style="padding:8px;text-align:left;">No</th><th style="padding:8px;text-align:left;">店舗名</th><th style="padding:8px;text-align:right;">客単価(総合)</th><th style="padding:8px;text-align:right;">客単価(ランチ)</th><th style="padding:8px;text-align:right;">客単価(ディナー)</th></tr>';
+            html += '<tr style="background:#2e7d32;color:#fff;"><th style="padding:8px;text-align:center;">店番</th><th style="padding:8px;text-align:left;">店名</th><th style="padding:8px;text-align:right;">客単価(総合)</th><th style="padding:8px;text-align:right;">客単価(ランチ)</th><th style="padding:8px;text-align:right;">客単価(ディナー)</th></tr>';
 
             storeNames.forEach(function(storeName, index) {
                 var prices = DEFAULT_UNIT_PRICES[storeName];
                 var bgColor = index % 2 === 0 ? '#fff' : '#f5f5f5';
+                var storeCode = prices.storeCode || '';
                 html += '<tr style="background:' + bgColor + ';">';
-                html += '<td style="padding:6px 8px;">' + (index + 1) + '</td>';
+                html += '<td style="padding:6px 8px;text-align:center;font-family:monospace;color:' + (storeCode ? '#333' : '#999') + ';">' + (storeCode || '未設定') + '</td>';
                 html += '<td style="padding:6px 8px;">' + escapeHtml(storeName) + '</td>';
-                html += '<td style="padding:6px 8px;text-align:right;">' + prices.total.toLocaleString() + '円</td>';
-                html += '<td style="padding:6px 8px;text-align:right;">' + prices.lunch.toLocaleString() + '円</td>';
-                html += '<td style="padding:6px 8px;text-align:right;">' + prices.dinner.toLocaleString() + '円</td>';
+                html += '<td style="padding:6px 8px;text-align:right;">' + (prices.total || 0).toLocaleString() + '円</td>';
+                html += '<td style="padding:6px 8px;text-align:right;">' + (prices.lunch || 0).toLocaleString() + '円</td>';
+                html += '<td style="padding:6px 8px;text-align:right;">' + (prices.dinner || 0).toLocaleString() + '円</td>';
                 html += '</tr>';
             });
 
@@ -6465,16 +6676,17 @@
             var container = document.getElementById('masterStoresContent');
             if (!container) return;
 
-            var storeNames = Object.keys(DEFAULT_UNIT_PRICES);
+            var storeNames = Object.keys(DEFAULT_UNIT_PRICES).filter(function(name) { return name !== '_default'; });
             var html = '<h5 style="color:#4caf50;margin:0 0 10px 0;">🏪 店番マスタ（店舗一覧）</h5>';
             html += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
-            html += '<tr style="background:#4caf50;color:#fff;"><th style="padding:8px;text-align:center;width:60px;">店番</th><th style="padding:8px;text-align:left;">店舗名</th></tr>';
+            html += '<tr style="background:#4caf50;color:#fff;"><th style="padding:8px;text-align:center;width:80px;">店番</th><th style="padding:8px;text-align:left;">店名</th></tr>';
 
             storeNames.forEach(function(storeName, index) {
+                var prices = DEFAULT_UNIT_PRICES[storeName];
                 var bgColor = index % 2 === 0 ? '#fff' : '#e8f5e9';
-                var storeNo = String(index + 1).padStart(3, '0');  // 001, 002, ...
+                var storeCode = prices.storeCode || '';
                 html += '<tr style="background:' + bgColor + ';">';
-                html += '<td style="padding:6px 8px;text-align:center;font-family:monospace;font-weight:bold;">' + storeNo + '</td>';
+                html += '<td style="padding:6px 8px;text-align:center;font-family:monospace;' + (storeCode ? 'font-weight:bold;' : 'color:#999;') + '">' + (storeCode || '未設定') + '</td>';
                 html += '<td style="padding:6px 8px;">' + escapeHtml(storeName) + '</td>';
                 html += '</tr>';
             });
@@ -6495,7 +6707,7 @@
             var container = document.getElementById('masterPricesContent');
             if (!container) return;
 
-            var storeNames = Object.keys(DEFAULT_UNIT_PRICES);
+            var storeNames = Object.keys(DEFAULT_UNIT_PRICES).filter(function(name) { return name !== '_default'; });
             var months = ['4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月', '1月', '2月', '3月'];
             var typeLabels = { total: '総合', lunch: 'ランチ', dinner: 'ディナー' };
             var typeColors = { total: '#1565c0', lunch: '#ff9800', dinner: '#9c27b0' };
@@ -6516,8 +6728,8 @@
             html += '<div style="overflow-x:auto;">';
             html += '<table style="width:100%;border-collapse:collapse;font-size:11px;min-width:900px;">';
             html += '<tr style="background:' + typeColors[masterPriceType] + ';color:#fff;">';
-            html += '<th style="padding:6px;text-align:center;width:50px;position:sticky;left:0;background:' + typeColors[masterPriceType] + ';">店番</th>';
-            html += '<th style="padding:6px;text-align:left;min-width:150px;position:sticky;left:50px;background:' + typeColors[masterPriceType] + ';">店舗名</th>';
+            html += '<th style="padding:6px;text-align:center;width:70px;position:sticky;left:0;background:' + typeColors[masterPriceType] + ';">店番</th>';
+            html += '<th style="padding:6px;text-align:left;min-width:150px;position:sticky;left:70px;background:' + typeColors[masterPriceType] + ';">店名</th>';
             months.forEach(function(m) {
                 html += '<th style="padding:6px;text-align:right;min-width:65px;">' + m + '</th>';
             });
@@ -6526,14 +6738,14 @@
             storeNames.forEach(function(storeName, index) {
                 var prices = DEFAULT_UNIT_PRICES[storeName];
                 var bgColor = index % 2 === 0 ? '#fff' : '#f5f5f5';
-                var storeNo = String(index + 1).padStart(3, '0');
+                var storeCode = prices.storeCode || '';
                 var value = prices[masterPriceType] || 0;
                 // 月別データがあれば使用、なければデフォルト値を全月に適用
                 var monthlyData = prices.monthly || {};
 
                 html += '<tr style="background:' + bgColor + ';">';
-                html += '<td style="padding:4px 6px;text-align:center;font-family:monospace;font-size:10px;position:sticky;left:0;background:' + bgColor + ';">' + storeNo + '</td>';
-                html += '<td style="padding:4px 6px;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;position:sticky;left:50px;background:' + bgColor + ';" title="' + escapeHtml(storeName) + '">' + escapeHtml(storeName) + '</td>';
+                html += '<td style="padding:4px 6px;text-align:center;font-family:monospace;font-size:10px;position:sticky;left:0;background:' + bgColor + ';' + (storeCode ? '' : 'color:#999;') + '">' + (storeCode || '未設定') + '</td>';
+                html += '<td style="padding:4px 6px;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;position:sticky;left:70px;background:' + bgColor + ';" title="' + escapeHtml(storeName) + '">' + escapeHtml(storeName) + '</td>';
 
                 for (var m = 0; m < 12; m++) {
                     var monthValue = monthlyData[m] ? (monthlyData[m][masterPriceType] || value) : value;
@@ -8463,6 +8675,7 @@
                 // 方法1: NAME_BASED_MAPでCSVから直接取り込み済み
                 console.log('【営業利益 No.63】方法1採用: NAME_BASED_MAPでCSVから直接インポート');
                 console.log('  インポート値:', JSON.stringify(annualData[63]));
+                addLog('✅ 営業利益(No.63): NAME_BASED_MAPで正常にマッピング', 'success');
             } else if (calcResults[0] && calcResults[0]['営業利益'] !== undefined) {
                 // 方法2: 計算で生成（CSVに「営業利益」行がない場合のフォールバック）
                 if (!annualData[63]) annualData[63] = {};
@@ -8473,6 +8686,82 @@
                 console.log('【営業利益 No.63】方法2採用: 計算で生成（CALC_RULES経由）');
                 console.log('  計算式: 店舗営業利益(No.61) - 販売管理費合計(No.62)');
                 console.log('  計算結果:', JSON.stringify(annualData[63]));
+                addLog('⚠️ 営業利益(No.63): CSVに「営業利益」行なし→計算で生成', 'warn');
+            }
+
+            // ★★★ 営業利益トリプルチェック ★★★
+            addLog('', '');
+            addLog('=== 営業利益トリプルチェック ===', 'info');
+
+            // チェック1: NAME_BASED_MAPでマッピングされたか
+            var check1Pass = hasNo63FromCSV;
+            addLog('① NAME_BASED_MAPマッピング: ' + (check1Pass ? '✅ OK' : '⚠️ 計算でフォールバック'), check1Pass ? 'success' : 'warn');
+
+            // チェック2: コード9640が検出されたか警告
+            var code9640Detected = false;
+            for (var ci = 0; ci < csvLines.length; ci++) {
+                var checkCols = csvLines[ci].split(',');
+                for (var cj = 0; cj < Math.min(5, checkCols.length); cj++) {
+                    var checkVal = checkCols[cj] ? checkCols[cj].trim() : '';
+                    if (checkVal === '9640' || checkVal === "'9640" || checkVal === '"9640"') {
+                        code9640Detected = true;
+                        break;
+                    }
+                }
+                if (code9640Detected) break;
+            }
+            if (code9640Detected) {
+                addLog('② コード9640検出: ⚠️ 警告 - CSVに9640が存在します（値は無視されNAME_BASED_MAP優先）', 'warn');
+            } else {
+                addLog('② コード9640検出: ✅ OK（CSVに9640なし）', 'success');
+            }
+
+            // チェック3: 計算検証（店舗営業利益 - 販売管理費合計 = 営業利益）
+            var check3Pass = true;
+            var calcMismatches = [];
+            if (annualData[61] && annualData[62] && annualData[63]) {
+                for (var vm = 0; vm < activeMonths.length; vm++) {
+                    var item61 = annualData[61][vm] || 0;  // 店舗営業利益
+                    var item62 = annualData[62][vm] || 0;  // 販売管理費合計
+                    var item63 = annualData[63][vm] || 0;  // 営業利益
+                    var calcProfit = item61 - item62;
+                    var diff = Math.abs(item63 - calcProfit);
+                    // 1000円以上の差異がある場合は警告
+                    if (diff > 1000) {
+                        check3Pass = false;
+                        calcMismatches.push({
+                            month: monthLabels[vm],
+                            item61: item61,
+                            item62: item62,
+                            item63: item63,
+                            calc: calcProfit,
+                            diff: diff
+                        });
+                    }
+                }
+            } else {
+                check3Pass = false;
+                addLog('③ 計算検証: ⚠️ 警告 - No.61/62/63のいずれかが取得できません', 'warn');
+            }
+
+            if (check3Pass) {
+                addLog('③ 計算検証: ✅ OK（店舗営業利益 - 販売管理費合計 ≒ 営業利益）', 'success');
+            } else if (calcMismatches.length > 0) {
+                addLog('③ 計算検証: ⚠️ 差異あり（顧客予算表のコード誤りの可能性）', 'warn');
+                for (var mi = 0; mi < calcMismatches.length; mi++) {
+                    var mm = calcMismatches[mi];
+                    addLog('   ' + mm.month + ': 店舗営業利益(' + mm.item61 + ') - 販売管理費(' + mm.item62 + ') = ' + mm.calc + ' ≠ 営業利益(' + mm.item63 + ') [差異: ' + mm.diff + ']', 'warn');
+                }
+                addLog('   → NAME_BASED_MAPの値を採用（コード9640の誤マッピング対策）', 'info');
+            }
+
+            // 総合判定
+            var allPass = check1Pass && !code9640Detected && check3Pass;
+            addLog('', '');
+            if (allPass) {
+                addLog('【営業利益トリプルチェック結果】✅ すべてOK', 'success');
+            } else {
+                addLog('【営業利益トリプルチェック結果】⚠️ 一部警告あり（NAME_BASED_MAPの値を採用）', 'warn');
             }
         }
 
