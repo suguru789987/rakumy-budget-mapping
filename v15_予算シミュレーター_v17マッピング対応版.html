@@ -1667,6 +1667,8 @@
 
         // ユーティリティ
         function fmt(n) { return n !== undefined && n !== null ? Math.round(n).toLocaleString('ja-JP') : '-'; }
+        // 円単位表示（内部データは千円単位なので×1000して表示）
+        function fmtYen(n) { return n !== undefined && n !== null ? Math.round(n * 1000).toLocaleString('ja-JP') : '-'; }
         function fmtRate(n) { return n !== undefined && n !== null ? n.toFixed(1) : '-'; }
 
         function addLog(msg, type) {
@@ -1877,8 +1879,8 @@
                 html += '    <div class="item-name">🏪 ' + escapeHtml(name) + '</div>';
                 html += '    <div class="item-meta">';
                 html += '      <span>📅 ' + monthCount + 'ヶ月分</span>';
-                html += '      <span>💰 年間売上: ' + fmt(totalSales) + '千円</span>';
-                html += '      <span>📈 営業利益: ' + fmt(totalProfit) + '千円 (' + profitRate + '%)</span>';
+                html += '      <span>💰 年間売上: ' + fmtYen(totalSales) + '円</span>';
+                html += '      <span>📈 営業利益: ' + fmtYen(totalProfit) + '円 (' + profitRate + '%)</span>';
                 html += '    </div>';
                 html += '  </div>';
                 html += '  <div class="item-actions">';
@@ -2991,28 +2993,28 @@
             var bodyHtml = '<tbody>';
 
             // G（目標利益）- 月別
-            bodyHtml += '<tr style="background:#fff3e0;"><td style="font-weight:bold;color:#e65100;">【G】目標利益(千円)</td>';
+            bodyHtml += '<tr style="background:#fff3e0;"><td style="font-weight:bold;color:#e65100;">【G】目標利益(円)</td>';
             var totalG = 0;
             for (var i = 0; i < stActiveMonths.length; i++) {
                 var mi = stActiveMonths[i];
                 var g = params.monthlyG[mi] || 0;
                 totalG += g;
-                bodyHtml += '<td style="text-align:right;">' + fmt(g) + '</td>';
+                bodyHtml += '<td style="text-align:right;">' + fmtYen(g) + '</td>';
             }
             var avgG = Math.round(totalG / stActiveMonths.length);
-            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#ffe0b2;">' + fmt(avgG) + '</td></tr>';
+            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#ffe0b2;">' + fmtYen(avgG) + '</td></tr>';
 
             // F（固定費）- 月別
-            bodyHtml += '<tr><td style="font-weight:bold;color:#e65100;">【F】固定費(千円)</td>';
+            bodyHtml += '<tr><td style="font-weight:bold;color:#e65100;">【F】固定費(円)</td>';
             var totalF = 0;
             for (var i = 0; i < stActiveMonths.length; i++) {
                 var mi = stActiveMonths[i];
                 var f = params.monthlyF[mi] || 0;
                 totalF += f;
-                bodyHtml += '<td style="text-align:right;">' + fmt(f) + '</td>';
+                bodyHtml += '<td style="text-align:right;">' + fmtYen(f) + '</td>';
             }
             var avgF = Math.round(totalF / stActiveMonths.length);
-            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#ffe0b2;">' + fmt(avgF) + '</td></tr>';
+            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#ffe0b2;">' + fmtYen(avgF) + '</td></tr>';
 
             // FD%（全期間共通）
             bodyHtml += '<tr style="background:#fff3e0;"><td style="font-weight:bold;color:#e65100;">【FD%】FD率</td>';
@@ -3155,7 +3157,7 @@
             var refVarRate = document.getElementById('simRefVariableRate');
             var refFixedCost = document.getElementById('simRefFixedCost');
             if (refVarRate) refVarRate.textContent = variableRate + '%';
-            if (refFixedCost) refFixedCost.textContent = fmt(avgFixedCost) + ' 千円';
+            if (refFixedCost) refFixedCost.textContent = fmtYen(avgFixedCost) + ' 円';
         }
 
         // ★ 予算試算用MQ再計算（動的月対応）
@@ -3290,40 +3292,40 @@
 
             // ===== 顧客予算売上 =====
             var totalCustomerSales = 0;
-            bodyHtml += '<tr style="background:#e3f2fd;"><td style="font-weight:bold;color:#1565c0;">📝 顧客予算売上（千円）</td>';
+            bodyHtml += '<tr style="background:#e3f2fd;"><td style="font-weight:bold;color:#1565c0;">📝 顧客予算売上（円）</td>';
             for (var i = 0; i < stActiveMonths.length; i++) {
                 var mi = stActiveMonths[i];
                 var customerSales = stAnnualData[4] ? (stAnnualData[4][mi] || 0) : 0;
                 totalCustomerSales += customerSales;
-                bodyHtml += '<td style="text-align:right;">' + fmt(customerSales) + '</td>';
+                bodyHtml += '<td style="text-align:right;">' + fmtYen(customerSales) + '</td>';
             }
-            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#bbdefb;">' + fmt(totalCustomerSales) + '</td></tr>';
+            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#bbdefb;">' + fmtYen(totalCustomerSales) + '</td></tr>';
 
             // ===== MQ算出売上 =====
             var totalMqSales = 0;
-            bodyHtml += '<tr style="background:#f3e5f5;"><td style="font-weight:bold;color:#7b1fa2;">📊 MQ算出売上（千円）</td>';
+            bodyHtml += '<tr style="background:#f3e5f5;"><td style="font-weight:bold;color:#7b1fa2;">📊 MQ算出売上（円）</td>';
             for (var i = 0; i < stActiveMonths.length; i++) {
                 var mi = stActiveMonths[i];
                 var mqSales = stMqOutputs[mi] ? (stMqOutputs[mi].sales || 0) : 0;
                 totalMqSales += mqSales;
-                bodyHtml += '<td style="text-align:right;">' + fmt(mqSales) + '</td>';
+                bodyHtml += '<td style="text-align:right;">' + fmtYen(mqSales) + '</td>';
             }
-            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#e1bee7;">' + fmt(totalMqSales) + '</td></tr>';
+            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#e1bee7;">' + fmtYen(totalMqSales) + '</td></tr>';
 
             // ===== 売上差異 =====
             var salesDiff = totalMqSales - totalCustomerSales;
             var salesDiffRate = totalCustomerSales > 0 ? ((salesDiff / totalCustomerSales) * 100).toFixed(1) : 0;
-            bodyHtml += '<tr><td style="font-weight:bold;color:#ff5722;">📉 売上差異（千円）</td>';
+            bodyHtml += '<tr><td style="font-weight:bold;color:#ff5722;">📉 売上差異（円）</td>';
             for (var i = 0; i < stActiveMonths.length; i++) {
                 var mi = stActiveMonths[i];
                 var customerSales = stAnnualData[4] ? (stAnnualData[4][mi] || 0) : 0;
                 var mqSales = stMqOutputs[mi] ? (stMqOutputs[mi].sales || 0) : 0;
                 var diff = mqSales - customerSales;
                 var diffColor = diff >= 0 ? '#4caf50' : '#f44336';
-                bodyHtml += '<td style="text-align:right;color:' + diffColor + ';font-weight:bold;">' + (diff >= 0 ? '+' : '') + fmt(diff) + '</td>';
+                bodyHtml += '<td style="text-align:right;color:' + diffColor + ';font-weight:bold;">' + (diff >= 0 ? '+' : '') + fmtYen(diff) + '</td>';
             }
             var totalDiffColor = salesDiff >= 0 ? '#4caf50' : '#f44336';
-            bodyHtml += '<td style="font-weight:bold;text-align:right;color:' + totalDiffColor + ';">' + (salesDiff >= 0 ? '+' : '') + fmt(salesDiff) + '</td></tr>';
+            bodyHtml += '<td style="font-weight:bold;text-align:right;color:' + totalDiffColor + ';">' + (salesDiff >= 0 ? '+' : '') + fmtYen(salesDiff) + '</td></tr>';
 
             // ===== MQ目標客数 =====
             var totalQ = 0;
@@ -3338,14 +3340,14 @@
 
             // ===== 目標営業利益 =====
             var totalProfit = 0;
-            bodyHtml += '<tr style="background:#e8f5e9;"><td style="font-weight:bold;color:#2e7d32;">💰 目標営業利益（千円）</td>';
+            bodyHtml += '<tr style="background:#e8f5e9;"><td style="font-weight:bold;color:#2e7d32;">💰 目標営業利益（円）</td>';
             for (var i = 0; i < stActiveMonths.length; i++) {
                 var mi = stActiveMonths[i];
                 var profit = stMqOutputs[mi] ? (stMqOutputs[mi].operatingProfit || 0) : 0;
                 totalProfit += profit;
-                bodyHtml += '<td style="text-align:right;">' + fmt(profit) + '</td>';
+                bodyHtml += '<td style="text-align:right;">' + fmtYen(profit) + '</td>';
             }
-            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#c8e6c9;">' + fmt(totalProfit) + '</td></tr>';
+            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#c8e6c9;">' + fmtYen(totalProfit) + '</td></tr>';
 
             bodyHtml += '</tbody>';
             table.innerHTML = headerHtml + bodyHtml;
@@ -3387,22 +3389,22 @@
                 // 顧客予算売上
                 summaryHtml += '<div style="text-align:center;padding:12px;background:#e3f2fd;border-radius:6px;">';
                 summaryHtml += '<div style="font-size:10px;color:#666;">顧客予算売上</div>';
-                summaryHtml += '<div style="font-size:22px;font-weight:bold;color:#1565c0;">' + fmt(custSalesDaily) + '<span style="font-size:12px;">千円/日</span></div>';
-                summaryHtml += '<div style="font-size:10px;color:#888;">月 ' + fmt(custSalesMonthly) + '千円</div>';
+                summaryHtml += '<div style="font-size:22px;font-weight:bold;color:#1565c0;">' + fmtYen(custSalesDaily) + '<span style="font-size:12px;">円/日</span></div>';
+                summaryHtml += '<div style="font-size:10px;color:#888;">月 ' + fmtYen(custSalesMonthly) + '円</div>';
                 summaryHtml += '</div>';
 
                 // MQ算出売上
                 summaryHtml += '<div style="text-align:center;padding:12px;background:#f3e5f5;border-radius:6px;">';
                 summaryHtml += '<div style="font-size:10px;color:#666;">MQ算出売上</div>';
-                summaryHtml += '<div style="font-size:22px;font-weight:bold;color:#7b1fa2;">' + fmt(mqSalesDaily) + '<span style="font-size:12px;">千円/日</span></div>';
-                summaryHtml += '<div style="font-size:10px;color:#888;">月 ' + fmt(mqSalesMonthly) + '千円</div>';
+                summaryHtml += '<div style="font-size:22px;font-weight:bold;color:#7b1fa2;">' + fmtYen(mqSalesDaily) + '<span style="font-size:12px;">円/日</span></div>';
+                summaryHtml += '<div style="font-size:10px;color:#888;">月 ' + fmtYen(mqSalesMonthly) + '円</div>';
                 summaryHtml += '</div>';
 
                 // 売上差異
                 summaryHtml += '<div style="text-align:center;padding:12px;background:' + (salesDiff >= 0 ? '#e8f5e9' : '#ffebee') + ';border-radius:6px;">';
                 summaryHtml += '<div style="font-size:10px;color:#666;">売上差異</div>';
-                summaryHtml += '<div style="font-size:22px;font-weight:bold;color:' + totalDiffColor + ';">' + (diffDaily >= 0 ? '+' : '') + fmt(diffDaily) + '<span style="font-size:12px;">千円/日</span></div>';
-                summaryHtml += '<div style="font-size:10px;color:#888;">月 ' + (diffMonthly >= 0 ? '+' : '') + fmt(diffMonthly) + '千円（' + salesDiffRate + '%）</div>';
+                summaryHtml += '<div style="font-size:22px;font-weight:bold;color:' + totalDiffColor + ';">' + (diffDaily >= 0 ? '+' : '') + fmtYen(diffDaily) + '<span style="font-size:12px;">円/日</span></div>';
+                summaryHtml += '<div style="font-size:10px;color:#888;">月 ' + (diffMonthly >= 0 ? '+' : '') + fmtYen(diffMonthly) + '円（' + salesDiffRate + '%）</div>';
                 summaryHtml += '</div>';
 
                 // MQ目標客数
@@ -3415,8 +3417,8 @@
                 // 目標営業利益
                 summaryHtml += '<div style="text-align:center;padding:12px;background:' + (totalProfit >= 0 ? '#e8f5e9' : '#ffebee') + ';border-radius:6px;">';
                 summaryHtml += '<div style="font-size:10px;color:#666;">目標営業利益</div>';
-                summaryHtml += '<div style="font-size:22px;font-weight:bold;color:' + (totalProfit >= 0 ? '#2e7d32' : '#c62828') + ';">' + fmt(totalProfitDaily) + '<span style="font-size:12px;">千円/日</span></div>';
-                summaryHtml += '<div style="font-size:10px;color:#888;">月 ' + fmt(totalProfitMonthly) + '千円</div>';
+                summaryHtml += '<div style="font-size:22px;font-weight:bold;color:' + (totalProfit >= 0 ? '#2e7d32' : '#c62828') + ';">' + fmtYen(totalProfitDaily) + '<span style="font-size:12px;">円/日</span></div>';
+                summaryHtml += '<div style="font-size:10px;color:#888;">月 ' + fmtYen(totalProfitMonthly) + '円</div>';
                 summaryHtml += '</div>';
 
                 summaryHtml += '</div>';
@@ -3981,8 +3983,9 @@
                             else total = val; // 率は最後の値を使用
 
                             if (isEditable && item.no) {
-                                // 編集可能セル（整数表示）
-                                html += '<td style="background:#e3f2fd;padding:2px;"><input type="number" data-no="' + item.no + '" data-month="' + m + '" value="' + Math.round(val) + '" style="width:100%;padding:3px;text-align:right;border:1px solid #90caf9;border-radius:2px;background:#fff;font-size:10px;box-sizing:border-box;" onchange="updateSimulationValue(this)"></td>';
+                                // 編集可能セル（円単位表示：内部データ千円×1000で表示）
+                                var inputVal = Math.round(val * 1000);
+                                html += '<td style="background:#e3f2fd;padding:2px;"><input type="number" data-no="' + item.no + '" data-month="' + m + '" data-yen="true" value="' + inputVal + '" style="width:100%;padding:3px;text-align:right;border:1px solid #90caf9;border-radius:2px;background:#fff;font-size:10px;box-sizing:border-box;" onchange="updateSimulationValue(this)"></td>';
                             } else {
                                 // 表示のみ（★ 単位に応じた表示）
                                 var valColor = item.profit ? (val >= 0 ? '#2e7d32' : '#c62828') : '#333';
@@ -4092,18 +4095,19 @@
                         total += val;
 
                         if (item.editable) {
-                            // 編集可能セル
+                            // 編集可能セル（円単位表示：内部データ千円×1000で表示）
                             var inputBg = item.isProfit ? '#c8e6c9' : '#e3f2fd';
-                            html += '<td style="padding:2px;"><input type="number" data-no="' + item.no + '" data-month="' + m + '" value="' + Math.round(val) + '" style="width:100%;padding:4px;text-align:right;border:1px solid #90caf9;border-radius:3px;background:' + inputBg + ';font-size:10px;box-sizing:border-box;" onchange="updateSimulationValue(this)"></td>';
+                            var inputVal = Math.round(val * 1000);
+                            html += '<td style="padding:2px;"><input type="number" data-no="' + item.no + '" data-month="' + m + '" data-yen="true" value="' + inputVal + '" style="width:100%;padding:4px;text-align:right;border:1px solid #90caf9;border-radius:3px;background:' + inputBg + ';font-size:10px;box-sizing:border-box;" onchange="updateSimulationValue(this)"></td>';
                         } else {
-                            // 表示のみ（合計行）
-                            html += '<td style="padding:6px;text-align:right;color:#666;font-weight:bold;background:#eee;">' + fmt(val) + '</td>';
+                            // 表示のみ（合計行）円単位表示
+                            html += '<td style="padding:6px;text-align:right;color:#666;font-weight:bold;background:#eee;">' + fmtYen(val) + '</td>';
                         }
                     });
 
-                    // 合計
+                    // 合計（円単位表示）
                     var totalColor = item.isProfit ? (total >= 0 ? '#2e7d32' : '#c62828') : '#333';
-                    html += '<td style="padding:6px;text-align:right;background:#fff3e0;font-weight:bold;color:' + totalColor + ';">' + fmt(total) + '</td>';
+                    html += '<td style="padding:6px;text-align:right;background:#fff3e0;font-weight:bold;color:' + totalColor + ';">' + fmtYen(total) + '</td>';
                     html += '</tr>';
                 });
 
@@ -4124,11 +4128,11 @@
 
                 // MQ試算結果の主要項目
                 var mqItems = [
-                    { name: '🎯 目標客数', unit: '人', field: 'customers', bg: '#ffebee', bold: true },
-                    { name: '💰 必要売上', unit: '千円', field: 'sales', bg: '#f3e5f5', bold: true },
-                    { name: '📈 目標営業利益', unit: '千円', field: 'operatingProfit', bg: '#e8f5e9', bold: true },
-                    { name: '変動費', unit: '千円', field: 'variableCost', bg: '#fff' },
-                    { name: '粗利', unit: '千円', field: 'grossProfit', bg: '#fff' }
+                    { name: '🎯 目標客数', unit: '人', field: 'customers', bg: '#ffebee', bold: true, isYen: false },
+                    { name: '💰 必要売上', unit: '円', field: 'sales', bg: '#f3e5f5', bold: true, isYen: true },
+                    { name: '📈 目標営業利益', unit: '円', field: 'operatingProfit', bg: '#e8f5e9', bold: true, isYen: true },
+                    { name: '変動費', unit: '円', field: 'variableCost', bg: '#fff', isYen: true },
+                    { name: '粗利', unit: '円', field: 'grossProfit', bg: '#fff', isYen: true }
                 ];
 
                 mqItems.forEach(function(item) {
@@ -4139,7 +4143,7 @@
                     monthIndices.forEach(function(m) {
                         var val = getMQ(m, item.field) || 0;
                         total += val;
-                        var displayVal = fmt(val);
+                        var displayVal = item.isYen ? fmtYen(val) : fmt(val);
                         var color = item.bold ? '#7b1fa2' : '#333';
                         if (item.field === 'customers') color = '#e65100';
                         if (item.field === 'operatingProfit') color = val >= 0 ? '#2e7d32' : '#c62828';
@@ -4148,7 +4152,7 @@
 
                     var totalColor = item.field === 'operatingProfit' ? (total >= 0 ? '#2e7d32' : '#c62828') : '#333';
                     if (item.field === 'customers') totalColor = '#e65100';
-                    html += '<td style="padding:6px;text-align:right;background:#fff3e0;font-weight:bold;color:' + totalColor + ';">' + fmt(total) + '</td>';
+                    html += '<td style="padding:6px;text-align:right;background:#fff3e0;font-weight:bold;color:' + totalColor + ';">' + (item.isYen ? fmtYen(total) : fmt(total)) + '</td>';
                     html += '</tr>';
                 });
 
@@ -4186,9 +4190,9 @@
             // 結論文
             var conclusionText = '';
             if (isAchievable) {
-                conclusionText = '顧客予算売上（' + fmt(custSales) + '千円）でMQ必要売上（' + fmt(mqSales) + '千円）を達成可能です。売上余裕 +' + fmt(salesDiff) + '千円';
+                conclusionText = '顧客予算売上（' + fmtYen(custSales) + '円）でMQ必要売上（' + fmtYen(mqSales) + '円）を達成可能です。売上余裕 +' + fmtYen(salesDiff) + '円';
             } else {
-                conclusionText = 'MQ必要売上（' + fmt(mqSales) + '千円）に対し、顧客予算売上（' + fmt(custSales) + '千円）が ' + fmt(Math.abs(salesDiff)) + '千円 不足しています。売上増または費用削減が必要です。';
+                conclusionText = 'MQ必要売上（' + fmtYen(mqSales) + '円）に対し、顧客予算売上（' + fmtYen(custSales) + '円）が ' + fmtYen(Math.abs(salesDiff)) + '円 不足しています。売上増または費用削減が必要です。';
             }
 
             var html = '';
@@ -4218,15 +4222,15 @@
             // 売上高合計（日次メイン）
             html += '<div style="background:#fff;padding:12px;border-radius:8px;text-align:center;border:2px solid #1976d2;">';
             html += '<div style="font-size:10px;color:#666;">売上高合計</div>';
-            html += '<div style="font-size:28px;font-weight:bold;color:#1976d2;">' + fmt(custSalesDaily) + '<span style="font-size:14px;">千円/日</span></div>';
-            html += '<div style="font-size:11px;color:#888;margin-top:4px;">月 ' + fmt(custSalesMonthly) + '千円</div>';
+            html += '<div style="font-size:28px;font-weight:bold;color:#1976d2;">' + fmtYen(custSalesDaily) + '<span style="font-size:14px;">円/日</span></div>';
+            html += '<div style="font-size:11px;color:#888;margin-top:4px;">月 ' + fmtYen(custSalesMonthly) + '円</div>';
             html += '</div>';
 
             // 営業利益（日次メイン）
             html += '<div style="background:#fff;padding:12px;border-radius:8px;text-align:center;border:2px solid ' + (custProfit >= 0 ? '#4caf50' : '#f44336') + ';">';
             html += '<div style="font-size:10px;color:#666;">営業利益</div>';
-            html += '<div style="font-size:28px;font-weight:bold;color:' + (custProfit >= 0 ? '#2e7d32' : '#c62828') + ';">' + fmt(custProfitDaily) + '<span style="font-size:14px;">千円/日</span></div>';
-            html += '<div style="font-size:11px;color:#888;margin-top:4px;">月 ' + fmt(custProfitMonthly) + '千円</div>';
+            html += '<div style="font-size:28px;font-weight:bold;color:' + (custProfit >= 0 ? '#2e7d32' : '#c62828') + ';">' + fmtYen(custProfitDaily) + '<span style="font-size:14px;">円/日</span></div>';
+            html += '<div style="font-size:11px;color:#888;margin-top:4px;">月 ' + fmtYen(custProfitMonthly) + '円</div>';
             html += '</div>';
 
             html += '</div>';
@@ -4288,8 +4292,8 @@
             // 必要売上（日次メイン）
             html += '<div style="background:#fff;padding:12px;border-radius:8px;text-align:center;border:2px solid #7b1fa2;">';
             html += '<div style="font-size:10px;color:#666;">💰 必要売上</div>';
-            html += '<div style="font-size:28px;font-weight:bold;color:#7b1fa2;">' + fmt(mqSalesDaily) + '<span style="font-size:14px;">千円/日</span></div>';
-            html += '<div style="font-size:11px;color:#888;margin-top:4px;">月 ' + fmt(mqSalesMonthly) + '千円</div>';
+            html += '<div style="font-size:28px;font-weight:bold;color:#7b1fa2;">' + fmtYen(mqSalesDaily) + '<span style="font-size:14px;">円/日</span></div>';
+            html += '<div style="font-size:11px;color:#888;margin-top:4px;">月 ' + fmtYen(mqSalesMonthly) + '円</div>';
             html += '</div>';
 
             html += '</div>';
@@ -4326,9 +4330,9 @@
             html += '<div style="font-size:18px;font-weight:bold;color:' + judgmentColor + ';">' + judgmentText + '</div>';
             html += '<div style="font-size:12px;color:#666;margin-top:4px;">';
             if (isAchievable) {
-                html += '顧客予算売上 ' + fmt(custSales) + '千円 ≧ MQ必要売上 ' + fmt(mqSales) + '千円　→　<strong style="color:#2e7d32;">余裕 +' + fmt(salesDiff) + '千円</strong>';
+                html += '顧客予算売上 ' + fmtYen(custSales) + '円 ≧ MQ必要売上 ' + fmtYen(mqSales) + '円　→　<strong style="color:#2e7d32;">余裕 +' + fmtYen(salesDiff) + '円</strong>';
             } else {
-                html += '顧客予算売上 ' + fmt(custSales) + '千円 ＜ MQ必要売上 ' + fmt(mqSales) + '千円　→　<strong style="color:#c62828;">不足 ' + fmt(Math.abs(salesDiff)) + '千円</strong>';
+                html += '顧客予算売上 ' + fmtYen(custSales) + '円 ＜ MQ必要売上 ' + fmtYen(mqSales) + '円　→　<strong style="color:#c62828;">不足 ' + fmtYen(Math.abs(salesDiff)) + '円</strong>';
             }
             html += '</div></div></div>';
 
@@ -4336,12 +4340,12 @@
             html += '<div style="display:flex;gap:20px;">';
             html += '<div style="text-align:center;padding:10px 20px;background:#fff;border-radius:8px;">';
             html += '<div style="font-size:10px;color:#1976d2;">顧客予算売上</div>';
-            html += '<div style="font-size:16px;font-weight:bold;color:#1976d2;">' + fmt(custSales) + '千円</div>';
+            html += '<div style="font-size:16px;font-weight:bold;color:#1976d2;">' + fmtYen(custSales) + '円</div>';
             html += '</div>';
             html += '<div style="font-size:20px;display:flex;align-items:center;">vs</div>';
             html += '<div style="text-align:center;padding:10px 20px;background:#fff;border-radius:8px;">';
             html += '<div style="font-size:10px;color:#7b1fa2;">MQ必要売上</div>';
-            html += '<div style="font-size:16px;font-weight:bold;color:#7b1fa2;">' + fmt(mqSales) + '千円</div>';
+            html += '<div style="font-size:16px;font-weight:bold;color:#7b1fa2;">' + fmtYen(mqSales) + '円</div>';
             html += '</div>';
             html += '</div>';
 
@@ -4370,8 +4374,8 @@
             html += '<tr style="background:#fafafa;"><td style="padding:6px;">PA人件費率</td><td style="padding:6px;text-align:right;font-weight:bold;color:#ff5722;">' + (paCostRate * 100).toFixed(1) + '%</td><td style="padding:6px;font-size:10px;color:#666;">雑給÷売上</td></tr>';
             html += '<tr style="background:#fff;"><td style="padding:6px;">変動費率（VR）</td><td style="padding:6px;text-align:right;font-weight:bold;color:#7b1fa2;">' + (variableCostRate * 100).toFixed(1) + '%</td><td style="padding:6px;font-size:10px;color:#666;">FD率+PA率</td></tr>';
             html += '<tr style="background:#fafafa;"><td style="padding:6px;">粗利率（1-VR）</td><td style="padding:6px;text-align:right;font-weight:bold;color:#7b1fa2;">' + (grossProfitRate * 100).toFixed(1) + '%</td><td style="padding:6px;font-size:10px;color:#666;">限界利益率</td></tr>';
-            html += '<tr style="background:#fff;"><td style="padding:6px;">固定費合計（F）</td><td style="padding:6px;text-align:right;font-weight:bold;color:#795548;">' + fmt(annualFixedCost) + '千円/年</td><td style="padding:6px;font-size:10px;color:#666;">固定人件費+地代家賃+その他</td></tr>';
-            html += '<tr style="background:#fafafa;"><td style="padding:6px;">目標営業利益（G）</td><td style="padding:6px;text-align:right;font-weight:bold;color:#4caf50;">' + fmt(custProfit) + '千円/年</td><td style="padding:6px;font-size:10px;color:#666;">顧客予算の営業利益</td></tr>';
+            html += '<tr style="background:#fff;"><td style="padding:6px;">固定費合計（F）</td><td style="padding:6px;text-align:right;font-weight:bold;color:#795548;">' + fmtYen(annualFixedCost) + '円/年</td><td style="padding:6px;font-size:10px;color:#666;">固定人件費+地代家賃+その他</td></tr>';
+            html += '<tr style="background:#fafafa;"><td style="padding:6px;">目標営業利益（G）</td><td style="padding:6px;text-align:right;font-weight:bold;color:#4caf50;">' + fmtYen(custProfit) + '円/年</td><td style="padding:6px;font-size:10px;color:#666;">顧客予算の営業利益</td></tr>';
             html += '<tr style="background:#e8f5e9;"><td style="padding:6px;">現在の客単価（P）</td><td style="padding:6px;text-align:right;font-weight:bold;color:#9c27b0;">' + fmt(unitPrice) + '円</td><td style="padding:6px;font-size:10px;color:#666;">売上÷想定客数</td></tr>';
 
             html += '</tbody></table>';
@@ -4443,17 +4447,17 @@
             // 売上高
             html += '<div style="flex:1;min-width:200px;padding:15px;background:#fff;border-radius:8px;border:2px solid #2196f3;">';
             html += '<div style="font-size:10px;color:#666;">売上高</div>';
-            html += '<div style="font-size:24px;font-weight:bold;color:#1565c0;">' + fmt(salesDaily) + '<span style="font-size:12px;">千円/日</span></div>';
-            html += '<div style="font-size:11px;color:#888;">月 ' + fmt(salesMonthly) + '千円</div>';
-            html += '<div style="font-size:11px;color:' + (salesDiff >= 0 ? '#2e7d32' : '#c62828') + ';margin-top:5px;">' + (salesDiffDaily >= 0 ? '▲' : '▼') + ' ' + fmt(Math.abs(salesDiffDaily)) + '千円/日（月 ' + (salesDiffMonthly >= 0 ? '+' : '') + fmt(salesDiffMonthly) + '千円）</div>';
+            html += '<div style="font-size:24px;font-weight:bold;color:#1565c0;">' + fmtYen(salesDaily) + '<span style="font-size:12px;">円/日</span></div>';
+            html += '<div style="font-size:11px;color:#888;">月 ' + fmtYen(salesMonthly) + '円</div>';
+            html += '<div style="font-size:11px;color:' + (salesDiff >= 0 ? '#2e7d32' : '#c62828') + ';margin-top:5px;">' + (salesDiffDaily >= 0 ? '▲' : '▼') + ' ' + fmtYen(Math.abs(salesDiffDaily)) + '円/日（月 ' + (salesDiffMonthly >= 0 ? '+' : '') + fmtYen(salesDiffMonthly) + '円）</div>';
             html += '</div>';
 
             // 営業利益
             html += '<div style="flex:1;min-width:200px;padding:15px;background:#fff;border-radius:8px;border:2px solid ' + (newProfit >= 0 ? '#4caf50' : '#f44336') + ';">';
             html += '<div style="font-size:10px;color:#666;">営業利益</div>';
-            html += '<div style="font-size:24px;font-weight:bold;color:' + (newProfit >= 0 ? '#2e7d32' : '#c62828') + ';">' + fmt(profitDaily) + '<span style="font-size:12px;">千円/日</span></div>';
-            html += '<div style="font-size:11px;color:#888;">月 ' + fmt(profitMonthly) + '千円</div>';
-            html += '<div style="font-size:11px;color:' + (profitDiff >= 0 ? '#2e7d32' : '#c62828') + ';margin-top:5px;">' + (profitDiffDaily >= 0 ? '▲' : '▼') + ' ' + fmt(Math.abs(profitDiffDaily)) + '千円/日（月 ' + (profitDiffMonthly >= 0 ? '+' : '') + fmt(profitDiffMonthly) + '千円）</div>';
+            html += '<div style="font-size:24px;font-weight:bold;color:' + (newProfit >= 0 ? '#2e7d32' : '#c62828') + ';">' + fmtYen(profitDaily) + '<span style="font-size:12px;">円/日</span></div>';
+            html += '<div style="font-size:11px;color:#888;">月 ' + fmtYen(profitMonthly) + '円</div>';
+            html += '<div style="font-size:11px;color:' + (profitDiff >= 0 ? '#2e7d32' : '#c62828') + ';margin-top:5px;">' + (profitDiffDaily >= 0 ? '▲' : '▼') + ' ' + fmtYen(Math.abs(profitDiffDaily)) + '円/日（月 ' + (profitDiffMonthly >= 0 ? '+' : '') + fmtYen(profitDiffMonthly) + '円）</div>';
             html += '</div>';
 
             html += '</div>';
@@ -4472,6 +4476,11 @@
             var no = parseInt(input.dataset.no);
             var month = parseInt(input.dataset.month);
             var value = parseFloat(input.value) || 0;
+
+            // 円単位入力を千円単位に変換（data-yen属性がある場合）
+            if (input.dataset.yen === 'true') {
+                value = value / 1000;
+            }
 
             if (!simulationData.annualData[no]) {
                 simulationData.annualData[no] = {};
@@ -4700,8 +4709,8 @@
                     html += '<div style="font-size:10px;color:#888;margin-top:3px;font-style:italic;">' + escapeHtml(item.memo) + '</div>';
                 }
                 html += '<div style="font-size:10px;margin-top:5px;">';
-                html += '<span style="color:#1976d2;">売上: ' + fmt(item.summary.sales) + '千円</span> | ';
-                html += '<span style="color:' + (item.summary.profit >= 0 ? '#2e7d32' : '#c62828') + ';">利益: ' + fmt(item.summary.profit) + '千円</span>';
+                html += '<span style="color:#1976d2;">売上: ' + fmtYen(item.summary.sales) + '円</span> | ';
+                html += '<span style="color:' + (item.summary.profit >= 0 ? '#2e7d32' : '#c62828') + ';">利益: ' + fmtYen(item.summary.profit) + '円</span>';
                 if (item.summary.mqCustomers) {
                     html += ' | <span style="color:#e65100;">MQ客数: ' + fmt(item.summary.mqCustomers) + '人</span>';
                 }
@@ -4924,8 +4933,8 @@
 
                 cardsHtml += '<div class="store-card' + (name === currentStoreName ? ' active' : '') + '" onclick="switchStore(\'' + name.replace(/'/g, "\\'") + '\')">';
                 cardsHtml += '<h4>' + name + '</h4>';
-                cardsHtml += '<div class="metric"><span>年間売上</span><span class="metric-value">' + fmt(storeSales) + ' 千円</span></div>';
-                cardsHtml += '<div class="metric"><span>年間営業利益</span><span class="metric-value">' + fmt(storeProfit) + ' 千円</span></div>';
+                cardsHtml += '<div class="metric"><span>年間売上</span><span class="metric-value">' + fmtYen(storeSales) + ' 円</span></div>';
+                cardsHtml += '<div class="metric"><span>年間営業利益</span><span class="metric-value">' + fmtYen(storeProfit) + ' 円</span></div>';
                 cardsHtml += '<div class="metric"><span>営業利益率</span><span class="metric-value">' + fmtRate(profitRate) + '%</span></div>';
                 cardsHtml += '<div class="metric"><span>年間客数</span><span class="metric-value">' + fmt(storeCustomers) + ' 人</span></div>';
                 cardsHtml += '</div>';
@@ -4935,8 +4944,8 @@
             var totalProfitRate = totalSales > 0 ? (totalProfit / totalSales * 100) : 0;
             cardsHtml += '<div class="store-card total">';
             cardsHtml += '<h4>全店舗合計</h4>';
-            cardsHtml += '<div class="metric"><span>年間売上合計</span><span class="metric-value">' + fmt(totalSales) + ' 千円</span></div>';
-            cardsHtml += '<div class="metric"><span>年間営業利益合計</span><span class="metric-value">' + fmt(totalProfit) + ' 千円</span></div>';
+            cardsHtml += '<div class="metric"><span>年間売上合計</span><span class="metric-value">' + fmtYen(totalSales) + ' 円</span></div>';
+            cardsHtml += '<div class="metric"><span>年間営業利益合計</span><span class="metric-value">' + fmtYen(totalProfit) + ' 円</span></div>';
             cardsHtml += '<div class="metric"><span>平均営業利益率</span><span class="metric-value">' + fmtRate(totalProfitRate) + '%</span></div>';
             cardsHtml += '<div class="metric"><span>年間客数合計</span><span class="metric-value">' + fmt(totalCustomers) + ' 人</span></div>';
             cardsHtml += '</div>';
@@ -7463,7 +7472,7 @@
             console.log('recalculateMQ: renderMQResultSummary呼び出し前 - mqOutputs:', Object.keys(mqOutputs).length, 'activeMonths:', activeMonths.length);
             renderMQResultSummary();
 
-            showStatus('success', 'MQ再計算完了（月別） - 年間G:' + fmt(totalG) + '千円 平均FD:' + avgFD + '% PA:' + avgPA + '% P:' + fmt(avgP) + '円');
+            showStatus('success', 'MQ再計算完了（月別） - 年間G:' + fmtYen(totalG) + '円 平均FD:' + avgFD + '% PA:' + avgPA + '% P:' + fmt(avgP) + '円');
         }
 
         // MQ計算結果サマリーを表示（ラクミー設定値タブ用）
@@ -7515,25 +7524,25 @@
 
             // 目標売上
             var totalS = 0;
-            bodyHtml += '<tr><td style="font-weight:bold;color:#1565c0;">💰 目標売上（千円）</td>';
+            bodyHtml += '<tr><td style="font-weight:bold;color:#1565c0;">💰 目標売上（円）</td>';
             for (var i = 0; i < activeMonths.length; i++) {
                 var mi = activeMonths[i];
                 var s = mqOutputs[i] ? (mqOutputs[i].sales || 0) : 0;
                 totalS += s;
-                bodyHtml += '<td style="text-align:right;">' + fmt(s) + '</td>';
+                bodyHtml += '<td style="text-align:right;">' + fmtYen(s) + '</td>';
             }
-            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#bbdefb;">' + fmt(totalS) + '</td></tr>';
+            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#bbdefb;">' + fmtYen(totalS) + '</td></tr>';
 
             // 目標営業利益
             var totalProfit = 0;
-            bodyHtml += '<tr style="background:#fff3e0;"><td style="font-weight:bold;color:#e65100;">📈 目標営業利益（千円）</td>';
+            bodyHtml += '<tr style="background:#fff3e0;"><td style="font-weight:bold;color:#e65100;">📈 目標営業利益（円）</td>';
             for (var i = 0; i < activeMonths.length; i++) {
                 var mi = activeMonths[i];
                 var profit = mqOutputs[i] ? (mqOutputs[i].operatingProfit || 0) : 0;
                 totalProfit += profit;
-                bodyHtml += '<td style="text-align:right;">' + fmt(profit) + '</td>';
+                bodyHtml += '<td style="text-align:right;">' + fmtYen(profit) + '</td>';
             }
-            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#ffe0b2;">' + fmt(totalProfit) + '</td></tr>';
+            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#ffe0b2;">' + fmtYen(totalProfit) + '</td></tr>';
 
             // 限界利益単価M（P × (1 - VR)で計算）
             var totalM = 0;
@@ -7677,28 +7686,28 @@
             var bodyHtml = '<tbody>';
 
             // G（目標利益）- 月別
-            bodyHtml += '<tr style="background:#fff3e0;"><td style="font-weight:bold;color:#e65100;">【G】目標利益(千円)</td>';
+            bodyHtml += '<tr style="background:#fff3e0;"><td style="font-weight:bold;color:#e65100;">【G】目標利益(円)</td>';
             var totalG = 0;
             for (var i = 0; i < activeMonths.length; i++) {
                 var mi = activeMonths[i];
                 var g = params.monthlyG[mi] || 0;
                 totalG += g;
-                bodyHtml += '<td style="text-align:right;">' + fmt(g) + '</td>';
+                bodyHtml += '<td style="text-align:right;">' + fmtYen(g) + '</td>';
             }
             var avgG = Math.round(totalG / activeMonths.length);
-            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#ffe0b2;">' + fmt(avgG) + '</td></tr>';
+            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#ffe0b2;">' + fmtYen(avgG) + '</td></tr>';
 
             // F（固定費）- 月別
-            bodyHtml += '<tr><td style="font-weight:bold;color:#e65100;">【F】固定費(千円)</td>';
+            bodyHtml += '<tr><td style="font-weight:bold;color:#e65100;">【F】固定費(円)</td>';
             var totalF = 0;
             for (var i = 0; i < activeMonths.length; i++) {
                 var mi = activeMonths[i];
                 var f = params.monthlyF[mi] || 0;
                 totalF += f;
-                bodyHtml += '<td style="text-align:right;">' + fmt(f) + '</td>';
+                bodyHtml += '<td style="text-align:right;">' + fmtYen(f) + '</td>';
             }
             var avgF = Math.round(totalF / activeMonths.length);
-            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#ffe0b2;">' + fmt(avgF) + '</td></tr>';
+            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#ffe0b2;">' + fmtYen(avgF) + '</td></tr>';
 
             // FD%（全期間共通）
             bodyHtml += '<tr style="background:#fff3e0;"><td style="font-weight:bold;color:#e65100;">【FD%】FD率</td>';
@@ -7930,7 +7939,7 @@
             var refVarRate = document.getElementById('mqRefVariableRate');
             var refFixedCost = document.getElementById('mqRefFixedCost');
             if (refVarRate) refVarRate.textContent = variableRate + '%';
-            if (refFixedCost) refFixedCost.textContent = fmt(avgFixedCost) + ' 千円';
+            if (refFixedCost) refFixedCost.textContent = fmtYen(avgFixedCost) + ' 円';
 
             // 月別固定費をMQ入力テーブルに表示
             for (var m = 0; m < 12; m++) {
@@ -8197,7 +8206,7 @@
                             type: 'variable_cost',
                             severity: 'low',
                             title: monthLabels[m] + ': 変動費計算の差異',
-                            detail: '変動費率適用時に ' + fmt(Math.round(varDiff)) + ' 千円の差異があります。',
+                            detail: '変動費率適用時に ' + fmtYen(Math.round(varDiff)) + ' 円の差異があります。',
                             suggestion: 'MQ計算ではMQ売上に変動費率を適用するため、元の予算売上と異なります。'
                         });
                         break; // 1回だけ表示
@@ -8250,9 +8259,9 @@
             html += '<div style="background:#f5f5f5;padding:20px;border-radius:8px;margin-bottom:20px;">';
             html += '<h3 style="margin:0 0 15px 0;color:#333;">年間サマリー</h3>';
             html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:15px;">';
-            html += '<div style="background:#fff;padding:15px;border-radius:8px;text-align:center;border-left:4px solid #2196f3;"><div style="font-size:11px;color:#666;">顧客予算売上</div><div style="font-size:20px;font-weight:bold;color:#1565c0;">' + fmt(Math.round(analysis.summary.totalBudget)) + '</div></div>';
-            html += '<div style="background:#fff;padding:15px;border-radius:8px;text-align:center;border-left:4px solid #9c27b0;"><div style="font-size:11px;color:#666;">MQ算出売上</div><div style="font-size:20px;font-weight:bold;color:#7b1fa2;">' + fmt(Math.round(analysis.summary.totalMQ)) + '</div></div>';
-            html += '<div style="background:#fff;padding:15px;border-radius:8px;text-align:center;border-left:4px solid ' + diffColor + ';"><div style="font-size:11px;color:#666;">差異</div><div style="font-size:20px;font-weight:bold;color:' + diffColor + ';">' + (analysis.summary.totalDiff >= 0 ? '+' : '') + fmt(Math.round(analysis.summary.totalDiff)) + '</div></div>';
+            html += '<div style="background:#fff;padding:15px;border-radius:8px;text-align:center;border-left:4px solid #2196f3;"><div style="font-size:11px;color:#666;">顧客予算売上</div><div style="font-size:20px;font-weight:bold;color:#1565c0;">' + fmtYen(Math.round(analysis.summary.totalBudget)) + '</div></div>';
+            html += '<div style="background:#fff;padding:15px;border-radius:8px;text-align:center;border-left:4px solid #9c27b0;"><div style="font-size:11px;color:#666;">MQ算出売上</div><div style="font-size:20px;font-weight:bold;color:#7b1fa2;">' + fmtYen(Math.round(analysis.summary.totalMQ)) + '</div></div>';
+            html += '<div style="background:#fff;padding:15px;border-radius:8px;text-align:center;border-left:4px solid ' + diffColor + ';"><div style="font-size:11px;color:#666;">差異</div><div style="font-size:20px;font-weight:bold;color:' + diffColor + ';">' + (analysis.summary.totalDiff >= 0 ? '+' : '') + fmtYen(Math.round(analysis.summary.totalDiff)) + '</div></div>';
             html += '<div style="background:#fff;padding:15px;border-radius:8px;text-align:center;border-left:4px solid ' + diffColor + ';"><div style="font-size:11px;color:#666;">差異率</div><div style="font-size:20px;font-weight:bold;color:' + diffColor + ';">' + (diffRate >= 0 ? '+' : '') + diffRate.toFixed(2) + '%</div></div>';
             html += '</div></div>';
 
@@ -8264,9 +8273,9 @@
             analysis.monthly.forEach(function(m) {
                 var color = Math.abs(m.diffRate) < 1 ? '#4caf50' : (Math.abs(m.diffRate) < 5 ? '#ff9800' : '#f44336');
                 html += '<tr><td style="padding:6px;border:1px solid #ddd;text-align:center;">' + m.month + '</td>';
-                html += '<td style="padding:6px;border:1px solid #ddd;text-align:right;">' + fmt(Math.round(m.budgetSales)) + '</td>';
-                html += '<td style="padding:6px;border:1px solid #ddd;text-align:right;">' + fmt(Math.round(m.mqSales)) + '</td>';
-                html += '<td style="padding:6px;border:1px solid #ddd;text-align:right;color:' + color + ';">' + (m.diff >= 0 ? '+' : '') + fmt(Math.round(m.diff)) + '</td>';
+                html += '<td style="padding:6px;border:1px solid #ddd;text-align:right;">' + fmtYen(Math.round(m.budgetSales)) + '</td>';
+                html += '<td style="padding:6px;border:1px solid #ddd;text-align:right;">' + fmtYen(Math.round(m.mqSales)) + '</td>';
+                html += '<td style="padding:6px;border:1px solid #ddd;text-align:right;color:' + color + ';">' + (m.diff >= 0 ? '+' : '') + fmtYen(Math.round(m.diff)) + '</td>';
                 html += '<td style="padding:6px;border:1px solid #ddd;text-align:right;color:' + color + ';">' + (m.diffRate >= 0 ? '+' : '') + m.diffRate.toFixed(2) + '%</td></tr>';
             });
             html += '</table></div>';
@@ -8279,9 +8288,9 @@
             analysis.items.forEach(function(item) {
                 var color = Math.abs(item.diffRate) < 1 ? '#4caf50' : (Math.abs(item.diffRate) < 5 ? '#ff9800' : '#f44336');
                 html += '<tr><td style="padding:6px;border:1px solid #ddd;">' + item.name + '</td>';
-                html += '<td style="padding:6px;border:1px solid #ddd;text-align:right;">' + fmt(Math.round(item.budget)) + '</td>';
-                html += '<td style="padding:6px;border:1px solid #ddd;text-align:right;">' + fmt(Math.round(item.mq)) + '</td>';
-                html += '<td style="padding:6px;border:1px solid #ddd;text-align:right;color:' + color + ';">' + (item.diff >= 0 ? '+' : '') + fmt(Math.round(item.diff)) + '</td>';
+                html += '<td style="padding:6px;border:1px solid #ddd;text-align:right;">' + fmtYen(Math.round(item.budget)) + '</td>';
+                html += '<td style="padding:6px;border:1px solid #ddd;text-align:right;">' + fmtYen(Math.round(item.mq)) + '</td>';
+                html += '<td style="padding:6px;border:1px solid #ddd;text-align:right;color:' + color + ';">' + (item.diff >= 0 ? '+' : '') + fmtYen(Math.round(item.diff)) + '</td>';
                 html += '<td style="padding:6px;border:1px solid #ddd;text-align:right;color:' + color + ';">' + (item.diffRate >= 0 ? '+' : '') + item.diffRate.toFixed(2) + '%</td></tr>';
             });
             html += '</table></div>';
@@ -8364,8 +8373,8 @@
 
             // 入力パラメータカード
             var items = [
-                { label: '【F】固定費用予算（年間）', value: fmt(totalFixedCost), unit: '千円', color: '#2e7d32', desc: '費用予算設定の固定費項目合計' },
-                { label: '【G】目標月次利益（年間）', value: fmt(totalTargetProfit), unit: '千円', color: '#1565c0', desc: '顧客予算の営業利益（No.63）' },
+                { label: '【F】固定費用予算（年間）', value: fmtYen(totalFixedCost), unit: '円', color: '#2e7d32', desc: '費用予算設定の固定費項目合計' },
+                { label: '【G】目標月次利益（年間）', value: fmtYen(totalTargetProfit), unit: '円', color: '#1565c0', desc: '顧客予算の営業利益（No.63）' },
                 { label: '【FD%】FD仕入費率（平均）', value: avgFdRate.toFixed(1), unit: '%', color: '#ff5722', desc: '食材+ドリンク仕入費/売上' },
                 { label: '【PA%】PA人件費率（平均）', value: avgPaRate.toFixed(1), unit: '%', color: '#9c27b0', desc: 'PA人件費/売上' },
                 { label: '【VR】変動費率（FD+PA）', value: avgVR.toFixed(1), unit: '%', color: '#e65100', desc: 'FD仕入費率+PA人件費率' }
@@ -9098,7 +9107,7 @@
                     totalVariableRate += mqOutputs[m].variableRate || 0;
                 }
             }
-            document.getElementById('summaryGrid').innerHTML = '<div class="summary-card"><div class="summary-label">年間売上</div><div class="summary-value">' + fmt(totalSales) + '</div><div class="summary-sub">千円</div></div><div class="summary-card"><div class="summary-label">年間営業利益</div><div class="summary-value">' + fmt(totalProfit) + '</div><div class="summary-sub">千円</div></div><div class="summary-card"><div class="summary-label">営業利益率</div><div class="summary-value">' + fmtRate(totalSales > 0 ? totalProfit / totalSales * 100 : 0) + '%</div></div><div class="summary-card"><div class="summary-label">年間客数</div><div class="summary-value">' + fmt(totalCustomers) + '</div><div class="summary-sub">人</div></div><div class="summary-card"><div class="summary-label">平均客単価</div><div class="summary-value">' + fmt(totalCustomers > 0 ? Math.round(totalSales * 1000 / totalCustomers) : 0) + '</div><div class="summary-sub">円</div></div><div class="summary-card"><div class="summary-label">変動費率</div><div class="summary-value">' + fmtRate(totalVariableRate / activeMonths.length) + '%</div></div>';
+            document.getElementById('summaryGrid').innerHTML = '<div class="summary-card"><div class="summary-label">年間売上</div><div class="summary-value">' + fmtYen(totalSales) + '</div><div class="summary-sub">円</div></div><div class="summary-card"><div class="summary-label">年間営業利益</div><div class="summary-value">' + fmtYen(totalProfit) + '</div><div class="summary-sub">円</div></div><div class="summary-card"><div class="summary-label">営業利益率</div><div class="summary-value">' + fmtRate(totalSales > 0 ? totalProfit / totalSales * 100 : 0) + '%</div></div><div class="summary-card"><div class="summary-label">年間客数</div><div class="summary-value">' + fmt(totalCustomers) + '</div><div class="summary-sub">人</div></div><div class="summary-card"><div class="summary-label">平均客単価</div><div class="summary-value">' + fmt(totalCustomers > 0 ? Math.round(totalSales * 1000 / totalCustomers) : 0) + '</div><div class="summary-sub">円</div></div><div class="summary-card"><div class="summary-label">変動費率</div><div class="summary-value">' + fmtRate(totalVariableRate / activeMonths.length) + '%</div></div>';
 
             var judgeHtml = '<table class="annual-table" style="max-width:500px;"><tr><th>項目</th><th>判定</th><th>設定先</th></tr>';
             [{ name: '地代家賃', no: 47 }, { name: '固定人件費', no: 10 }, { name: '電気代', no: 26 }, { name: 'ガス代', no: 27 }, { name: '水道代', no: 28 }].forEach(function(item) {

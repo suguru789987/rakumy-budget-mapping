@@ -690,3 +690,48 @@ var dailyValue = monthlyValue / OPERATING_DAYS;
 
 - ▲: 編集後の増加分（日次・月次）
 - ▼: 編集後の減少分（日次・月次）
+
+### 13.14 金額表示（円単位）
+
+#### 概要
+ラクミーの表記スタイルに合わせ、全ての金額を円単位（下三桁省略せず）で表示。
+
+#### 内部データと表示の関係
+- 内部データ: 千円単位で保存
+- 表示: 円単位（内部データ×1000）
+- 入力: 円単位で入力、保存時に÷1000で千円単位に変換
+
+#### フォーマット関数
+```javascript
+// 千円単位を円単位で表示（カンマ区切り）
+function fmtYen(n) {
+    return n !== undefined && n !== null
+        ? Math.round(n * 1000).toLocaleString('ja-JP')
+        : '-';
+}
+```
+
+#### 入力フィールドの処理
+```html
+<!-- 円単位表示、data-yen属性で識別 -->
+<input type="number" data-no="4" data-month="0" data-yen="true"
+       value="1234000" onchange="updateSimulationValue(this)">
+```
+
+```javascript
+function updateSimulationValue(input) {
+    var value = parseFloat(input.value) || 0;
+    // 円単位入力を千円単位に変換
+    if (input.dataset.yen === 'true') {
+        value = value / 1000;
+    }
+    simulationData.annualData[no][month] = value;
+}
+```
+
+#### 表示例
+| 内部データ（千円） | 表示（円） |
+|-----------------|----------|
+| 1234 | 1,234,000円 |
+| 500 | 500,000円/月 |
+| 20 | 20,000円/日 |
