@@ -799,17 +799,21 @@
                         <div style="border-top:2px solid #e0e0e0;padding-top:20px;">
                             <h4 style="color:#7b1fa2;margin:0 0 15px 0;">現在のマスタデータ</h4>
 
-                            <!-- タブ切替 -->
-                            <div style="display:flex;gap:10px;margin-bottom:15px;">
-                                <button class="btn" id="masterTabStores" onclick="switchMasterTab('stores')" style="background:#4caf50;color:#fff;padding:10px 20px;">🏪 店舗マスタ</button>
-                                <button class="btn" id="masterTabItems" onclick="switchMasterTab('items')" style="background:#e0e0e0;color:#333;padding:10px 20px;">📋 予算項目マスタ</button>
+                            <!-- タブ切替（3カテゴリ） -->
+                            <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;">
+                                <button class="btn" id="masterTabStores" onclick="switchMasterTab('stores')" style="background:#4caf50;color:#fff;padding:10px 20px;">🏪 店番マスタ</button>
+                                <button class="btn" id="masterTabItems" onclick="switchMasterTab('items')" style="background:#e0e0e0;color:#333;padding:10px 20px;">📋 予算項目コードマスタ</button>
+                                <button class="btn" id="masterTabPrices" onclick="switchMasterTab('prices')" style="background:#e0e0e0;color:#333;padding:10px 20px;">💰 客単価マスタ</button>
                             </div>
 
-                            <!-- 店舗マスタ表示 -->
+                            <!-- 店番マスタ表示 -->
                             <div id="masterStoresContent" style="max-height:400px;overflow-y:auto;"></div>
 
-                            <!-- 予算項目マスタ表示 -->
+                            <!-- 予算項目コードマスタ表示 -->
                             <div id="masterItemsContent" style="display:none;max-height:400px;overflow-y:auto;"></div>
+
+                            <!-- 客単価マスタ表示 -->
+                            <div id="masterPricesContent" style="display:none;max-height:400px;overflow-y:auto;"></div>
                         </div>
                     </div>
                 </div>
@@ -6208,6 +6212,7 @@
             renderMasterHistoryList();
             renderMasterStoresContent();
             renderMasterItemsContent();
+            renderMasterPricesContent();
             switchMasterTab('stores');
         }
 
@@ -6218,23 +6223,35 @@
         function switchMasterTab(tab) {
             var storesBtn = document.getElementById('masterTabStores');
             var itemsBtn = document.getElementById('masterTabItems');
+            var pricesBtn = document.getElementById('masterTabPrices');
             var storesContent = document.getElementById('masterStoresContent');
             var itemsContent = document.getElementById('masterItemsContent');
+            var pricesContent = document.getElementById('masterPricesContent');
 
+            // 全タブを非アクティブ化
+            storesBtn.style.background = '#e0e0e0';
+            storesBtn.style.color = '#333';
+            itemsBtn.style.background = '#e0e0e0';
+            itemsBtn.style.color = '#333';
+            pricesBtn.style.background = '#e0e0e0';
+            pricesBtn.style.color = '#333';
+            storesContent.style.display = 'none';
+            itemsContent.style.display = 'none';
+            pricesContent.style.display = 'none';
+
+            // 選択されたタブをアクティブ化
             if (tab === 'stores') {
                 storesBtn.style.background = '#4caf50';
                 storesBtn.style.color = '#fff';
-                itemsBtn.style.background = '#e0e0e0';
-                itemsBtn.style.color = '#333';
                 storesContent.style.display = 'block';
-                itemsContent.style.display = 'none';
-            } else {
-                storesBtn.style.background = '#e0e0e0';
-                storesBtn.style.color = '#333';
+            } else if (tab === 'items') {
                 itemsBtn.style.background = '#ff9800';
                 itemsBtn.style.color = '#fff';
-                storesContent.style.display = 'none';
                 itemsContent.style.display = 'block';
+            } else if (tab === 'prices') {
+                pricesBtn.style.background = '#2196f3';
+                pricesBtn.style.color = '#fff';
+                pricesContent.style.display = 'block';
             }
         }
 
@@ -6242,16 +6259,23 @@
             var name = prompt('マスタデータの保存名を入力してください:', 'マスタ_' + new Date().toLocaleString('ja-JP'));
             if (!name) return;
 
+            // ★ 3カテゴリに分けて保存
             var masterData = {
                 id: Date.now(),
                 name: name,
                 savedAt: new Date().toISOString(),
-                stores: JSON.parse(JSON.stringify(DEFAULT_UNIT_PRICES)),
+                // カテゴリ1: 店番マスタ（店舗名リスト）
+                storeNames: Object.keys(DEFAULT_UNIT_PRICES),
+                storeCount: Object.keys(DEFAULT_UNIT_PRICES).length,
+                // カテゴリ2: 予算項目コードマスタ
                 codeMap: JSON.parse(JSON.stringify(CUSTOMER_CODE_MAP)),
                 nameMap: JSON.parse(JSON.stringify(NAME_BASED_MAP)),
-                storeCount: Object.keys(DEFAULT_UNIT_PRICES).length,
                 codeMapCount: Object.keys(CUSTOMER_CODE_MAP).length,
-                nameMapCount: Object.keys(NAME_BASED_MAP).length
+                nameMapCount: Object.keys(NAME_BASED_MAP).length,
+                // カテゴリ3: 客単価マスタ（店別目標客単価）
+                unitPrices: JSON.parse(JSON.stringify(DEFAULT_UNIT_PRICES)),
+                // 後方互換性のため stores も保持
+                stores: JSON.parse(JSON.stringify(DEFAULT_UNIT_PRICES))
             };
 
             var history = getMasterHistory();
@@ -6294,7 +6318,12 @@
                 html += '<div>';
                 html += '<strong style="color:#7b1fa2;">' + escapeHtml(item.name) + '</strong><br>';
                 html += '<span style="font-size:11px;color:#666;">' + savedDate + '</span><br>';
-                html += '<span style="font-size:10px;color:#999;">店舗: ' + item.storeCount + '件 / コード: ' + item.codeMapCount + '件 / 名前: ' + item.nameMapCount + '件</span>';
+                // 3カテゴリの件数を表示
+                html += '<div style="font-size:10px;margin-top:4px;">';
+                html += '<span style="background:#4caf50;color:#fff;padding:2px 6px;border-radius:3px;margin-right:4px;">🏪店番: ' + item.storeCount + '件</span>';
+                html += '<span style="background:#ff9800;color:#fff;padding:2px 6px;border-radius:3px;margin-right:4px;">📋項目コード: ' + (item.codeMapCount + item.nameMapCount) + '件</span>';
+                html += '<span style="background:#2196f3;color:#fff;padding:2px 6px;border-radius:3px;">💰客単価: ' + item.storeCount + '件</span>';
+                html += '</div>';
                 html += '</div>';
                 html += '<div style="display:flex;gap:8px;">';
                 html += '<button onclick="loadMasterFromHistory(' + item.id + ')" style="background:#4caf50;color:#fff;border:none;padding:8px 15px;border-radius:4px;cursor:pointer;font-size:12px;">読込</button>';
@@ -6317,14 +6346,17 @@
 
             if (!confirm('「' + item.name + '」を読み込みますか？\n現在のマスタデータは上書きされます。')) return;
 
-            // マスタデータを復元
-            DEFAULT_UNIT_PRICES = JSON.parse(JSON.stringify(item.stores));
+            // マスタデータを復元（3カテゴリ）
+            // カテゴリ1&3: 店番マスタ＆客単価マスタ（unitPrices または stores から復元）
+            DEFAULT_UNIT_PRICES = JSON.parse(JSON.stringify(item.unitPrices || item.stores));
+            // カテゴリ2: 予算項目コードマスタ
             CUSTOMER_CODE_MAP = JSON.parse(JSON.stringify(item.codeMap));
             NAME_BASED_MAP = JSON.parse(JSON.stringify(item.nameMap));
 
-            // 表示を更新
+            // 表示を更新（3タブ分）
             renderMasterStoresContent();
             renderMasterItemsContent();
+            renderMasterPricesContent();
             updateCurrentStoreList();
             updateCurrentMappingList();
 
@@ -6347,18 +6379,49 @@
             if (!container) return;
 
             var storeNames = Object.keys(DEFAULT_UNIT_PRICES);
-            var html = '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
-            html += '<tr style="background:#4caf50;color:#fff;"><th style="padding:8px;text-align:left;">No</th><th style="padding:8px;text-align:left;">店舗名</th><th style="padding:8px;text-align:right;">客単価(総合)</th><th style="padding:8px;text-align:right;">ランチ</th><th style="padding:8px;text-align:right;">ディナー</th></tr>';
+            var html = '<h5 style="color:#4caf50;margin:0 0 10px 0;">🏪 店番マスタ（店舗一覧）</h5>';
+            html += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+            html += '<tr style="background:#4caf50;color:#fff;"><th style="padding:8px;text-align:center;width:60px;">店番</th><th style="padding:8px;text-align:left;">店舗名</th></tr>';
+
+            storeNames.forEach(function(storeName, index) {
+                var bgColor = index % 2 === 0 ? '#fff' : '#e8f5e9';
+                var storeNo = String(index + 1).padStart(3, '0');  // 001, 002, ...
+                html += '<tr style="background:' + bgColor + ';">';
+                html += '<td style="padding:6px 8px;text-align:center;font-family:monospace;font-weight:bold;">' + storeNo + '</td>';
+                html += '<td style="padding:6px 8px;">' + escapeHtml(storeName) + '</td>';
+                html += '</tr>';
+            });
+
+            html += '</table>';
+            html += '<div style="margin-top:10px;font-size:11px;color:#666;">合計: ' + storeNames.length + '店舗</div>';
+            container.innerHTML = html;
+        }
+
+        function renderMasterPricesContent() {
+            var container = document.getElementById('masterPricesContent');
+            if (!container) return;
+
+            var storeNames = Object.keys(DEFAULT_UNIT_PRICES);
+            var html = '<h5 style="color:#2196f3;margin:0 0 10px 0;">💰 店別目標客単価マスタ</h5>';
+            html += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+            html += '<tr style="background:#2196f3;color:#fff;">';
+            html += '<th style="padding:8px;text-align:center;width:60px;">店番</th>';
+            html += '<th style="padding:8px;text-align:left;">店舗名</th>';
+            html += '<th style="padding:8px;text-align:right;">目標客単価(総合)</th>';
+            html += '<th style="padding:8px;text-align:right;">目標客単価(ランチ)</th>';
+            html += '<th style="padding:8px;text-align:right;">目標客単価(ディナー)</th>';
+            html += '</tr>';
 
             storeNames.forEach(function(storeName, index) {
                 var prices = DEFAULT_UNIT_PRICES[storeName];
-                var bgColor = index % 2 === 0 ? '#fff' : '#e8f5e9';
+                var bgColor = index % 2 === 0 ? '#fff' : '#e3f2fd';
+                var storeNo = String(index + 1).padStart(3, '0');
                 html += '<tr style="background:' + bgColor + ';">';
-                html += '<td style="padding:6px 8px;">' + (index + 1) + '</td>';
+                html += '<td style="padding:6px 8px;text-align:center;font-family:monospace;">' + storeNo + '</td>';
                 html += '<td style="padding:6px 8px;">' + escapeHtml(storeName) + '</td>';
-                html += '<td style="padding:6px 8px;text-align:right;">' + prices.total.toLocaleString() + '円</td>';
-                html += '<td style="padding:6px 8px;text-align:right;">' + prices.lunch.toLocaleString() + '円</td>';
-                html += '<td style="padding:6px 8px;text-align:right;">' + prices.dinner.toLocaleString() + '円</td>';
+                html += '<td style="padding:6px 8px;text-align:right;font-weight:bold;color:#1565c0;">' + prices.total.toLocaleString() + '円</td>';
+                html += '<td style="padding:6px 8px;text-align:right;color:#ff9800;">' + prices.lunch.toLocaleString() + '円</td>';
+                html += '<td style="padding:6px 8px;text-align:right;color:#9c27b0;">' + prices.dinner.toLocaleString() + '円</td>';
                 html += '</tr>';
             });
 
@@ -6371,14 +6434,14 @@
             var container = document.getElementById('masterItemsContent');
             if (!container) return;
 
-            var html = '';
+            var html = '<h5 style="color:#ff9800;margin:0 0 10px 0;">📋 予算項目コードマスタ</h5>';
 
             // コードベース
             var sortedCodes = Object.keys(CUSTOMER_CODE_MAP).sort(function(a, b) {
                 return CUSTOMER_CODE_MAP[a].v15No - CUSTOMER_CODE_MAP[b].v15No;
             });
 
-            html += '<h5 style="color:#e65100;margin:0 0 8px 0;">コードベース（CUSTOMER_CODE_MAP）: ' + sortedCodes.length + '件</h5>';
+            html += '<h6 style="color:#e65100;margin:10px 0 8px 0;">コードベース（CUSTOMER_CODE_MAP）: ' + sortedCodes.length + '件</h6>';
             html += '<table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:15px;">';
             html += '<tr style="background:#e65100;color:#fff;"><th style="padding:6px;">コード</th><th style="padding:6px;">項目名</th><th style="padding:6px;">v17No</th><th style="padding:6px;">カテゴリ</th></tr>';
 
@@ -6399,7 +6462,7 @@
                 return NAME_BASED_MAP[a].v17No - NAME_BASED_MAP[b].v17No;
             });
 
-            html += '<h5 style="color:#1565c0;margin:0 0 8px 0;">名前ベース（NAME_BASED_MAP）: ' + sortedNames.length + '件</h5>';
+            html += '<h6 style="color:#1565c0;margin:15px 0 8px 0;">名前ベース（NAME_BASED_MAP）: ' + sortedNames.length + '件</h6>';
             html += '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
             html += '<tr style="background:#1565c0;color:#fff;"><th style="padding:6px;">項目名（キー）</th><th style="padding:6px;">v17No</th><th style="padding:6px;">カテゴリ</th></tr>';
 
