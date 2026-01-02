@@ -1418,103 +1418,302 @@
 
         // ★ 項目名ベースのマッピング（E列空欄・セル結合解除対応）
         // コードがない行でも項目名から対応するv17Noを特定
+        // ★★★ 2026-01-03 大幅拡張：表記揺れ・バリエーション対応強化 ★★★
         var NAME_BASED_MAP = {
             // === 売上高（No.1-4） ===
             '店舗売上高': { v17No: 1, category: '売上高' },
             'フード売上': { v17No: 1, category: '売上高' },
+            'ﾌｰﾄﾞ売上': { v17No: 1, category: '売上高' },  // 半角カタカナ
+            'フード売上高': { v17No: 1, category: '売上高' },
+            'ﾌｰﾄﾞ売上高': { v17No: 1, category: '売上高' },  // 半角カタカナ
+            'F売上': { v17No: 1, category: '売上高' },
+            '食売上': { v17No: 1, category: '売上高' },
             'ドリンク売上': { v17No: 2, category: '売上高' },
+            'ﾄﾞﾘﾝｸ売上': { v17No: 2, category: '売上高' },  // 半角カタカナ
+            'ドリンク売上高': { v17No: 2, category: '売上高' },
+            'ﾄﾞﾘﾝｸ売上高': { v17No: 2, category: '売上高' },  // 半角カタカナ
+            'D売上': { v17No: 2, category: '売上高' },
+            '飲売上': { v17No: 2, category: '売上高' },
             'その他売上高': { v17No: 3, category: '売上高' },
             'その他売上': { v17No: 3, category: '売上高' },
+            '他売上': { v17No: 3, category: '売上高' },
             '売上高合計': { v17No: 4, category: '売上高' },
             '売上高合計（税抜）': { v17No: 4, category: '売上高' },
+            '売上高合計(税抜)': { v17No: 4, category: '売上高' },  // 半角括弧
+            '売上合計': { v17No: 4, category: '売上高' },
+            '売上高計': { v17No: 4, category: '売上高' },
+            '総売上高': { v17No: 4, category: '売上高' },
+            '売上総額': { v17No: 4, category: '売上高' },
+            '売上計': { v17No: 4, category: '売上高' },
+            '合計売上': { v17No: 4, category: '売上高' },
+            '売上高': { v17No: 4, category: '売上高' },  // 単独の場合は合計扱い
             // === 売上原価（No.5-15） ===
             '食材期首棚': { v17No: 5, category: '売上原価' },
+            '食材期首棚卸': { v17No: 5, category: '売上原価' },
+            '期首食材棚卸': { v17No: 5, category: '売上原価' },
+            'F期首棚': { v17No: 5, category: '売上原価' },
             '食材仕入高': { v17No: 6, category: '売上原価' },
+            '食材仕入': { v17No: 6, category: '売上原価' },
+            'F仕入': { v17No: 6, category: '売上原価' },
             '食材期末棚': { v17No: 7, category: '売上原価' },
+            '食材期末棚卸': { v17No: 7, category: '売上原価' },
+            '期末食材棚卸': { v17No: 7, category: '売上原価' },
+            'F期末棚': { v17No: 7, category: '売上原価' },
             '食材原価': { v17No: 8, category: '売上原価' },
+            'フード原価': { v17No: 8, category: '売上原価' },
+            'ﾌｰﾄﾞ原価': { v17No: 8, category: '売上原価' },  // 半角カタカナ
+            'F原価': { v17No: 8, category: '売上原価' },
+            '食原価': { v17No: 8, category: '売上原価' },
             'ドリンク期首棚': { v17No: 9, category: '売上原価' },
-            'ﾄﾞﾘﾝｸ期首棚': { v17No: 9, category: '売上原価' },  // 半角カタカナ対応
+            'ﾄﾞﾘﾝｸ期首棚': { v17No: 9, category: '売上原価' },  // 半角カタカナ
+            'ドリンク期首棚卸': { v17No: 9, category: '売上原価' },
+            '期首ドリンク棚卸': { v17No: 9, category: '売上原価' },
+            'D期首棚': { v17No: 9, category: '売上原価' },
             'ドリンク仕入高': { v17No: 10, category: '売上原価' },
-            'ﾄﾞﾘﾝｸ仕入高': { v17No: 10, category: '売上原価' },  // 半角カタカナ対応
+            'ﾄﾞﾘﾝｸ仕入高': { v17No: 10, category: '売上原価' },  // 半角カタカナ
+            'ドリンク仕入': { v17No: 10, category: '売上原価' },
+            'D仕入': { v17No: 10, category: '売上原価' },
             'ドリンク期末棚': { v17No: 11, category: '売上原価' },
-            'ﾄﾞﾘﾝｸ期末棚': { v17No: 11, category: '売上原価' },  // 半角カタカナ対応
+            'ﾄﾞﾘﾝｸ期末棚': { v17No: 11, category: '売上原価' },  // 半角カタカナ
+            'ドリンク期末棚卸': { v17No: 11, category: '売上原価' },
+            '期末ドリンク棚卸': { v17No: 11, category: '売上原価' },
+            'D期末棚': { v17No: 11, category: '売上原価' },
             'ドリンク原価': { v17No: 12, category: '売上原価' },
-            'ﾄﾞﾘﾝｸ原価': { v17No: 12, category: '売上原価' },  // 半角カタカナ対応
+            'ﾄﾞﾘﾝｸ原価': { v17No: 12, category: '売上原価' },  // 半角カタカナ
+            'D原価': { v17No: 12, category: '売上原価' },
+            '飲原価': { v17No: 12, category: '売上原価' },
             '内部振替': { v17No: 13, category: '売上原価' },
+            '社内振替': { v17No: 13, category: '売上原価' },
+            '振替': { v17No: 13, category: '売上原価' },
             '原価合計': { v17No: 14, category: '売上原価' },
+            '売上原価合計': { v17No: 14, category: '売上原価' },
+            '売上原価計': { v17No: 14, category: '売上原価' },
+            '仕入原価合計': { v17No: 14, category: '売上原価' },
+            '原価計': { v17No: 14, category: '売上原価' },
+            'FD原価合計': { v17No: 14, category: '売上原価' },
+            'FD原価': { v17No: 14, category: '売上原価' },
             '売上総利益': { v17No: 15, category: '売上原価' },
+            '粗利益': { v17No: 15, category: '売上原価' },
+            '粗利': { v17No: 15, category: '売上原価' },
+            '売上総利益額': { v17No: 15, category: '売上原価' },
+            '総利益': { v17No: 15, category: '売上原価' },
+            'GP': { v17No: 15, category: '売上原価' },  // Gross Profit
             // === 人件費（No.16-26） ===
             '給料手当': { v17No: 16, category: '人件費' },
+            '給与手当': { v17No: 16, category: '人件費' },
+            '給料': { v17No: 16, category: '人件費' },
+            '基本給': { v17No: 16, category: '人件費' },
             '店長料理長昇給': { v17No: 17, category: '人件費' },
+            '店長昇給': { v17No: 17, category: '人件費' },
+            '料理長昇給': { v17No: 17, category: '人件費' },
+            '昇給': { v17No: 17, category: '人件費' },
             '社員給与': { v17No: 18, category: '人件費' },
+            '正社員給与': { v17No: 18, category: '人件費' },
+            '社員給料': { v17No: 18, category: '人件費' },
+            '正社員給料': { v17No: 18, category: '人件費' },
             '雑給': { v17No: 19, category: '人件費' },
+            'PA人件費': { v17No: 19, category: '人件費' },
+            'パート人件費': { v17No: 19, category: '人件費' },
+            'ﾊﾟｰﾄ人件費': { v17No: 19, category: '人件費' },  // 半角カタカナ
+            'アルバイト人件費': { v17No: 19, category: '人件費' },
+            'ｱﾙﾊﾞｲﾄ人件費': { v17No: 19, category: '人件費' },  // 半角カタカナ
+            'パート給与': { v17No: 19, category: '人件費' },
+            'アルバイト給与': { v17No: 19, category: '人件費' },
             'ヘルプ人件費': { v17No: 20, category: '人件費' },
+            'ﾍﾙﾌﾟ人件費': { v17No: 20, category: '人件費' },  // 半角カタカナ
+            'ヘルプ': { v17No: 20, category: '人件費' },
+            '応援人件費': { v17No: 20, category: '人件費' },
             '法定福利費': { v17No: 21, category: '人件費' },
+            '福利厚生費': { v17No: 21, category: '人件費' },
+            '社会保険料': { v17No: 21, category: '人件費' },
             '通勤交通費': { v17No: 22, category: '人件費' },
+            '交通費': { v17No: 22, category: '人件費' },
+            '通勤費': { v17No: 22, category: '人件費' },
             '賞与引当金繰入': { v17No: 23, category: '人件費' },
+            '賞与引当金': { v17No: 23, category: '人件費' },
+            '賞与': { v17No: 23, category: '人件費' },
+            'ボーナス': { v17No: 23, category: '人件費' },
+            'ﾎﾞｰﾅｽ': { v17No: 23, category: '人件費' },  // 半角カタカナ
             '社宅家賃': { v17No: 24, category: '人件費' },
+            '社宅費': { v17No: 24, category: '人件費' },
+            '住宅手当': { v17No: 24, category: '人件費' },
             '休業手当': { v17No: 25, category: '人件費' },
+            '休業補償': { v17No: 25, category: '人件費' },
             '人件費合計': { v17No: 26, category: '人件費' },
+            '人件費計': { v17No: 26, category: '人件費' },
+            '労務費合計': { v17No: 26, category: '人件費' },
+            '労務費計': { v17No: 26, category: '人件費' },
+            '総人件費': { v17No: 26, category: '人件費' },
+            '人件費総額': { v17No: 26, category: '人件費' },
             // === その他変動費（No.27-51） ===
             '販売促進費': { v17No: 27, category: 'その他変動費' },
+            '販促費': { v17No: 27, category: 'その他変動費' },
+            '広告宣伝費': { v17No: 27, category: 'その他変動費' },
             'メニューコピー': { v17No: 28, category: 'その他変動費' },
+            'ﾒﾆｭｰｺﾋﾟｰ': { v17No: 28, category: 'その他変動費' },  // 半角カタカナ
+            'メニュー印刷': { v17No: 28, category: 'その他変動費' },
             '調査費': { v17No: 29, category: 'その他変動費' },
+            '市場調査費': { v17No: 29, category: 'その他変動費' },
             '衛生費': { v17No: 30, category: 'その他変動費' },
+            '衛生管理費': { v17No: 30, category: 'その他変動費' },
+            '清掃費': { v17No: 30, category: 'その他変動費' },
             'サービス費': { v17No: 31, category: 'その他変動費' },
+            'ｻｰﾋﾞｽ費': { v17No: 31, category: 'その他変動費' },  // 半角カタカナ
             '電気代': { v17No: 32, category: 'その他変動費' },
+            '電気料': { v17No: 32, category: 'その他変動費' },
+            '電力費': { v17No: 32, category: 'その他変動費' },
             'ガス代': { v17No: 33, category: 'その他変動費' },
+            'ｶﾞｽ代': { v17No: 33, category: 'その他変動費' },  // 半角カタカナ
+            'ガス料': { v17No: 33, category: 'その他変動費' },
             '水道代': { v17No: 34, category: 'その他変動費' },
+            '水道料': { v17No: 34, category: 'その他変動費' },
+            '上下水道': { v17No: 34, category: 'その他変動費' },
             '消耗品費': { v17No: 35, category: 'その他変動費' },
+            '消耗品': { v17No: 35, category: 'その他変動費' },
+            '事務用品費': { v17No: 35, category: 'その他変動費' },
             '保守修繕費': { v17No: 36, category: 'その他変動費' },
+            '修繕費': { v17No: 36, category: 'その他変動費' },
+            '修理費': { v17No: 36, category: 'その他変動費' },
+            '保守費': { v17No: 36, category: 'その他変動費' },
             '租税公課': { v17No: 37, category: 'その他変動費' },
+            '税金': { v17No: 37, category: 'その他変動費' },
+            '公租公課': { v17No: 37, category: 'その他変動費' },
             '接待交際費': { v17No: 38, category: 'その他変動費' },
+            '交際費': { v17No: 38, category: 'その他変動費' },
+            '接待費': { v17No: 38, category: 'その他変動費' },
             '旅費交通費': { v17No: 39, category: 'その他変動費' },
+            '旅費': { v17No: 39, category: 'その他変動費' },
+            '出張費': { v17No: 39, category: 'その他変動費' },
             '通信費': { v17No: 40, category: 'その他変動費' },
+            '電話代': { v17No: 40, category: 'その他変動費' },
+            'インターネット費': { v17No: 40, category: 'その他変動費' },
+            'ｲﾝﾀｰﾈｯﾄ費': { v17No: 40, category: 'その他変動費' },  // 半角カタカナ
             'クレジット手数料': { v17No: 41, category: 'その他変動費' },
-            'ｸﾚｼﾞｯﾄ手数料': { v17No: 41, category: 'その他変動費' },
+            'ｸﾚｼﾞｯﾄ手数料': { v17No: 41, category: 'その他変動費' },  // 半角カタカナ
+            'カード手数料': { v17No: 41, category: 'その他変動費' },
+            'ｶｰﾄﾞ手数料': { v17No: 41, category: 'その他変動費' },  // 半角カタカナ
+            '決済手数料': { v17No: 41, category: 'その他変動費' },
             '支払手数料': { v17No: 42, category: 'その他変動費' },
+            '振込手数料': { v17No: 42, category: 'その他変動費' },
+            '手数料': { v17No: 42, category: 'その他変動費' },
             '会議費': { v17No: 43, category: 'その他変動費' },
             '諸会費': { v17No: 44, category: 'その他変動費' },
+            '組合費': { v17No: 44, category: 'その他変動費' },
+            '会費': { v17No: 44, category: 'その他変動費' },
             '図書教育費': { v17No: 45, category: 'その他変動費' },
+            '教育費': { v17No: 45, category: 'その他変動費' },
+            '図書費': { v17No: 45, category: 'その他変動費' },
             '研修費': { v17No: 46, category: 'その他変動費' },
+            '教育研修費': { v17No: 46, category: 'その他変動費' },
             '業態研究費': { v17No: 47, category: 'その他変動費' },
+            '研究開発費': { v17No: 47, category: 'その他変動費' },
             '採用費': { v17No: 48, category: 'その他変動費' },
+            '求人費': { v17No: 48, category: 'その他変動費' },
+            '人材採用費': { v17No: 48, category: 'その他変動費' },
             'IT費': { v17No: 49, category: 'その他変動費' },
+            'システム費': { v17No: 49, category: 'その他変動費' },
+            'ｼｽﾃﾑ費': { v17No: 49, category: 'その他変動費' },  // 半角カタカナ
+            'ソフトウェア費': { v17No: 49, category: 'その他変動費' },
             '外注費': { v17No: 50, category: 'その他変動費' },
+            '業務委託費': { v17No: 50, category: 'その他変動費' },
             '雑費': { v17No: 51, category: 'その他変動費' },
+            'その他経費': { v17No: 51, category: 'その他変動費' },
+            '雑損失': { v17No: 51, category: 'その他変動費' },
             // === 集計（No.52, 60, 62, 75） ===
             'その他変動費合計': { v17No: 52, category: '集計' },
-            '限界利益': { v17No: 75, category: '集計' },  // 売上 - 変動費
+            'その他変動費計': { v17No: 52, category: '集計' },
+            '変動費合計': { v17No: 52, category: '集計' },
+            '変動費計': { v17No: 52, category: '集計' },
+            '経費合計': { v17No: 52, category: '集計' },
+            '経費計': { v17No: 52, category: '集計' },
+            '諸経費合計': { v17No: 52, category: '集計' },
+            '限界利益': { v17No: 75, category: '集計' },
+            '限界利益額': { v17No: 75, category: '集計' },
+            '貢献利益': { v17No: 75, category: '集計' },
+            'マージン': { v17No: 75, category: '集計' },
+            'ﾏｰｼﾞﾝ': { v17No: 75, category: '集計' },  // 半角カタカナ
             '固定費合計': { v17No: 60, category: '集計' },
+            '固定費計': { v17No: 60, category: '集計' },
+            '固定経費合計': { v17No: 60, category: '集計' },
             '販売管理費合計': { v17No: 62, category: '集計' },
+            '販売管理費計': { v17No: 62, category: '集計' },
+            '販管費合計': { v17No: 62, category: '集計' },
+            '販管費計': { v17No: 62, category: '集計' },
+            '販管費': { v17No: 62, category: '集計' },
+            '一般管理費': { v17No: 62, category: '集計' },
+            '管理費合計': { v17No: 62, category: '集計' },
             // === ロイヤリティ・店舗補填（No.53-54） ===
             'ロイヤリティ': { v17No: 53, category: '固定費' },
+            'ﾛｲﾔﾘﾃｨ': { v17No: 53, category: '固定費' },  // 半角カタカナ
+            'ロイヤルティ': { v17No: 53, category: '固定費' },  // 表記揺れ
+            'ﾛｲﾔﾙﾃｨ': { v17No: 53, category: '固定費' },  // 半角カタカナ
+            '本部ロイヤリティ': { v17No: 53, category: '固定費' },
             '店舗補填': { v17No: 54, category: '固定費' },
-            '店舗補てん': { v17No: 54, category: '固定費' },  // 表記揺れ対応
+            '店舗補てん': { v17No: 54, category: '固定費' },
+            '補填': { v17No: 54, category: '固定費' },
+            '補てん': { v17No: 54, category: '固定費' },
             // === 固定費（No.55-59） ===
             '減価償却費': { v17No: 55, category: '固定費' },
+            '償却費': { v17No: 55, category: '固定費' },
+            '設備償却': { v17No: 55, category: '固定費' },
             '家賃': { v17No: 56, category: '固定費' },
-            '地代家賃': { v17No: 56, category: '固定費' },  // バリエーション
+            '地代家賃': { v17No: 56, category: '固定費' },
+            '地代': { v17No: 56, category: '固定費' },
+            '店舗家賃': { v17No: 56, category: '固定費' },
+            '賃料': { v17No: 56, category: '固定費' },
             '警備料': { v17No: 57, category: '固定費' },
+            '警備費': { v17No: 57, category: '固定費' },
+            'セキュリティ費': { v17No: 57, category: '固定費' },
+            'ｾｷｭﾘﾃｨ費': { v17No: 57, category: '固定費' },  // 半角カタカナ
             'リース料': { v17No: 58, category: '固定費' },
-            'ﾘｰｽ料': { v17No: 58, category: '固定費' },  // 半角カタカナ対応
+            'ﾘｰｽ料': { v17No: 58, category: '固定費' },  // 半角カタカナ
+            'リース': { v17No: 58, category: '固定費' },
+            '機器リース': { v17No: 58, category: '固定費' },
             '賃借料': { v17No: 59, category: '固定費' },
+            '借地料': { v17No: 59, category: '固定費' },
             // === 利益（No.61, 63） ===
             '店舗営業利益': { v17No: 61, category: '利益' },
+            '店舗利益': { v17No: 61, category: '利益' },
+            '店利益': { v17No: 61, category: '利益' },
+            '店別営業利益': { v17No: 61, category: '利益' },
             '営業利益': { v17No: 63, category: '利益' },
+            '本部営業利益': { v17No: 63, category: '利益' },
             // === KPI（No.64-70） ===
             '客数': { v17No: 64, category: 'KPI' },
+            '来客数': { v17No: 64, category: 'KPI' },
+            '来店客数': { v17No: 64, category: 'KPI' },
+            '組数': { v17No: 64, category: 'KPI' },
             '客単価': { v17No: 65, category: 'KPI' },
+            '平均客単価': { v17No: 65, category: 'KPI' },
+            '単価': { v17No: 65, category: 'KPI' },
             'ランチ売上比率': { v17No: 66, category: 'KPI' },
+            'ﾗﾝﾁ売上比率': { v17No: 66, category: 'KPI' },  // 半角カタカナ
+            'ランチ比率': { v17No: 66, category: 'KPI' },
+            'L売上比率': { v17No: 66, category: 'KPI' },
             'ディナー売上比率': { v17No: 67, category: 'KPI' },
+            'ﾃﾞｨﾅｰ売上比率': { v17No: 67, category: 'KPI' },  // 半角カタカナ
+            'ディナー比率': { v17No: 67, category: 'KPI' },
             'フード売上比率': { v17No: 68, category: 'KPI' },
+            'ﾌｰﾄﾞ売上比率': { v17No: 68, category: 'KPI' },  // 半角カタカナ
+            'F売上比率': { v17No: 68, category: 'KPI' },
+            '食売上比率': { v17No: 68, category: 'KPI' },
             'ドリンク売上比率': { v17No: 69, category: 'KPI' },
+            'ﾄﾞﾘﾝｸ売上比率': { v17No: 69, category: 'KPI' },  // 半角カタカナ
+            '飲売上比率': { v17No: 69, category: 'KPI' },
             'その他売上比率': { v17No: 70, category: 'KPI' },
+            '他売上比率': { v17No: 70, category: 'KPI' },
             // === 営業外・経常利益（No.71-74） ===
             '営業外収益合計': { v17No: 71, category: '営業外' },
+            '営業外収益': { v17No: 71, category: '営業外' },
+            '営業外収益計': { v17No: 71, category: '営業外' },
             '営業外費用合計': { v17No: 72, category: '営業外' },
+            '営業外費用': { v17No: 72, category: '営業外' },
+            '営業外費用計': { v17No: 72, category: '営業外' },
             '営業外損益合計': { v17No: 73, category: '営業外' },
-            '経常利益': { v17No: 74, category: '利益' }
+            '営業外損益': { v17No: 73, category: '営業外' },
+            '経常利益': { v17No: 74, category: '利益' },
+            '経常損益': { v17No: 74, category: '利益' },
+            '税引前利益': { v17No: 74, category: '利益' }
         };
 
         // ★ CODE_BASED_MAP: 勘定科目コード（B列）からv17Noへのマッピング
