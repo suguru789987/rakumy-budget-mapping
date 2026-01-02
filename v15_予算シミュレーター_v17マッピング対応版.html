@@ -789,7 +789,10 @@
                 <div style="background:#fff;border-radius:12px;margin:30px auto;max-width:900px;width:95%;box-shadow:0 4px 20px rgba(0,0,0,0.3);">
                     <div style="background:linear-gradient(135deg, #9c27b0 0%, #6a1b9a 100%);color:#fff;padding:20px;border-radius:12px 12px 0 0;display:flex;justify-content:space-between;align-items:center;">
                         <h3 style="margin:0;font-size:18px;">📋 マスタデータ履歴一覧</h3>
-                        <button onclick="hideMasterDataModal()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;padding:8px 15px;border-radius:4px;cursor:pointer;">✕ 閉じる</button>
+                        <div style="display:flex;gap:10px;">
+                            <button onclick="saveMasterDataToHistory()" style="background:#4caf50;border:none;color:#fff;padding:8px 15px;border-radius:4px;cursor:pointer;font-weight:bold;">💾 現在のデータを保存</button>
+                            <button onclick="hideMasterDataModal()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;padding:8px 15px;border-radius:4px;cursor:pointer;">✕ 閉じる</button>
+                        </div>
                     </div>
                     <div style="padding:20px;">
                         <!-- マスタ履歴リスト -->
@@ -6313,7 +6316,10 @@
             var history = getMasterHistory();
 
             if (history.length === 0) {
-                container.innerHTML = '<div style="padding:20px;text-align:center;color:#666;background:#f5f5f5;border-radius:8px;">保存されたマスタ履歴はありません</div>';
+                container.innerHTML = '<div style="padding:20px;text-align:center;background:#f5f5f5;border-radius:8px;">' +
+                    '<div style="color:#666;margin-bottom:10px;">保存されたマスタ履歴はありません</div>' +
+                    '<div style="font-size:12px;color:#999;">上部の「💾 現在のデータを保存」ボタンで保存できます</div>' +
+                    '</div>';
                 return;
             }
 
