@@ -6256,8 +6256,14 @@
         }
 
         function saveMasterDataToHistory() {
-            var name = prompt('マスタデータの保存名を入力してください:', 'マスタ_' + new Date().toLocaleString('ja-JP'));
-            if (!name) return;
+            // 年月日時刻形式で自動命名
+            var now = new Date();
+            var name = now.getFullYear() + '/' +
+                       String(now.getMonth() + 1).padStart(2, '0') + '/' +
+                       String(now.getDate()).padStart(2, '0') + ' ' +
+                       String(now.getHours()).padStart(2, '0') + ':' +
+                       String(now.getMinutes()).padStart(2, '0') + ':' +
+                       String(now.getSeconds()).padStart(2, '0');
 
             // ★ 3カテゴリに分けて保存
             var masterData = {
@@ -6298,6 +6304,8 @@
             }
         }
 
+        var selectedHistoryId = null;  // 選択中の履歴ID
+
         function renderMasterHistoryList() {
             var container = document.getElementById('masterHistoryList');
             if (!container) return;
@@ -6309,31 +6317,104 @@
                 return;
             }
 
-            var html = '<h4 style="color:#7b1fa2;margin:0 0 10px 0;">保存済みマスタ履歴（最大' + MAX_MASTER_HISTORY + '件）</h4>';
-            html += '<div style="display:flex;flex-direction:column;gap:10px;">';
+            var html = '<h4 style="color:#7b1fa2;margin:0 0 10px 0;">📂 保存済みマスタ履歴（最大' + MAX_MASTER_HISTORY + '件）</h4>';
 
-            history.forEach(function(item, index) {
-                var savedDate = new Date(item.savedAt).toLocaleString('ja-JP');
-                html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:' + (index % 2 === 0 ? '#f3e5f5' : '#fff') + ';border-radius:8px;border:1px solid #e1bee7;">';
-                html += '<div>';
-                html += '<strong style="color:#7b1fa2;">' + escapeHtml(item.name) + '</strong><br>';
-                html += '<span style="font-size:11px;color:#666;">' + savedDate + '</span><br>';
-                // 3カテゴリの件数を表示
-                html += '<div style="font-size:10px;margin-top:4px;">';
-                html += '<span style="background:#4caf50;color:#fff;padding:2px 6px;border-radius:3px;margin-right:4px;">🏪店番: ' + item.storeCount + '件</span>';
-                html += '<span style="background:#ff9800;color:#fff;padding:2px 6px;border-radius:3px;margin-right:4px;">📋項目コード: ' + (item.codeMapCount + item.nameMapCount) + '件</span>';
-                html += '<span style="background:#2196f3;color:#fff;padding:2px 6px;border-radius:3px;">💰客単価: ' + item.storeCount + '件</span>';
-                html += '</div>';
-                html += '</div>';
-                html += '<div style="display:flex;gap:8px;">';
-                html += '<button onclick="loadMasterFromHistory(' + item.id + ')" style="background:#4caf50;color:#fff;border:none;padding:8px 15px;border-radius:4px;cursor:pointer;font-size:12px;">読込</button>';
-                html += '<button onclick="deleteMasterHistory(' + item.id + ')" style="background:#f44336;color:#fff;border:none;padding:8px 15px;border-radius:4px;cursor:pointer;font-size:12px;">削除</button>';
-                html += '</div>';
-                html += '</div>';
+            // プルダウン選択
+            html += '<div style="display:flex;gap:10px;align-items:center;margin-bottom:15px;flex-wrap:wrap;">';
+            html += '<select id="historySelect" onchange="previewHistoryData(this.value)" style="padding:8px 12px;border:2px solid #7b1fa2;border-radius:6px;font-size:13px;min-width:250px;background:#fff;">';
+            html += '<option value="">-- 履歴を選択 --</option>';
+            history.forEach(function(item) {
+                var selected = selectedHistoryId === item.id ? ' selected' : '';
+                html += '<option value="' + item.id + '"' + selected + '>' + escapeHtml(item.name) + ' (' + item.storeCount + '店舗)</option>';
             });
+            html += '</select>';
+            html += '<button onclick="loadSelectedHistory()" style="background:#4caf50;color:#fff;border:none;padding:8px 15px;border-radius:4px;cursor:pointer;font-size:12px;">📥 読込</button>';
+            html += '<button onclick="deleteSelectedHistory()" style="background:#f44336;color:#fff;border:none;padding:8px 15px;border-radius:4px;cursor:pointer;font-size:12px;">🗑 削除</button>';
+            html += '</div>';
+
+            // 選択中の履歴情報を表示
+            html += '<div id="historyPreview"></div>';
+
+            container.innerHTML = html;
+
+            // 選択中の履歴があればプレビュー表示
+            if (selectedHistoryId) {
+                previewHistoryData(selectedHistoryId);
+            }
+        }
+
+        function previewHistoryData(idStr) {
+            var id = parseInt(idStr);
+            selectedHistoryId = id || null;
+
+            var previewDiv = document.getElementById('historyPreview');
+            if (!previewDiv) return;
+
+            if (!id) {
+                previewDiv.innerHTML = '';
+                return;
+            }
+
+            var history = getMasterHistory();
+            var item = history.find(function(h) { return h.id === id; });
+            if (!item) {
+                previewDiv.innerHTML = '<div style="color:#f44336;">履歴が見つかりません</div>';
+                return;
+            }
+
+            var html = '<div style="background:#f3e5f5;border:2px solid #9c27b0;border-radius:8px;padding:15px;margin-top:10px;">';
+            html += '<div style="display:flex;justify-content:space-between;align-items:start;">';
+            html += '<div>';
+            html += '<h5 style="color:#7b1fa2;margin:0 0 8px 0;">📋 ' + escapeHtml(item.name) + '</h5>';
+            html += '<div style="font-size:11px;color:#666;margin-bottom:8px;">保存日時: ' + new Date(item.savedAt).toLocaleString('ja-JP') + '</div>';
+            html += '<div style="display:flex;gap:8px;flex-wrap:wrap;">';
+            html += '<span style="background:#4caf50;color:#fff;padding:3px 8px;border-radius:4px;font-size:11px;">🏪 店番: ' + item.storeCount + '件</span>';
+            html += '<span style="background:#ff9800;color:#fff;padding:3px 8px;border-radius:4px;font-size:11px;">📋 項目コード: ' + (item.codeMapCount + item.nameMapCount) + '件</span>';
+            html += '<span style="background:#2196f3;color:#fff;padding:3px 8px;border-radius:4px;font-size:11px;">💰 客単価: ' + item.storeCount + '件</span>';
+            html += '</div>';
+            html += '</div>';
+            html += '</div>';
+
+            // 店舗リストのプレビュー
+            var stores = item.unitPrices || item.stores;
+            var storeNames = Object.keys(stores);
+            if (storeNames.length > 0) {
+                html += '<div style="margin-top:12px;max-height:150px;overflow-y:auto;background:#fff;border-radius:4px;padding:8px;">';
+                html += '<div style="font-size:10px;color:#666;margin-bottom:5px;">店舗一覧（先頭5件）:</div>';
+                storeNames.slice(0, 5).forEach(function(name, i) {
+                    var prices = stores[name];
+                    html += '<div style="font-size:11px;padding:2px 0;border-bottom:1px solid #eee;">';
+                    html += '<span style="color:#4caf50;font-weight:bold;">' + String(i+1).padStart(3,'0') + '</span> ';
+                    html += escapeHtml(name);
+                    html += ' <span style="color:#1565c0;">' + (prices.total || 0).toLocaleString() + '円</span>';
+                    html += '</div>';
+                });
+                if (storeNames.length > 5) {
+                    html += '<div style="font-size:10px;color:#999;padding-top:5px;">...他 ' + (storeNames.length - 5) + '件</div>';
+                }
+                html += '</div>';
+            }
 
             html += '</div>';
-            container.innerHTML = html;
+            previewDiv.innerHTML = html;
+        }
+
+        function loadSelectedHistory() {
+            var select = document.getElementById('historySelect');
+            if (!select || !select.value) {
+                showStatus('warn', '履歴を選択してください');
+                return;
+            }
+            loadMasterFromHistory(parseInt(select.value));
+        }
+
+        function deleteSelectedHistory() {
+            var select = document.getElementById('historySelect');
+            if (!select || !select.value) {
+                showStatus('warn', '履歴を選択してください');
+                return;
+            }
+            deleteMasterHistory(parseInt(select.value));
         }
 
         function loadMasterFromHistory(id) {
