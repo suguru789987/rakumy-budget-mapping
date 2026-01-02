@@ -1409,8 +1409,8 @@
             '552': { v15No: 57, name: '警備料', category: '固定費', inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
             '5241': { v15No: 58, name: 'リース料', category: '固定費', inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
             '524': { v15No: 59, name: '賃借料', category: '固定費', inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
-            // === 利益（No.61, 63） ===
-            '9640': { v15No: 61, name: '店舗営業利益', category: '利益', inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定' },
+            // === 利益（No.63）営業利益は自動計算（店舗営業利益-販売管理費合計） ===
+            '9640': { v15No: 63, name: '営業利益', category: '利益', inputStyle: 'C.自動演算', screen: '設定>月次予算設定' },
             // === KPI（No.64-70） ===
             '9641': { v15No: 64, name: '客数', category: 'KPI', inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定' },
             '9642': { v15No: 65, name: '客単価', category: 'KPI', inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定' }
@@ -1762,6 +1762,15 @@
                 formula: 'FD仕入費 + PA人件費合計',
                 desc: '原価+PA人件費',
                 v17Ref: 'No.53自動演算'
+            },
+
+            // === 営業利益（No.63自動演算）===
+            '営業利益': {
+                type: 'diff',
+                minuend: 'item:61',      // 店舗営業利益
+                subtrahend: 'item:62',   // 販売管理費合計
+                desc: '店舗営業利益-販売管理費合計',
+                v17Ref: 'No.63自動演算'
             }
         };
 
@@ -8044,6 +8053,23 @@
                     }
                 }
             }
+
+            // ★ 営業利益（No.63）の自動計算値をannualDataに反映
+            // No.63は'C.自動演算'タイプのため、常に計算値を使用
+            // 営業利益 = 店舗営業利益(No.61) - 販売管理費合計(No.62)
+            if (calcResults[0] && calcResults[0]['営業利益'] !== undefined) {
+                var csvNo63 = annualData[63] ? JSON.parse(JSON.stringify(annualData[63])) : null;
+                if (!annualData[63]) annualData[63] = {};
+                for (var m = 0; m < activeMonths.length; m++) {
+                    var calcValue = calcResults[m]['営業利益'] || 0;
+                    annualData[63][m] = calcValue;
+                }
+                console.log('営業利益（No.63）を自動計算: 店舗営業利益(No.61) - 販売管理費合計(No.62)');
+                if (csvNo63) {
+                    console.log('  CSVインポート値:', csvNo63);
+                }
+                console.log('  計算結果:', annualData[63]);
+            }
         }
 
         function evaluateRule(rule, mi) {
@@ -8056,6 +8082,11 @@
                 var num = parseSourceValue(rule.numerator, mi);
                 var denom = parseSourceValue(rule.denominator, mi);
                 return denom > 0 ? (num / denom * 100) : 0;
+            } else if (rule.type === 'diff') {
+                // 減算タイプ: minuend - subtrahend（営業利益 = 店舗営業利益 - 販売管理費合計 など）
+                var minuend = parseSourceValue(rule.minuend, mi);
+                var subtrahend = parseSourceValue(rule.subtrahend, mi);
+                return minuend - subtrahend;
             } else if (rule.type === 'default') {
                 return rule.value || 0;
             }
