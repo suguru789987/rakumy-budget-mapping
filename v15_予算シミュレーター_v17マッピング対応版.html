@@ -8253,21 +8253,27 @@
                 }
             }
 
-            // ★ 営業利益（No.63）の自動計算値をannualDataに反映
-            // No.63は'C.自動演算'タイプのため、常に計算値を使用
-            // 営業利益 = 店舗営業利益(No.61) - 販売管理費合計(No.62)
-            if (calcResults[0] && calcResults[0]['営業利益'] !== undefined) {
-                var csvNo63 = annualData[63] ? JSON.parse(JSON.stringify(annualData[63])) : null;
+            // ★ 営業利益（No.63）の取り込みロジック
+            // 方法1（優先）: NAME_BASED_MAP経由でCSVから直接インポート
+            // 方法2（フォールバック）: CALC_RULES経由で計算（店舗営業利益 - 販売管理費合計）
+            var hasNo63FromCSV = annualData[63] && activeMonths.some(function(m) {
+                return annualData[63][m] !== undefined && annualData[63][m] !== null && annualData[63][m] !== 0;
+            });
+
+            if (hasNo63FromCSV) {
+                // 方法1: CSVから直接取り込み済み - そのまま使用
+                console.log('【営業利益 No.63】方法1採用: CSVから直接インポート（NAME_BASED_MAP経由）');
+                console.log('  インポート値:', JSON.stringify(annualData[63]));
+            } else if (calcResults[0] && calcResults[0]['営業利益'] !== undefined) {
+                // 方法2: 計算で生成（CSVに値がない場合のフォールバック）
                 if (!annualData[63]) annualData[63] = {};
                 for (var m = 0; m < activeMonths.length; m++) {
                     var calcValue = calcResults[m]['営業利益'] || 0;
                     annualData[63][m] = calcValue;
                 }
-                console.log('営業利益（No.63）を自動計算: 店舗営業利益(No.61) - 販売管理費合計(No.62)');
-                if (csvNo63) {
-                    console.log('  CSVインポート値:', csvNo63);
-                }
-                console.log('  計算結果:', annualData[63]);
+                console.log('【営業利益 No.63】方法2採用: 計算で生成（CALC_RULES経由）');
+                console.log('  計算式: 店舗営業利益(No.61) - 販売管理費合計(No.62)');
+                console.log('  計算結果:', JSON.stringify(annualData[63]));
             }
         }
 
