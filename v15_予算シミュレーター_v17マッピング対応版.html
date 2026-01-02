@@ -1773,10 +1773,10 @@
             '554': { v17No: 56, category: '固定費', name: '家賃' },
             '552': { v17No: 57, category: '固定費', name: '警備料' },
             '5241': { v17No: 58, category: '固定費', name: 'リース料' },
-            '524': { v17No: 59, category: '固定費', name: '賃借料' },
+            '524': { v17No: 59, category: '固定費', name: '賃借料' }
             // === 利益・集計コード ===
-            // 9640は削除（不正確な値のため）- 営業利益はNAME_BASED_MAPで取得
-            '9700': { v17No: 74, category: '利益', name: '経常利益' }
+            // 9640, 9700は削除（合計値・計算値はNAME_BASED_MAPで取得）
+            // 営業利益(63), 経常利益(74)等はCSVの項目名から直接マッピング
         };
 
         // 勘定科目コードからv17Noを検索（強化版）
@@ -7867,6 +7867,7 @@
 
             var codeMatchCount = 0;
             var nameMatchCount = 0;
+            var conflictCount = 0;  // コードベースと名前ベースの競合数
 
             // デバッグ用：監視対象のv17No（欠落が報告されている項目）
             var DEBUG_V17NOS = [1, 8, 9, 11, 12, 20];
@@ -7940,7 +7941,19 @@
                     addLog('【TRACE】行' + lineIdx + ': code="' + accountCode + '"→' + codeMatchInfo + ', name="' + itemName + '"→' + nameMatchInfo, 'data');
                 }
 
-                // マッチ結果を統合（コード優先）
+                // ★ コードベースと名前ベースの競合検出
+                if (codeMatch && nameMatch && codeMatch.v17No !== nameMatch.v17No) {
+                    // 月次データの最初の値を取得（警告表示用）
+                    var sampleVal = parseCustomNumber(cols[budgetColumnPositions[0].budgetCol] || '');
+                    addLog('⚠️【競合警告】行' + lineIdx + ': コード"' + accountCode + '"→v17No.' + codeMatch.v17No +
+                           ' vs 項目名"' + itemName + '"→v17No.' + nameMatch.v17No +
+                           ' | 値=' + sampleVal + ' | 名前ベースを採用', 'warn');
+                    // 合計値・計算値はNAME_BASED_MAPを優先（コードの値は信頼性が低い場合がある）
+                    codeMatch = null;  // コードマッチを無効化して名前マッチを採用
+                    conflictCount++;
+                }
+
+                // マッチ結果を統合（名前優先に変更 - 合計値・計算値対策）
                 var finalMatch = null;
                 var matchType = '';
                 var matchSource = '';  // マッチ元の列情報
@@ -8145,6 +8158,9 @@
             addLog('マッチ成功: ' + matchedItems.length + '行', 'success');
             addLog('  ├ コードマッチ (B列): ' + codeMatchCount + '行', 'success');
             addLog('  └ 項目名マッチ (C/D/E列): ' + nameMatchCount + '行', 'success');
+            if (conflictCount > 0) {
+                addLog('⚠️ 競合検出（名前ベース採用）: ' + conflictCount + '件', 'warn');
+            }
             addLog('マッピング未定義: ' + unmatchedItems.length + '行', 'warn');
 
             // 未マッチ項目の詳細
