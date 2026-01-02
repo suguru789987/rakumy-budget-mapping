@@ -233,6 +233,34 @@
         .data-item .delete-btn:hover { background: #e53935; }
         .empty-message { text-align: center; padding: 30px; color: #999; font-size: 14px; }
 
+        /* 保存済み取り込みデータ履歴 */
+        .history-item {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 15px;
+            background: #fff;
+            border-bottom: 1px solid #e1bee7;
+            gap: 10px;
+        }
+        .history-item:last-child { border-bottom: none; }
+        .history-item:hover { background: #fce4ec; }
+        .history-title { font-weight: bold; color: #7b1fa2; font-size: 13px; }
+        .history-meta { font-size: 11px; color: #666; }
+        .history-stores { font-size: 11px; color: #4caf50; }
+        .history-actions { display: flex; gap: 8px; }
+        .history-actions .load-btn {
+            background: #4caf50; color: #fff; border: none;
+            padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px;
+        }
+        .history-actions .load-btn:hover { background: #43a047; }
+        .history-actions .delete-btn {
+            background: #f44336; color: #fff; border: none;
+            padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px;
+        }
+        .history-actions .delete-btn:hover { background: #e53935; }
+
         /* 取り込みデータ履歴一覧画面（フルスクリーン） */
         .data-history-page {
             position: fixed;
@@ -565,9 +593,23 @@
 
                 <!-- 取り込みデータ履歴ボタン -->
                 <div style="margin-top:20px;padding-top:20px;border-top:2px solid #e0e0e0;">
-                    <button class="btn" style="background:linear-gradient(135deg, #1565c0 0%, #0d47a1 100%);color:#fff;padding:15px 30px;width:100%;font-size:16px;border-radius:8px;" onclick="showDataHistoryPage()">
-                        📋 取り込みデータ履歴を見る (<span id="importedStoreCount">0</span>件)
-                    </button>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                        <button class="btn" style="background:linear-gradient(135deg, #1565c0 0%, #0d47a1 100%);color:#fff;padding:15px 20px;flex:1;font-size:14px;border-radius:8px;" onclick="showDataHistoryPage()">
+                            📋 取り込みデータ履歴を見る (<span id="importedStoreCount">0</span>件)
+                        </button>
+                        <button class="btn" style="background:linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);color:#fff;padding:15px 20px;font-size:14px;border-radius:8px;" onclick="saveCurrentImportData()">
+                            💾 現在の取り込みデータを保存
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 保存済み取り込みデータ履歴 -->
+                <div id="historySection" style="margin-top:20px;display:none;">
+                    <div style="background:linear-gradient(135deg, #7b1fa2 0%, #4a148c 100%);color:#fff;padding:12px 20px;border-radius:8px 8px 0 0;display:flex;justify-content:space-between;align-items:center;">
+                        <h4 style="margin:0;font-size:14px;">📂 保存済み取り込みデータ履歴</h4>
+                        <button onclick="clearAllHistory()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;padding:5px 10px;border-radius:4px;cursor:pointer;font-size:11px;">🗑 全削除</button>
+                    </div>
+                    <div id="historyList" style="background:#f3e5f5;border:2px solid #7b1fa2;border-top:none;border-radius:0 0 8px 8px;max-height:300px;overflow-y:auto;"></div>
                 </div>
 
                 <!-- 検出結果表示 -->
@@ -10820,6 +10862,11 @@
             var h = ('0' + now.getHours()).slice(-2);
             var min = ('0' + now.getMinutes()).slice(-2);
             return y + '-' + m + '-' + d + '_' + h + ':' + min;
+        }
+
+        // ボタンから呼び出し用（saveToHistoryのエイリアス）
+        function saveCurrentImportData() {
+            saveToHistory();
         }
 
         // 履歴を保存
