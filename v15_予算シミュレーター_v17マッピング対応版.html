@@ -1379,6 +1379,18 @@
                     </div>
                     <div id="savedHistoryList" class="data-history-list"></div>
                 </div>
+
+                <!-- プレビューパネル -->
+                <div id="savedHistoryPreview" style="display:none;margin-top:30px;background:#fff;border-radius:12px;padding:20px;border:3px solid #1565c0;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                        <h3 style="margin:0;color:#1565c0;font-size:18px;">🔍 データプレビュー: <span id="previewTitle"></span></h3>
+                        <div>
+                            <button class="btn" style="background:#4caf50;color:#fff;padding:10px 20px;margin-right:10px;" onclick="loadPreviewedData()">📥 このデータを読み込み</button>
+                            <button class="btn btn-secondary" onclick="closeHistoryPreview()">✕ 閉じる</button>
+                        </div>
+                    </div>
+                    <div id="previewContent" style="max-height:500px;overflow-y:auto;"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -2434,6 +2446,7 @@
                 html += '    </div>';
                 html += '  </div>';
                 html += '  <div class="item-actions">';
+                html += '    <button class="btn" style="background:#1565c0;color:#fff;padding:8px 16px;margin-right:5px;" onclick="previewSavedHistory(\'' + entry.id + '\')">🔍 プレビュー</button>';
                 html += '    <button class="btn-view" onclick="loadFromHistoryAndClose(\'' + entry.id + '\')">読み込み</button>';
                 html += '    <button class="btn-delete" onclick="deleteFromHistoryAndRefresh(\'' + entry.id + '\')">削除</button>';
                 html += '  </div>';
@@ -2453,6 +2466,141 @@
         function deleteFromHistoryAndRefresh(id) {
             deleteFromHistory(id);
             renderSavedHistoryList();
+        }
+
+        // プレビュー中の履歴ID
+        var previewingHistoryId = null;
+
+        // 保存済み履歴のプレビュー
+        function previewSavedHistory(id) {
+            var history = loadHistory();
+            var entry = history.find(function(h) { return h.id === id; });
+            if (!entry) {
+                alert('履歴が見つかりません');
+                return;
+            }
+
+            previewingHistoryId = id;
+
+            // タイトル表示
+            document.getElementById('previewTitle').textContent = entry.title;
+
+            // プレビュー内容を構築
+            var html = '';
+
+            // 店舗ごとにデータを表示
+            Object.keys(entry.data).forEach(function(storeName, storeIndex) {
+                var storeData = entry.data[storeName];
+                html += '<div style="margin-bottom:25px;background:#f8f9fa;border-radius:8px;padding:15px;border:1px solid #e0e0e0;">';
+                html += '<h4 style="margin:0 0 15px 0;color:#333;font-size:16px;border-bottom:2px solid #1565c0;padding-bottom:10px;">🏪 ' + escapeHtml(storeName) + '</h4>';
+
+                // マッチ済み項目の表示
+                if (storeData.matchedItems && storeData.matchedItems.length > 0) {
+                    html += '<div style="margin-bottom:15px;">';
+                    html += '<h5 style="margin:0 0 10px 0;color:#28a745;font-size:13px;">✅ マッチ済み項目（' + storeData.matchedItems.length + '件）</h5>';
+                    html += '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
+                    html += '<thead><tr style="background:#e8f5e9;">';
+                    html += '<th style="padding:6px;border:1px solid #c8e6c9;text-align:left;">項目名</th>';
+                    html += '<th style="padding:6px;border:1px solid #c8e6c9;text-align:left;">コード</th>';
+                    html += '<th style="padding:6px;border:1px solid #c8e6c9;text-align:right;">年間合計</th>';
+                    html += '</tr></thead><tbody>';
+
+                    storeData.matchedItems.slice(0, 15).forEach(function(item) {
+                        // 年間合計を計算
+                        var yearTotal = 0;
+                        if (storeData.annualData && storeData.annualData[item.name]) {
+                            var itemData = storeData.annualData[item.name];
+                            for (var m = 0; m < 12; m++) {
+                                yearTotal += (itemData[m] || 0);
+                            }
+                        }
+                        html += '<tr>';
+                        html += '<td style="padding:5px;border:1px solid #e0e0e0;">' + escapeHtml(item.name) + '</td>';
+                        html += '<td style="padding:5px;border:1px solid #e0e0e0;">' + escapeHtml(item.code || '-') + '</td>';
+                        html += '<td style="padding:5px;border:1px solid #e0e0e0;text-align:right;">' + formatNumber(yearTotal) + '</td>';
+                        html += '</tr>';
+                    });
+                    if (storeData.matchedItems.length > 15) {
+                        html += '<tr><td colspan="3" style="padding:5px;text-align:center;color:#888;">他 ' + (storeData.matchedItems.length - 15) + ' 件...</td></tr>';
+                    }
+                    html += '</tbody></table>';
+                    html += '</div>';
+                }
+
+                // アンマッチ項目の表示
+                if (storeData.unmatchedItems && storeData.unmatchedItems.length > 0) {
+                    html += '<div style="margin-bottom:15px;">';
+                    html += '<h5 style="margin:0 0 10px 0;color:#dc3545;font-size:13px;">❌ 未マッチ項目（' + storeData.unmatchedItems.length + '件）</h5>';
+                    html += '<div style="display:flex;flex-wrap:wrap;gap:5px;">';
+                    storeData.unmatchedItems.slice(0, 10).forEach(function(item) {
+                        html += '<span style="background:#f8d7da;color:#721c24;padding:3px 8px;border-radius:4px;font-size:10px;">' + escapeHtml(item.name) + '</span>';
+                    });
+                    if (storeData.unmatchedItems.length > 10) {
+                        html += '<span style="background:#f8d7da;color:#721c24;padding:3px 8px;border-radius:4px;font-size:10px;">他 ' + (storeData.unmatchedItems.length - 10) + ' 件...</span>';
+                    }
+                    html += '</div>';
+                    html += '</div>';
+                }
+
+                // 月別データの表示（主要項目）
+                if (storeData.annualData && Object.keys(storeData.annualData).length > 0) {
+                    var months = storeData.monthLabels || FISCAL_ORDER;
+                    html += '<div>';
+                    html += '<h5 style="margin:0 0 10px 0;color:#1565c0;font-size:13px;">📊 月別データ（主要項目）</h5>';
+                    html += '<div style="overflow-x:auto;">';
+                    html += '<table style="width:100%;border-collapse:collapse;font-size:10px;min-width:800px;">';
+                    html += '<thead><tr style="background:#e3f2fd;">';
+                    html += '<th style="padding:5px;border:1px solid #bbdefb;text-align:left;min-width:120px;">項目</th>';
+                    months.forEach(function(m) {
+                        html += '<th style="padding:5px;border:1px solid #bbdefb;text-align:right;width:65px;">' + m + '</th>';
+                    });
+                    html += '<th style="padding:5px;border:1px solid #bbdefb;text-align:right;width:80px;background:#fff3e0;">年計</th>';
+                    html += '</tr></thead><tbody>';
+
+                    // 主要項目を表示（最大10項目）
+                    var displayItems = Object.keys(storeData.annualData).slice(0, 10);
+                    displayItems.forEach(function(itemName) {
+                        var values = storeData.annualData[itemName];
+                        var total = 0;
+                        html += '<tr>';
+                        html += '<td style="padding:4px;border:1px solid #e0e0e0;font-weight:bold;">' + escapeHtml(itemName) + '</td>';
+                        for (var m = 0; m < 12; m++) {
+                            var val = values[m] || 0;
+                            total += val;
+                            html += '<td style="padding:4px;border:1px solid #e0e0e0;text-align:right;">' + formatNumber(val) + '</td>';
+                        }
+                        html += '<td style="padding:4px;border:1px solid #e0e0e0;text-align:right;background:#fff8e1;font-weight:bold;">' + formatNumber(total) + '</td>';
+                        html += '</tr>';
+                    });
+                    if (Object.keys(storeData.annualData).length > 10) {
+                        html += '<tr><td colspan="14" style="padding:5px;text-align:center;color:#888;">他 ' + (Object.keys(storeData.annualData).length - 10) + ' 項目...</td></tr>';
+                    }
+                    html += '</tbody></table>';
+                    html += '</div>';
+                    html += '</div>';
+                }
+
+                html += '</div>';
+            });
+
+            document.getElementById('previewContent').innerHTML = html;
+            document.getElementById('savedHistoryPreview').style.display = 'block';
+
+            // プレビューパネルまでスクロール
+            document.getElementById('savedHistoryPreview').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // プレビュー中のデータを読み込み
+        function loadPreviewedData() {
+            if (previewingHistoryId) {
+                loadFromHistoryAndClose(previewingHistoryId);
+            }
+        }
+
+        // プレビューを閉じる
+        function closeHistoryPreview() {
+            document.getElementById('savedHistoryPreview').style.display = 'none';
+            previewingHistoryId = null;
         }
 
         // JavaScript用エスケープ
