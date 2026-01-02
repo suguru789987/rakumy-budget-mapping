@@ -6397,36 +6397,69 @@
             container.innerHTML = html;
         }
 
+        var masterPriceType = 'total';  // 'total', 'lunch', 'dinner'
+
+        function switchMasterPriceType(type) {
+            masterPriceType = type;
+            renderMasterPricesContent();
+        }
+
         function renderMasterPricesContent() {
             var container = document.getElementById('masterPricesContent');
             if (!container) return;
 
             var storeNames = Object.keys(DEFAULT_UNIT_PRICES);
-            var html = '<h5 style="color:#2196f3;margin:0 0 10px 0;">💰 店別目標客単価マスタ</h5>';
-            html += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
-            html += '<tr style="background:#2196f3;color:#fff;">';
-            html += '<th style="padding:8px;text-align:center;width:60px;">店番</th>';
-            html += '<th style="padding:8px;text-align:left;">店舗名</th>';
-            html += '<th style="padding:8px;text-align:right;">目標客単価(総合)</th>';
-            html += '<th style="padding:8px;text-align:right;">目標客単価(ランチ)</th>';
-            html += '<th style="padding:8px;text-align:right;">目標客単価(ディナー)</th>';
+            var months = ['4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月', '1月', '2月', '3月'];
+            var typeLabels = { total: '総合', lunch: 'ランチ', dinner: 'ディナー' };
+            var typeColors = { total: '#1565c0', lunch: '#ff9800', dinner: '#9c27b0' };
+
+            var html = '<h5 style="color:#2196f3;margin:0 0 10px 0;">💰 店別月別目標客単価マスタ</h5>';
+
+            // タイプ切替ボタン
+            html += '<div style="margin-bottom:10px;display:flex;gap:8px;">';
+            html += '<button onclick="switchMasterPriceType(\'total\')" style="padding:6px 12px;border:none;border-radius:4px;cursor:pointer;font-size:11px;' +
+                    (masterPriceType === 'total' ? 'background:#1565c0;color:#fff;' : 'background:#e0e0e0;color:#333;') + '">総合</button>';
+            html += '<button onclick="switchMasterPriceType(\'lunch\')" style="padding:6px 12px;border:none;border-radius:4px;cursor:pointer;font-size:11px;' +
+                    (masterPriceType === 'lunch' ? 'background:#ff9800;color:#fff;' : 'background:#e0e0e0;color:#333;') + '">ランチ</button>';
+            html += '<button onclick="switchMasterPriceType(\'dinner\')" style="padding:6px 12px;border:none;border-radius:4px;cursor:pointer;font-size:11px;' +
+                    (masterPriceType === 'dinner' ? 'background:#9c27b0;color:#fff;' : 'background:#e0e0e0;color:#333;') + '">ディナー</button>';
+            html += '</div>';
+
+            // 月別テーブル
+            html += '<div style="overflow-x:auto;">';
+            html += '<table style="width:100%;border-collapse:collapse;font-size:11px;min-width:900px;">';
+            html += '<tr style="background:' + typeColors[masterPriceType] + ';color:#fff;">';
+            html += '<th style="padding:6px;text-align:center;width:50px;position:sticky;left:0;background:' + typeColors[masterPriceType] + ';">店番</th>';
+            html += '<th style="padding:6px;text-align:left;min-width:150px;position:sticky;left:50px;background:' + typeColors[masterPriceType] + ';">店舗名</th>';
+            months.forEach(function(m) {
+                html += '<th style="padding:6px;text-align:right;min-width:65px;">' + m + '</th>';
+            });
             html += '</tr>';
 
             storeNames.forEach(function(storeName, index) {
                 var prices = DEFAULT_UNIT_PRICES[storeName];
-                var bgColor = index % 2 === 0 ? '#fff' : '#e3f2fd';
+                var bgColor = index % 2 === 0 ? '#fff' : '#f5f5f5';
                 var storeNo = String(index + 1).padStart(3, '0');
+                var value = prices[masterPriceType] || 0;
+                // 月別データがあれば使用、なければデフォルト値を全月に適用
+                var monthlyData = prices.monthly || {};
+
                 html += '<tr style="background:' + bgColor + ';">';
-                html += '<td style="padding:6px 8px;text-align:center;font-family:monospace;">' + storeNo + '</td>';
-                html += '<td style="padding:6px 8px;">' + escapeHtml(storeName) + '</td>';
-                html += '<td style="padding:6px 8px;text-align:right;font-weight:bold;color:#1565c0;">' + prices.total.toLocaleString() + '円</td>';
-                html += '<td style="padding:6px 8px;text-align:right;color:#ff9800;">' + prices.lunch.toLocaleString() + '円</td>';
-                html += '<td style="padding:6px 8px;text-align:right;color:#9c27b0;">' + prices.dinner.toLocaleString() + '円</td>';
+                html += '<td style="padding:4px 6px;text-align:center;font-family:monospace;font-size:10px;position:sticky;left:0;background:' + bgColor + ';">' + storeNo + '</td>';
+                html += '<td style="padding:4px 6px;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;position:sticky;left:50px;background:' + bgColor + ';" title="' + escapeHtml(storeName) + '">' + escapeHtml(storeName) + '</td>';
+
+                for (var m = 0; m < 12; m++) {
+                    var monthValue = monthlyData[m] ? (monthlyData[m][masterPriceType] || value) : value;
+                    var displayValue = monthValue > 0 ? monthValue.toLocaleString() : '-';
+                    var cellColor = monthValue > 0 ? typeColors[masterPriceType] : '#999';
+                    html += '<td style="padding:4px 6px;text-align:right;font-size:10px;color:' + cellColor + ';">' + displayValue + '</td>';
+                }
                 html += '</tr>';
             });
 
             html += '</table>';
-            html += '<div style="margin-top:10px;font-size:11px;color:#666;">合計: ' + storeNames.length + '店舗</div>';
+            html += '</div>';
+            html += '<div style="margin-top:10px;font-size:11px;color:#666;">合計: ' + storeNames.length + '店舗 × 12ヶ月 | 表示: 目標客単価（' + typeLabels[masterPriceType] + '）</div>';
             container.innerHTML = html;
         }
 
