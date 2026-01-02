@@ -445,6 +445,39 @@
         .main-page { display: none; }
         .main-page.active { display: block; }
 
+        /* サブタブスタイル */
+        .import-subtabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        .subtab {
+            padding: 12px 24px;
+            border: none;
+            background: #f5f5f5;
+            color: #666;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 8px 8px 0 0;
+            margin-right: 4px;
+            transition: all 0.3s ease;
+        }
+        .subtab:hover {
+            background: #e0e0e0;
+        }
+        .subtab.active {
+            background: linear-gradient(135deg, #2196f3 0%, #1565c0 100%);
+            color: #fff;
+        }
+        .import-subtab-content {
+            display: none;
+        }
+        .import-subtab-content.active {
+            display: block;
+        }
+
         @media (max-width: 768px) {
             .summary-grid { grid-template-columns: repeat(3, 1fr); }
             .month-cols-grid { grid-template-columns: repeat(4, 1fr); }
@@ -478,8 +511,29 @@
 
         <!-- ===== インポートページ ===== -->
         <div id="page-import" class="main-page active">
-            <div class="import-section" style="border-left:4px solid #2196f3;">
-                <h2 style="color:#1565c0;font-size:18px;margin-bottom:20px;">📥 CSVファイルをインポート</h2>
+            <!-- サブタブナビゲーション -->
+            <div class="import-subtabs">
+                <button class="subtab active" onclick="switchImportSubtab('budget')">📥 予算インポート</button>
+                <button class="subtab" onclick="switchImportSubtab('settings')">⚙️ 設定インポート</button>
+            </div>
+
+            <!-- ===== 予算インポートサブタブ ===== -->
+            <div id="import-subtab-budget" class="import-subtab-content active">
+                <div class="import-section" style="border-left:4px solid #2196f3;">
+                    <h2 style="color:#1565c0;font-size:18px;margin-bottom:20px;">📥 顧客予算CSVをインポート</h2>
+
+                    <!-- 予算テンプレートダウンロードボタン -->
+                    <div style="margin-bottom:20px;padding:15px;background:#e3f2fd;border-radius:8px;border:1px solid #90caf9;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                            <div style="font-size:12px;color:#1565c0;">
+                                <strong>予算テンプレート</strong><br>
+                                空の予算CSVテンプレートをダウンロードできます
+                            </div>
+                            <button class="btn btn-info" onclick="downloadBudgetTemplate()" style="padding:8px 16px;font-size:12px;">
+                                📄 予算テンプレートをダウンロード
+                            </button>
+                        </div>
+                    </div>
 
                 <!-- ドラッグ＆ドロップエリア -->
                 <div id="dropZone" class="drop-zone" ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
@@ -627,6 +681,90 @@
                     <div id="preprocessLog" class="preprocess-log">CSVをインポートしてください</div>
                 </div>
             </div>
+            </div><!-- /import-subtab-budget -->
+
+            <!-- ===== 設定インポートサブタブ ===== -->
+            <div id="import-subtab-settings" class="import-subtab-content">
+                <!-- 店番インポートセクション -->
+                <div class="import-section" style="border-left:4px solid #4caf50;margin-bottom:20px;">
+                    <h2 style="color:#2e7d32;font-size:18px;margin-bottom:20px;">🏪 店番インポート</h2>
+
+                    <!-- 店番テンプレートダウンロード -->
+                    <div style="margin-bottom:20px;padding:15px;background:#e8f5e9;border-radius:8px;border:1px solid #a5d6a7;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                            <div style="font-size:12px;color:#2e7d32;">
+                                <strong>店番テンプレート</strong><br>
+                                店番・店舗名のCSVテンプレートをダウンロードできます
+                            </div>
+                            <button class="btn" style="background:#4caf50;color:#fff;padding:8px 16px;font-size:12px;" onclick="downloadStoreTemplate()">
+                                📄 店番テンプレートをダウンロード
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 店番CSVドラッグ＆ドロップエリア -->
+                    <div id="storeDropZone" class="drop-zone" ondrop="handleStoreDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" style="border-color:#4caf50;">
+                        <div class="drop-zone-content">
+                            <div style="font-size:50px;margin-bottom:15px;">🏪</div>
+                            <div style="font-size:16px;font-weight:bold;margin-bottom:8px;">店番CSVファイルをここにドラッグ＆ドロップ</div>
+                            <div style="font-size:12px;color:#666;margin-bottom:15px;">または</div>
+                            <input type="file" id="storeCSVFile" accept=".csv" onchange="handleStoreFileSelect(event)" style="display:none;">
+                            <button class="btn" style="background:#4caf50;color:#fff;padding:12px 30px;font-size:14px;" onclick="document.getElementById('storeCSVFile').click()">ファイルを選択</button>
+                        </div>
+                    </div>
+                    <div id="storeImportStatus" style="margin-top:10px;"></div>
+
+                    <!-- 現在の店舗一覧 -->
+                    <div style="margin-top:20px;">
+                        <details>
+                            <summary style="cursor:pointer;padding:10px;background:#e8f5e9;border-radius:4px;font-weight:bold;color:#2e7d32;">
+                                📋 現在の登録店舗一覧を表示（クリックで展開）
+                            </summary>
+                            <div id="currentStoreList" style="margin-top:10px;max-height:300px;overflow-y:auto;"></div>
+                        </details>
+                    </div>
+                </div>
+
+                <!-- 予算項目コードインポートセクション -->
+                <div class="import-section" style="border-left:4px solid #ff9800;">
+                    <h2 style="color:#e65100;font-size:18px;margin-bottom:20px;">📋 予算項目コードインポート</h2>
+
+                    <!-- 予算項目コードテンプレートダウンロード -->
+                    <div style="margin-bottom:20px;padding:15px;background:#fff3e0;border-radius:8px;border:1px solid #ffcc80;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                            <div style="font-size:12px;color:#e65100;">
+                                <strong>予算項目コードテンプレート</strong><br>
+                                現在のマッピング定義をCSVでダウンロードできます
+                            </div>
+                            <button class="btn" style="background:#ff9800;color:#fff;padding:8px 16px;font-size:12px;" onclick="downloadMappingTemplate()">
+                                📄 項目コードテンプレートをダウンロード
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 予算項目コードCSVドラッグ＆ドロップエリア -->
+                    <div id="mappingDropZone" class="drop-zone" ondrop="handleMappingDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" style="border-color:#ff9800;">
+                        <div class="drop-zone-content">
+                            <div style="font-size:50px;margin-bottom:15px;">📋</div>
+                            <div style="font-size:16px;font-weight:bold;margin-bottom:8px;">予算項目コードCSVをここにドラッグ＆ドロップ</div>
+                            <div style="font-size:12px;color:#666;margin-bottom:15px;">または</div>
+                            <input type="file" id="mappingCSVFile" accept=".csv" onchange="importMappingCSV(event)" style="display:none;">
+                            <button class="btn" style="background:#ff9800;color:#fff;padding:12px 30px;font-size:14px;" onclick="document.getElementById('mappingCSVFile').click()">ファイルを選択</button>
+                        </div>
+                    </div>
+                    <div id="mappingImportStatus" style="margin-top:10px;"></div>
+
+                    <!-- 現在のマッピング定義一覧 -->
+                    <div style="margin-top:20px;">
+                        <details>
+                            <summary style="cursor:pointer;padding:10px;background:#fff3e0;border-radius:4px;font-weight:bold;color:#e65100;">
+                                📋 現在のマッピング定義一覧を表示（クリックで展開）
+                            </summary>
+                            <div id="currentMappingList" style="margin-top:10px;max-height:400px;overflow-y:auto;"></div>
+                        </details>
+                    </div>
+                </div>
+            </div><!-- /import-subtab-settings -->
         </div>
 
         <!-- ===== 予算試算ページ ===== -->
@@ -5483,6 +5621,7 @@
                 }
 
                 renderMappingTable();
+                updateCurrentMappingList();  // 設定タブの一覧も更新
                 showStatus('success', 'マッピングCSVをインポートしました: ' + importCount + '件' + (errorCount > 0 ? '（エラー: ' + errorCount + '件）' : ''));
 
                 // ファイル選択をリセット
@@ -5512,6 +5651,242 @@
             link.click();
 
             showStatus('success', 'マッピングCSVをエクスポートしました');
+        }
+
+        // ★★★ サブタブ切替関数 ★★★
+        function switchImportSubtab(tabName) {
+            // サブタブボタンの状態を更新
+            document.querySelectorAll('.import-subtabs .subtab').forEach(function(btn) {
+                btn.classList.remove('active');
+            });
+            document.querySelector('.import-subtabs .subtab[onclick*="' + tabName + '"]').classList.add('active');
+
+            // サブタブコンテンツの表示を更新
+            document.querySelectorAll('.import-subtab-content').forEach(function(content) {
+                content.classList.remove('active');
+            });
+            document.getElementById('import-subtab-' + tabName).classList.add('active');
+
+            // 設定タブ表示時にリストを更新
+            if (tabName === 'settings') {
+                updateCurrentStoreList();
+                updateCurrentMappingList();
+            }
+        }
+
+        // ★★★ 予算テンプレートダウンロード ★★★
+        function downloadBudgetTemplate() {
+            var csv = [];
+            var BOM = '\uFEFF';
+
+            // ヘッダー行（コード, 項目名, 4月〜3月）
+            csv.push('コード,項目名,4月,5月,6月,7月,8月,9月,10月,11月,12月,1月,2月,3月');
+
+            // データ行（CUSTOMER_CODE_MAPから項目を出力）
+            var sortedCodes = Object.keys(CUSTOMER_CODE_MAP).sort(function(a, b) {
+                return CUSTOMER_CODE_MAP[a].v15No - CUSTOMER_CODE_MAP[b].v15No;
+            });
+
+            sortedCodes.forEach(function(code) {
+                var item = CUSTOMER_CODE_MAP[code];
+                csv.push([code, item.name, '', '', '', '', '', '', '', '', '', '', '', ''].join(','));
+            });
+
+            var blob = new Blob([BOM + csv.join('\n')], { type: 'text/csv;charset=utf-8' });
+            var link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = '予算テンプレート_' + new Date().toISOString().slice(0,10) + '.csv';
+            link.click();
+
+            showStatus('success', '予算テンプレートをダウンロードしました');
+        }
+
+        // ★★★ 店番テンプレートダウンロード ★★★
+        function downloadStoreTemplate() {
+            var csv = [];
+            var BOM = '\uFEFF';
+
+            // ヘッダー行
+            csv.push('店番,店舗名');
+
+            // 既存の店舗リストから出力
+            var storeNames = Object.keys(DEFAULT_UNIT_PRICES);
+            storeNames.forEach(function(storeName, index) {
+                var storeNo = String(index + 1).padStart(3, '0');
+                csv.push([storeNo, storeName].join(','));
+            });
+
+            var blob = new Blob([BOM + csv.join('\n')], { type: 'text/csv;charset=utf-8' });
+            var link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = '店番テンプレート_' + new Date().toISOString().slice(0,10) + '.csv';
+            link.click();
+
+            showStatus('success', '店番テンプレートをダウンロードしました');
+        }
+
+        // ★★★ 予算項目コードテンプレートダウンロード ★★★
+        function downloadMappingTemplate() {
+            var csv = [];
+            var BOM = '\uFEFF';
+
+            // ヘッダー行
+            csv.push('コード,項目名,v17No,カテゴリ,入力スタイル');
+
+            // 現在のマッピング定義から出力
+            var sortedCodes = Object.keys(CUSTOMER_CODE_MAP).sort(function(a, b) {
+                return CUSTOMER_CODE_MAP[a].v15No - CUSTOMER_CODE_MAP[b].v15No;
+            });
+
+            sortedCodes.forEach(function(code) {
+                var item = CUSTOMER_CODE_MAP[code];
+                var inputStyle = item.inputStyle || 'B.通常入力';
+                csv.push([code, item.name, item.v15No, item.category, inputStyle].join(','));
+            });
+
+            var blob = new Blob([BOM + csv.join('\n')], { type: 'text/csv;charset=utf-8' });
+            var link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = '予算項目コードテンプレート_' + new Date().toISOString().slice(0,10) + '.csv';
+            link.click();
+
+            showStatus('success', '予算項目コードテンプレートをダウンロードしました');
+        }
+
+        // ★★★ 店番インポート関連 ★★★
+        function handleStoreDrop(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            document.getElementById('storeDropZone').classList.remove('drag-over');
+
+            var files = event.dataTransfer.files;
+            if (files.length > 0 && files[0].name.toLowerCase().endsWith('.csv')) {
+                importStoreCSV(files[0]);
+            } else {
+                document.getElementById('storeImportStatus').innerHTML = '<span style="color:#f44336;">CSVファイルを選択してください</span>';
+            }
+        }
+
+        function handleStoreFileSelect(event) {
+            var file = event.target.files[0];
+            if (file) {
+                importStoreCSV(file);
+            }
+            event.target.value = '';
+        }
+
+        function importStoreCSV(file) {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                var content = e.target.result;
+                var lines = content.split('\n');
+                var importCount = 0;
+                var errorCount = 0;
+
+                for (var i = 1; i < lines.length; i++) {
+                    var line = lines[i].trim();
+                    if (!line) continue;
+
+                    var cols = line.split(',');
+                    if (cols.length < 2) {
+                        errorCount++;
+                        continue;
+                    }
+
+                    var storeNo = cols[0].trim();
+                    var storeName = cols[1].trim();
+
+                    if (!storeName) {
+                        errorCount++;
+                        continue;
+                    }
+
+                    // 店舗がまだ登録されていなければ追加
+                    if (!DEFAULT_UNIT_PRICES[storeName]) {
+                        DEFAULT_UNIT_PRICES[storeName] = { total: 5000, lunch: 0, dinner: 5000 };
+                    }
+                    importCount++;
+                }
+
+                updateCurrentStoreList();
+                document.getElementById('storeImportStatus').innerHTML =
+                    '<span style="color:#4caf50;font-weight:bold;">店番CSVをインポートしました: ' + importCount + '件' +
+                    (errorCount > 0 ? '（エラー: ' + errorCount + '件）' : '') + '</span>';
+            };
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        // ★★★ マッピングドロップ処理 ★★★
+        function handleMappingDrop(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            document.getElementById('mappingDropZone').classList.remove('drag-over');
+
+            var files = event.dataTransfer.files;
+            if (files.length > 0 && files[0].name.toLowerCase().endsWith('.csv')) {
+                // 既存のimportMappingCSVを呼び出すためにイベントオブジェクトを模擬
+                var fakeEvent = { target: { files: files, value: '' } };
+                importMappingCSV(fakeEvent);
+                updateCurrentMappingList();
+            } else {
+                document.getElementById('mappingImportStatus').innerHTML = '<span style="color:#f44336;">CSVファイルを選択してください</span>';
+            }
+        }
+
+        // ★★★ 現在の店舗一覧を更新 ★★★
+        function updateCurrentStoreList() {
+            var container = document.getElementById('currentStoreList');
+            if (!container) return;
+
+            var storeNames = Object.keys(DEFAULT_UNIT_PRICES);
+            var html = '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+            html += '<tr style="background:#2e7d32;color:#fff;"><th style="padding:8px;text-align:left;">No</th><th style="padding:8px;text-align:left;">店舗名</th><th style="padding:8px;text-align:right;">客単価(総合)</th><th style="padding:8px;text-align:right;">客単価(ランチ)</th><th style="padding:8px;text-align:right;">客単価(ディナー)</th></tr>';
+
+            storeNames.forEach(function(storeName, index) {
+                var prices = DEFAULT_UNIT_PRICES[storeName];
+                var bgColor = index % 2 === 0 ? '#fff' : '#f5f5f5';
+                html += '<tr style="background:' + bgColor + ';">';
+                html += '<td style="padding:6px 8px;">' + (index + 1) + '</td>';
+                html += '<td style="padding:6px 8px;">' + escapeHtml(storeName) + '</td>';
+                html += '<td style="padding:6px 8px;text-align:right;">' + prices.total.toLocaleString() + '円</td>';
+                html += '<td style="padding:6px 8px;text-align:right;">' + prices.lunch.toLocaleString() + '円</td>';
+                html += '<td style="padding:6px 8px;text-align:right;">' + prices.dinner.toLocaleString() + '円</td>';
+                html += '</tr>';
+            });
+
+            html += '</table>';
+            html += '<div style="margin-top:10px;font-size:11px;color:#666;">合計: ' + storeNames.length + '店舗</div>';
+            container.innerHTML = html;
+        }
+
+        // ★★★ 現在のマッピング定義一覧を更新 ★★★
+        function updateCurrentMappingList() {
+            var container = document.getElementById('currentMappingList');
+            if (!container) return;
+
+            var sortedCodes = Object.keys(CUSTOMER_CODE_MAP).sort(function(a, b) {
+                return CUSTOMER_CODE_MAP[a].v15No - CUSTOMER_CODE_MAP[b].v15No;
+            });
+
+            var html = '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+            html += '<tr style="background:#e65100;color:#fff;"><th style="padding:8px;text-align:left;">コード</th><th style="padding:8px;text-align:left;">項目名</th><th style="padding:8px;text-align:center;">v17No</th><th style="padding:8px;text-align:left;">カテゴリ</th><th style="padding:8px;text-align:left;">入力スタイル</th></tr>';
+
+            sortedCodes.forEach(function(code, index) {
+                var item = CUSTOMER_CODE_MAP[code];
+                var bgColor = index % 2 === 0 ? '#fff' : '#fff8e1';
+                var inputStyle = item.inputStyle || 'B.通常入力';
+                html += '<tr style="background:' + bgColor + ';">';
+                html += '<td style="padding:6px 8px;font-family:monospace;">' + escapeHtml(code) + '</td>';
+                html += '<td style="padding:6px 8px;">' + escapeHtml(item.name) + '</td>';
+                html += '<td style="padding:6px 8px;text-align:center;">' + item.v15No + '</td>';
+                html += '<td style="padding:6px 8px;">' + escapeHtml(item.category) + '</td>';
+                html += '<td style="padding:6px 8px;font-size:11px;color:#666;">' + escapeHtml(inputStyle) + '</td>';
+                html += '</tr>';
+            });
+
+            html += '</table>';
+            html += '<div style="margin-top:10px;font-size:11px;color:#666;">合計: ' + sortedCodes.length + '項目</div>';
+            container.innerHTML = html;
         }
 
         // ★ 未使用マッピング検出
