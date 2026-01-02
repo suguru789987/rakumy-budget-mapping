@@ -6519,6 +6519,13 @@
         }
 
         var selectedHistoryId = null;  // 選択中の履歴ID
+        var selectedHistoryCategory = 'all';  // 履歴カテゴリフィルター: 'all', 'stores', 'items', 'prices'
+
+        function switchHistoryCategory(category) {
+            selectedHistoryCategory = category;
+            selectedHistoryId = null;  // カテゴリ変更時は選択をリセット
+            renderMasterHistoryList();
+        }
 
         function renderMasterHistoryList() {
             var container = document.getElementById('masterHistoryList');
@@ -6526,23 +6533,47 @@
 
             var history = getMasterHistory();
 
+            // カテゴリセレクター（常に表示）
+            var html = '<h4 style="color:#7b1fa2;margin:0 0 10px 0;">📂 保存済みマスタ履歴（最大' + MAX_MASTER_HISTORY + '件）</h4>';
+
+            // カテゴリフィルターボタン
+            html += '<div style="display:flex;gap:8px;margin-bottom:15px;flex-wrap:wrap;">';
+            html += '<button onclick="switchHistoryCategory(\'all\')" style="background:' + (selectedHistoryCategory === 'all' ? '#7b1fa2' : '#e0e0e0') + ';color:' + (selectedHistoryCategory === 'all' ? '#fff' : '#333') + ';border:none;padding:8px 16px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:bold;">📋 すべて</button>';
+            html += '<button onclick="switchHistoryCategory(\'stores\')" style="background:' + (selectedHistoryCategory === 'stores' ? '#4caf50' : '#e0e0e0') + ';color:' + (selectedHistoryCategory === 'stores' ? '#fff' : '#333') + ';border:none;padding:8px 16px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:bold;">🏪 店番マスタ</button>';
+            html += '<button onclick="switchHistoryCategory(\'items\')" style="background:' + (selectedHistoryCategory === 'items' ? '#ff9800' : '#e0e0e0') + ';color:' + (selectedHistoryCategory === 'items' ? '#fff' : '#333') + ';border:none;padding:8px 16px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:bold;">📋 予算項目コード</button>';
+            html += '<button onclick="switchHistoryCategory(\'prices\')" style="background:' + (selectedHistoryCategory === 'prices' ? '#2196f3' : '#e0e0e0') + ';color:' + (selectedHistoryCategory === 'prices' ? '#fff' : '#333') + ';border:none;padding:8px 16px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:bold;">💰 客単価</button>';
+            html += '</div>';
+
             if (history.length === 0) {
-                container.innerHTML = '<div style="padding:20px;text-align:center;background:#f5f5f5;border-radius:8px;">' +
+                html += '<div style="padding:20px;text-align:center;background:#f5f5f5;border-radius:8px;">' +
                     '<div style="color:#666;margin-bottom:10px;">保存されたマスタ履歴はありません</div>' +
                     '<div style="font-size:12px;color:#999;">上部の「💾 現在のデータを保存」ボタンで保存できます</div>' +
                     '</div>';
+                container.innerHTML = html;
                 return;
             }
 
-            var html = '<h4 style="color:#7b1fa2;margin:0 0 10px 0;">📂 保存済みマスタ履歴（最大' + MAX_MASTER_HISTORY + '件）</h4>';
+            // カテゴリに応じたラベル生成関数
+            function getItemLabel(item) {
+                if (selectedHistoryCategory === 'all') {
+                    return escapeHtml(item.name) + ' (店舗:' + item.storeCount + ', コード:' + (item.codeMapCount + item.nameMapCount) + ')';
+                } else if (selectedHistoryCategory === 'stores') {
+                    return escapeHtml(item.name) + ' (🏪 ' + item.storeCount + '件)';
+                } else if (selectedHistoryCategory === 'items') {
+                    return escapeHtml(item.name) + ' (📋 ' + (item.codeMapCount + item.nameMapCount) + '項目)';
+                } else if (selectedHistoryCategory === 'prices') {
+                    return escapeHtml(item.name) + ' (💰 ' + item.storeCount + '店舗)';
+                }
+                return escapeHtml(item.name);
+            }
 
             // プルダウン選択
             html += '<div style="display:flex;gap:10px;align-items:center;margin-bottom:15px;flex-wrap:wrap;">';
-            html += '<select id="historySelect" onchange="previewHistoryData(this.value)" style="padding:8px 12px;border:2px solid #7b1fa2;border-radius:6px;font-size:13px;min-width:250px;background:#fff;">';
+            html += '<select id="historySelect" onchange="previewHistoryData(this.value)" style="padding:8px 12px;border:2px solid #7b1fa2;border-radius:6px;font-size:13px;min-width:300px;background:#fff;">';
             html += '<option value="">-- 履歴を選択 --</option>';
             history.forEach(function(item) {
                 var selected = selectedHistoryId === item.id ? ' selected' : '';
-                html += '<option value="' + item.id + '"' + selected + '>' + escapeHtml(item.name) + ' (' + item.storeCount + '店舗)</option>';
+                html += '<option value="' + item.id + '"' + selected + '>' + getItemLabel(item) + '</option>';
             });
             html += '</select>';
             html += '<button onclick="loadSelectedHistory()" style="background:#4caf50;color:#fff;border:none;padding:8px 15px;border-radius:4px;cursor:pointer;font-size:12px;">📥 読込</button>';
@@ -6579,36 +6610,84 @@
                 return;
             }
 
-            var html = '<div style="background:#f3e5f5;border:2px solid #9c27b0;border-radius:8px;padding:15px;margin-top:10px;">';
+            // カテゴリに応じた背景色
+            var borderColor = '#9c27b0';
+            var bgColor = '#f3e5f5';
+            if (selectedHistoryCategory === 'stores') { borderColor = '#4caf50'; bgColor = '#e8f5e9'; }
+            else if (selectedHistoryCategory === 'items') { borderColor = '#ff9800'; bgColor = '#fff3e0'; }
+            else if (selectedHistoryCategory === 'prices') { borderColor = '#2196f3'; bgColor = '#e3f2fd'; }
+
+            var html = '<div style="background:' + bgColor + ';border:2px solid ' + borderColor + ';border-radius:8px;padding:15px;margin-top:10px;">';
             html += '<div style="display:flex;justify-content:space-between;align-items:start;">';
             html += '<div>';
-            html += '<h5 style="color:#7b1fa2;margin:0 0 8px 0;">📋 ' + escapeHtml(item.name) + '</h5>';
+            html += '<h5 style="color:' + borderColor + ';margin:0 0 8px 0;">📋 ' + escapeHtml(item.name) + '</h5>';
             html += '<div style="font-size:11px;color:#666;margin-bottom:8px;">保存日時: ' + new Date(item.savedAt).toLocaleString('ja-JP') + '</div>';
+
+            // カテゴリに応じたバッジ表示
             html += '<div style="display:flex;gap:8px;flex-wrap:wrap;">';
-            html += '<span style="background:#4caf50;color:#fff;padding:3px 8px;border-radius:4px;font-size:11px;">🏪 店番: ' + item.storeCount + '件</span>';
-            html += '<span style="background:#ff9800;color:#fff;padding:3px 8px;border-radius:4px;font-size:11px;">📋 項目コード: ' + (item.codeMapCount + item.nameMapCount) + '件</span>';
-            html += '<span style="background:#2196f3;color:#fff;padding:3px 8px;border-radius:4px;font-size:11px;">💰 客単価: ' + item.storeCount + '件</span>';
+            if (selectedHistoryCategory === 'all' || selectedHistoryCategory === 'stores') {
+                html += '<span style="background:#4caf50;color:#fff;padding:3px 8px;border-radius:4px;font-size:11px;">🏪 店番: ' + item.storeCount + '件</span>';
+            }
+            if (selectedHistoryCategory === 'all' || selectedHistoryCategory === 'items') {
+                html += '<span style="background:#ff9800;color:#fff;padding:3px 8px;border-radius:4px;font-size:11px;">📋 項目コード: ' + (item.codeMapCount + item.nameMapCount) + '件</span>';
+            }
+            if (selectedHistoryCategory === 'all' || selectedHistoryCategory === 'prices') {
+                html += '<span style="background:#2196f3;color:#fff;padding:3px 8px;border-radius:4px;font-size:11px;">💰 客単価: ' + item.storeCount + '件</span>';
+            }
             html += '</div>';
             html += '</div>';
             html += '</div>';
 
-            // 店舗リストのプレビュー
+            // カテゴリに応じたプレビュー表示
             var stores = item.unitPrices || item.stores;
-            var storeNames = Object.keys(stores);
-            if (storeNames.length > 0) {
+            var storeNames = Object.keys(stores).filter(function(n) { return n !== '_default'; });
+
+            if (selectedHistoryCategory === 'all' || selectedHistoryCategory === 'stores' || selectedHistoryCategory === 'prices') {
+                // 店舗リストのプレビュー
+                if (storeNames.length > 0) {
+                    html += '<div style="margin-top:12px;max-height:150px;overflow-y:auto;background:#fff;border-radius:4px;padding:8px;">';
+                    if (selectedHistoryCategory === 'stores') {
+                        html += '<div style="font-size:10px;color:#666;margin-bottom:5px;">🏪 店番一覧（先頭5件）:</div>';
+                    } else if (selectedHistoryCategory === 'prices') {
+                        html += '<div style="font-size:10px;color:#666;margin-bottom:5px;">💰 客単価一覧（先頭5件）:</div>';
+                    } else {
+                        html += '<div style="font-size:10px;color:#666;margin-bottom:5px;">店舗一覧（先頭5件）:</div>';
+                    }
+                    storeNames.slice(0, 5).forEach(function(name, i) {
+                        var prices = stores[name];
+                        var storeCode = prices.storeCode || '';
+                        html += '<div style="font-size:11px;padding:2px 0;border-bottom:1px solid #eee;">';
+                        html += '<span style="color:#4caf50;font-weight:bold;">' + (storeCode || String(i+1).padStart(3,'0')) + '</span> ';
+                        html += escapeHtml(name);
+                        if (selectedHistoryCategory === 'prices' || selectedHistoryCategory === 'all') {
+                            html += ' <span style="color:#1565c0;">' + (prices.total || 0).toLocaleString() + '円</span>';
+                        }
+                        html += '</div>';
+                    });
+                    if (storeNames.length > 5) {
+                        html += '<div style="font-size:10px;color:#999;padding-top:5px;">...他 ' + (storeNames.length - 5) + '件</div>';
+                    }
+                    html += '</div>';
+                }
+            }
+
+            if (selectedHistoryCategory === 'items') {
+                // 予算項目コードプレビュー
+                var codeKeys = Object.keys(item.codeMap || {});
+                var nameKeys = Object.keys(item.nameMap || {});
                 html += '<div style="margin-top:12px;max-height:150px;overflow-y:auto;background:#fff;border-radius:4px;padding:8px;">';
-                html += '<div style="font-size:10px;color:#666;margin-bottom:5px;">店舗一覧（先頭5件）:</div>';
-                storeNames.slice(0, 5).forEach(function(name, i) {
-                    var prices = stores[name];
+                html += '<div style="font-size:10px;color:#666;margin-bottom:5px;">📋 予算項目コード（先頭5件）:</div>';
+                codeKeys.slice(0, 5).forEach(function(code, i) {
+                    var mapItem = item.codeMap[code];
                     html += '<div style="font-size:11px;padding:2px 0;border-bottom:1px solid #eee;">';
-                    html += '<span style="color:#4caf50;font-weight:bold;">' + String(i+1).padStart(3,'0') + '</span> ';
-                    html += escapeHtml(name);
-                    html += ' <span style="color:#1565c0;">' + (prices.total || 0).toLocaleString() + '円</span>';
+                    html += '<span style="color:#ff9800;font-weight:bold;">' + code + '</span> ';
+                    html += escapeHtml(mapItem.name) + ' → v17No:' + mapItem.v17No;
                     html += '</div>';
                 });
-                if (storeNames.length > 5) {
-                    html += '<div style="font-size:10px;color:#999;padding-top:5px;">...他 ' + (storeNames.length - 5) + '件</div>';
+                if (codeKeys.length > 5) {
+                    html += '<div style="font-size:10px;color:#999;padding-top:5px;">...他 ' + (codeKeys.length - 5) + '件</div>';
                 }
+                html += '<div style="font-size:10px;color:#1565c0;margin-top:8px;">＋名前ベース: ' + nameKeys.length + '項目</div>';
                 html += '</div>';
             }
 
@@ -6642,23 +6721,48 @@
                 return;
             }
 
-            if (!confirm('「' + item.name + '」を読み込みますか？\n現在のマスタデータは上書きされます。')) return;
+            // カテゴリに応じた確認メッセージ
+            var categoryLabel = 'すべてのマスタデータ';
+            if (selectedHistoryCategory === 'stores') categoryLabel = '店番マスタ';
+            else if (selectedHistoryCategory === 'items') categoryLabel = '予算項目コードマスタ';
+            else if (selectedHistoryCategory === 'prices') categoryLabel = '客単価マスタ';
 
-            // マスタデータを復元（3カテゴリ）
-            // カテゴリ1&3: 店番マスタ＆客単価マスタ（unitPrices または stores から復元）
-            DEFAULT_UNIT_PRICES = JSON.parse(JSON.stringify(item.unitPrices || item.stores));
-            // カテゴリ2: 予算項目コードマスタ
-            CUSTOMER_CODE_MAP = JSON.parse(JSON.stringify(item.codeMap));
-            NAME_BASED_MAP = JSON.parse(JSON.stringify(item.nameMap));
+            if (!confirm('「' + item.name + '」の' + categoryLabel + 'を読み込みますか？\n現在の' + categoryLabel + 'は上書きされます。')) return;
 
-            // 表示を更新（3タブ分）
-            renderMasterStoresContent();
-            renderMasterItemsContent();
-            renderMasterPricesContent();
-            updateCurrentStoreList();
-            updateCurrentMappingList();
+            // 選択カテゴリに応じたデータ復元
+            if (selectedHistoryCategory === 'all') {
+                // すべて読み込み
+                DEFAULT_UNIT_PRICES = JSON.parse(JSON.stringify(item.unitPrices || item.stores));
+                CUSTOMER_CODE_MAP = JSON.parse(JSON.stringify(item.codeMap));
+                NAME_BASED_MAP = JSON.parse(JSON.stringify(item.nameMap));
+                renderMasterStoresContent();
+                renderMasterItemsContent();
+                renderMasterPricesContent();
+                updateCurrentStoreList();
+                updateCurrentMappingList();
+            } else if (selectedHistoryCategory === 'stores') {
+                // 店番マスタのみ（店舗名リストのみ復元、客単価は維持）
+                var newPrices = JSON.parse(JSON.stringify(item.unitPrices || item.stores));
+                Object.keys(newPrices).forEach(function(name) {
+                    if (!DEFAULT_UNIT_PRICES[name]) {
+                        DEFAULT_UNIT_PRICES[name] = newPrices[name];
+                    }
+                });
+                renderMasterStoresContent();
+                updateCurrentStoreList();
+            } else if (selectedHistoryCategory === 'items') {
+                // 予算項目コードマスタのみ
+                CUSTOMER_CODE_MAP = JSON.parse(JSON.stringify(item.codeMap));
+                NAME_BASED_MAP = JSON.parse(JSON.stringify(item.nameMap));
+                renderMasterItemsContent();
+                updateCurrentMappingList();
+            } else if (selectedHistoryCategory === 'prices') {
+                // 客単価マスタのみ
+                DEFAULT_UNIT_PRICES = JSON.parse(JSON.stringify(item.unitPrices || item.stores));
+                renderMasterPricesContent();
+            }
 
-            showStatus('success', 'マスタデータを読み込みました: ' + item.name);
+            showStatus('success', categoryLabel + 'を読み込みました: ' + item.name);
         }
 
         function deleteMasterHistory(id) {
