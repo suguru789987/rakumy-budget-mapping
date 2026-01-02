@@ -647,50 +647,98 @@
                     </div>
                 </div>
 
-                <!-- ★★★ MQ設定（予算試算用 - 目標客単価のみ入力）★★★ -->
-                <div id="simMqInputSection" style="display:none;background:#e8f5e9;border-radius:8px;padding:20px;margin-bottom:20px;border:2px solid #4caf50;">
-                    <h4 style="color:#2e7d32;margin:0 0 10px 0;">MQ設定（目標客単価）</h4>
-                    <p style="color:#666;font-size:11px;margin:0 0 15px 0;">目標客単価を編集してMQ再計算を実行（G, FD%, PA%, Fは顧客予算から自動取得）</p>
+                <!-- ★★★ 新UI構成: MQ試算フロー ★★★ -->
+                <div id="simMqInputSection" style="display:none;">
 
-                    <!-- 自動参照パラメータ（月別表示・動的生成） -->
-                    <div style="background:#fff3e0;border-radius:6px;padding:12px;margin-bottom:15px;">
-                        <div style="font-size:11px;color:#e65100;font-weight:bold;margin-bottom:10px;">MQパラメータ（顧客予算から自動取得・月別表示）</div>
-                        <div style="overflow-x:auto;">
-                            <table class="annual-table" style="font-size:11px;" id="simAutoParamsTable">
+                    <!-- ===== MQパラメータ（参照専用・折りたたみ可能）===== -->
+                    <details style="background:#fff3e0;border-radius:8px;margin-bottom:20px;border:2px solid #ff9800;">
+                        <summary style="cursor:pointer;padding:15px;font-size:12px;font-weight:bold;color:#e65100;">
+                            📋 MQパラメータ（顧客予算から自動導出）
+                            <span style="font-size:10px;font-weight:normal;color:#666;margin-left:10px;">クリックで詳細表示</span>
+                        </summary>
+                        <div style="padding:0 15px 15px 15px;">
+                            <div style="overflow-x:auto;">
+                                <table class="annual-table" style="font-size:11px;" id="simAutoParamsTable">
+                                    <!-- JavaScriptで動的生成 -->
+                                </table>
+                            </div>
+                            <p style="font-size:10px;color:#888;margin-top:10px;margin-bottom:0;">
+                                ※ FD率・PA率・固定費・目標利益は顧客予算から自動計算されます。変更する場合は顧客予算を編集してください。
+                            </p>
+                        </div>
+                    </details>
+
+                    <!-- ===== MQ試算実行ボタン ===== -->
+                    <div style="text-align:center;margin-bottom:20px;padding:20px;background:linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);border-radius:8px;border:2px solid #4caf50;">
+                        <p style="font-size:12px;color:#2e7d32;margin:0 0 15px 0;">顧客予算を編集後、MQ試算を実行して必要客数・売上を確認できます</p>
+                        <button onclick="showUnitPriceConfirmModal()" class="btn btn-primary" style="padding:15px 50px;font-size:16px;background:linear-gradient(135deg, #ff9800 0%, #f57c00 100%);border:none;border-radius:8px;color:#fff;font-weight:bold;box-shadow:0 4px 12px rgba(255,152,0,0.3);">
+                            📊 MQ試算実行
+                        </button>
+                    </div>
+
+                    <!-- ===== MQ試算結果比較（顧客予算 vs MQ予算）===== -->
+                    <div id="simMqResultSection" style="display:none;background:linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);border-radius:8px;padding:20px;margin-bottom:20px;border:2px solid #2196f3;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+                            <h4 style="color:#1565c0;margin:0;font-size:14px;">📊 MQ試算結果（顧客予算 vs MQ予算）</h4>
+                            <span id="simMqResultStatus" style="font-size:11px;padding:4px 12px;border-radius:4px;"></span>
+                        </div>
+                        <div style="overflow-x:auto;margin-bottom:15px;">
+                            <table class="annual-table" style="font-size:11px;" id="simMqResultTable">
                                 <!-- JavaScriptで動的生成 -->
                             </table>
                         </div>
+                        <div id="simMqComparisonSummary" style="background:#fff;border-radius:6px;padding:12px;border:1px solid #ddd;">
+                            <!-- 比較サマリーがここに動的生成 -->
+                        </div>
                     </div>
+                </div>
 
-                    <!-- 月別目標客単価入力テーブル（動的生成） -->
-                    <div style="background:#f5f5f5;border-radius:6px;padding:12px;margin-bottom:15px;">
-                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                            <div style="font-size:11px;color:#2e7d32;font-weight:bold;">月別目標客単価（<span id="simMonthCountDisplay">0</span>ヶ月分・店舗別デフォルト値設定済み）</div>
-                            <button onclick="resetSimUnitPricesToDefault()" class="btn" style="padding:4px 12px;font-size:10px;background:#4caf50;color:#fff;border:none;border-radius:3px;">
-                                デフォルトにリセット
+                <!-- ===== 目標客単価確認モーダル ===== -->
+                <div id="unitPriceConfirmModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;justify-content:center;align-items:center;">
+                    <div style="background:#fff;border-radius:12px;padding:25px;max-width:400px;width:90%;box-shadow:0 10px 40px rgba(0,0,0,0.3);">
+                        <h3 style="color:#1565c0;margin:0 0 15px 0;font-size:16px;">📝 目標客単価を変更しますか？</h3>
+                        <p style="color:#666;font-size:12px;margin:0 0 20px 0;">
+                            MQ試算では目標客単価（P）を使用します。<br>
+                            現在のデフォルト値は前年設定値から取得しています。
+                        </p>
+                        <div style="display:flex;gap:10px;justify-content:center;">
+                            <button onclick="executeSimMQWithoutEdit()" class="btn" style="padding:12px 25px;background:#4caf50;color:#fff;border:none;border-radius:6px;font-size:13px;">
+                                デフォルトで計算
+                            </button>
+                            <button onclick="showUnitPriceEditModal()" class="btn" style="padding:12px 25px;background:#ff9800;color:#fff;border:none;border-radius:6px;font-size:13px;">
+                                客単価を編集
                             </button>
                         </div>
-                        <div style="overflow-x:auto;">
+                        <div style="text-align:center;margin-top:15px;">
+                            <button onclick="hideUnitPriceConfirmModal()" style="background:none;border:none;color:#999;font-size:11px;cursor:pointer;">キャンセル</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== 目標客単価編集モーダル ===== -->
+                <div id="unitPriceEditModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1001;justify-content:center;align-items:center;overflow-y:auto;">
+                    <div style="background:#fff;border-radius:12px;padding:25px;max-width:700px;width:95%;margin:20px auto;box-shadow:0 10px 40px rgba(0,0,0,0.3);">
+                        <h3 style="color:#ff9800;margin:0 0 15px 0;font-size:16px;">📝 月別目標客単価編集</h3>
+                        <p style="color:#666;font-size:11px;margin:0 0 15px 0;">
+                            <span id="simMonthCountDisplay2">0</span>ヶ月分の目標客単価を編集できます（店舗別デフォルト値設定済み）
+                        </p>
+                        <div style="overflow-x:auto;margin-bottom:15px;">
                             <table class="annual-table" style="font-size:11px;" id="simUnitPriceTable">
                                 <!-- JavaScriptで動的生成 -->
                             </table>
                         </div>
-                    </div>
-
-                    <!-- MQ再計算ボタン -->
-                    <div style="text-align:center;">
-                        <button onclick="recalculateSimMQ()" class="btn btn-primary" style="padding:10px 40px;font-size:14px;background:#ff9800;border:none;border-radius:6px;">
-                            MQ再計算
-                        </button>
-                    </div>
-
-                    <!-- MQ計算結果サマリー（予算試算用） -->
-                    <div id="simMqResultSummary" style="display:none;margin-top:15px;background:linear-gradient(135deg, #e8f5e9 0%, #fff3e0 100%);border-radius:8px;padding:15px;border:2px solid #4caf50;">
-                        <div style="font-size:12px;font-weight:bold;color:#2e7d32;margin-bottom:12px;">📊 MQ計算結果（月別）</div>
-                        <div style="overflow-x:auto;">
-                            <table class="annual-table" style="font-size:11px;" id="simMqResultTable">
-                                <!-- JavaScriptで動的生成 -->
-                            </table>
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <button onclick="resetSimUnitPricesToDefault()" class="btn" style="padding:8px 15px;font-size:11px;background:#9e9e9e;color:#fff;border:none;border-radius:4px;">
+                                デフォルトにリセット
+                            </button>
+                            <div style="display:flex;gap:10px;">
+                                <button onclick="hideUnitPriceEditModal()" class="btn" style="padding:10px 20px;background:#9e9e9e;color:#fff;border:none;border-radius:6px;">
+                                    キャンセル
+                                </button>
+                                <button onclick="executeSimMQWithEdit()" class="btn" style="padding:10px 25px;background:#4caf50;color:#fff;border:none;border-radius:6px;font-weight:bold;">
+                                    この値でMQ試算
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -3124,14 +3172,78 @@
             showStatus('success', 'MQ再計算完了（' + stActiveMonths.length + 'ヶ月分） - P（総合）:¥' + fmt(m0.targetUnitPrice));
         }
 
-        // MQ計算結果サマリーを表示（予算試算タブ用）
-        function renderSimMQResultSummary() {
-            var container = document.getElementById('simMqResultSummary');
+        // ★★★ 目標客単価確認モーダル表示 ★★★
+        function showUnitPriceConfirmModal() {
+            if (!simulationData || !simulationData.rakumyInputs) {
+                showStatus('warn', '予算試算データがありません。店舗を選択してください。');
+                return;
+            }
+            var modal = document.getElementById('unitPriceConfirmModal');
+            if (modal) {
+                modal.style.display = 'flex';
+            }
+        }
+
+        function hideUnitPriceConfirmModal() {
+            var modal = document.getElementById('unitPriceConfirmModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        // ★★★ 目標客単価編集モーダル表示 ★★★
+        function showUnitPriceEditModal() {
+            hideUnitPriceConfirmModal();
+            // 店舗名を取得
+            var select = document.getElementById('simulationStoreSelect');
+            var storeName = select ? select.value : '';
+            // 客単価テーブルをモーダル内に再描画してデフォルト値をセット
+            initSimUnitPrices(storeName);
+            var modal = document.getElementById('unitPriceEditModal');
+            if (modal) {
+                modal.style.display = 'flex';
+            }
+            // 月数表示を更新
+            var countEl = document.getElementById('simMonthCountDisplay2');
+            if (countEl && simulationData && simulationData.activeMonths) {
+                countEl.textContent = simulationData.activeMonths.length;
+            }
+        }
+
+        function hideUnitPriceEditModal() {
+            var modal = document.getElementById('unitPriceEditModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        // ★★★ デフォルト値でMQ試算実行 ★★★
+        function executeSimMQWithoutEdit() {
+            hideUnitPriceConfirmModal();
+            executeSimMQAndShowResult();
+        }
+
+        // ★★★ 編集後の値でMQ試算実行 ★★★
+        function executeSimMQWithEdit() {
+            hideUnitPriceEditModal();
+            executeSimMQAndShowResult();
+        }
+
+        // ★★★ MQ試算実行（共通処理）★★★
+        function executeSimMQAndShowResult() {
+            // MQ再計算実行
+            recalculateSimMQ();
+            // 結果比較セクションを表示
+            renderSimMQComparisonResult();
+        }
+
+        // ★★★ MQ試算結果比較テーブル生成 ★★★
+        function renderSimMQComparisonResult() {
+            var container = document.getElementById('simMqResultSection');
             var table = document.getElementById('simMqResultTable');
+            var summary = document.getElementById('simMqComparisonSummary');
+            var statusEl = document.getElementById('simMqResultStatus');
             if (!container || !table) return;
 
             var stActiveMonths = simulationData && simulationData.activeMonths ? simulationData.activeMonths : [];
             var stMqOutputs = simulationData && simulationData.mqOutputs ? simulationData.mqOutputs : {};
+            var stAnnualData = simulationData && simulationData.annualData ? simulationData.annualData : {};
 
             if (stActiveMonths.length === 0 || Object.keys(stMqOutputs).length === 0) {
                 container.style.display = 'none';
@@ -3141,72 +3253,133 @@
             var MONTH_NAMES = ['4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月', '1月', '2月', '3月'];
 
             // ヘッダー行
-            var headerHtml = '<thead><tr style="background:#e65100;">';
-            headerHtml += '<th style="min-width:120px;padding:6px;color:#fff;font-weight:bold;">項目</th>';
+            var headerHtml = '<thead><tr style="background:#1565c0;">';
+            headerHtml += '<th style="min-width:150px;padding:8px;color:#fff;font-weight:bold;">項目</th>';
             for (var i = 0; i < stActiveMonths.length; i++) {
                 var mi = stActiveMonths[i];
-                headerHtml += '<th style="min-width:70px;color:#fff;font-weight:bold;">' + MONTH_NAMES[mi] + '</th>';
+                headerHtml += '<th style="min-width:75px;color:#fff;font-weight:bold;">' + MONTH_NAMES[mi] + '</th>';
             }
-            headerHtml += '<th style="min-width:80px;background:#bf360c;color:#fff;font-weight:bold;">合計/平均</th>';
+            headerHtml += '<th style="min-width:85px;background:#0d47a1;color:#fff;font-weight:bold;">合計</th>';
             headerHtml += '</tr></thead>';
 
             // ボディ行
             var bodyHtml = '<tbody>';
 
-            // 目標客数
+            // ===== 顧客予算売上 =====
+            var totalCustomerSales = 0;
+            bodyHtml += '<tr style="background:#e3f2fd;"><td style="font-weight:bold;color:#1565c0;">📝 顧客予算売上（千円）</td>';
+            for (var i = 0; i < stActiveMonths.length; i++) {
+                var mi = stActiveMonths[i];
+                var customerSales = stAnnualData[4] ? (stAnnualData[4][mi] || 0) : 0;
+                totalCustomerSales += customerSales;
+                bodyHtml += '<td style="text-align:right;">' + fmt(customerSales) + '</td>';
+            }
+            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#bbdefb;">' + fmt(totalCustomerSales) + '</td></tr>';
+
+            // ===== MQ算出売上 =====
+            var totalMqSales = 0;
+            bodyHtml += '<tr style="background:#f3e5f5;"><td style="font-weight:bold;color:#7b1fa2;">📊 MQ算出売上（千円）</td>';
+            for (var i = 0; i < stActiveMonths.length; i++) {
+                var mi = stActiveMonths[i];
+                var mqSales = stMqOutputs[mi] ? (stMqOutputs[mi].sales || 0) : 0;
+                totalMqSales += mqSales;
+                bodyHtml += '<td style="text-align:right;">' + fmt(mqSales) + '</td>';
+            }
+            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#e1bee7;">' + fmt(totalMqSales) + '</td></tr>';
+
+            // ===== 売上差異 =====
+            var salesDiff = totalMqSales - totalCustomerSales;
+            var salesDiffRate = totalCustomerSales > 0 ? ((salesDiff / totalCustomerSales) * 100).toFixed(1) : 0;
+            bodyHtml += '<tr><td style="font-weight:bold;color:#ff5722;">📉 売上差異（千円）</td>';
+            for (var i = 0; i < stActiveMonths.length; i++) {
+                var mi = stActiveMonths[i];
+                var customerSales = stAnnualData[4] ? (stAnnualData[4][mi] || 0) : 0;
+                var mqSales = stMqOutputs[mi] ? (stMqOutputs[mi].sales || 0) : 0;
+                var diff = mqSales - customerSales;
+                var diffColor = diff >= 0 ? '#4caf50' : '#f44336';
+                bodyHtml += '<td style="text-align:right;color:' + diffColor + ';font-weight:bold;">' + (diff >= 0 ? '+' : '') + fmt(diff) + '</td>';
+            }
+            var totalDiffColor = salesDiff >= 0 ? '#4caf50' : '#f44336';
+            bodyHtml += '<td style="font-weight:bold;text-align:right;color:' + totalDiffColor + ';">' + (salesDiff >= 0 ? '+' : '') + fmt(salesDiff) + '</td></tr>';
+
+            // ===== MQ目標客数 =====
             var totalQ = 0;
-            bodyHtml += '<tr style="background:#fff3e0;"><td style="font-weight:bold;color:#e65100;">🎯 目標客数（人）</td>';
+            bodyHtml += '<tr style="background:#fff3e0;"><td style="font-weight:bold;color:#e65100;">🎯 MQ目標客数（人）</td>';
             for (var i = 0; i < stActiveMonths.length; i++) {
                 var mi = stActiveMonths[i];
                 var q = stMqOutputs[mi] ? (stMqOutputs[mi].customers || 0) : 0;
                 totalQ += q;
-                bodyHtml += '<td style="text-align:right;font-weight:bold;">' + fmt(q) + '</td>';
+                bodyHtml += '<td style="text-align:right;">' + fmt(q) + '</td>';
             }
             bodyHtml += '<td style="font-weight:bold;text-align:right;background:#ffe0b2;">' + fmt(totalQ) + '</td></tr>';
 
-            // 目標売上
-            var totalS = 0;
-            bodyHtml += '<tr style="background:#e8f5e9;"><td style="font-weight:bold;color:#2e7d32;">💰 目標売上（千円）</td>';
-            for (var i = 0; i < stActiveMonths.length; i++) {
-                var mi = stActiveMonths[i];
-                var s = stMqOutputs[mi] ? (stMqOutputs[mi].sales || 0) : 0;
-                totalS += s;
-                bodyHtml += '<td style="text-align:right;">' + fmt(s) + '</td>';
-            }
-            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#c8e6c9;">' + fmt(totalS) + '</td></tr>';
-
-            // 目標営業利益
+            // ===== 目標営業利益 =====
             var totalProfit = 0;
-            bodyHtml += '<tr style="background:#e3f2fd;"><td style="font-weight:bold;color:#1565c0;">📈 目標営業利益（千円）</td>';
+            bodyHtml += '<tr style="background:#e8f5e9;"><td style="font-weight:bold;color:#2e7d32;">💰 目標営業利益（千円）</td>';
             for (var i = 0; i < stActiveMonths.length; i++) {
                 var mi = stActiveMonths[i];
                 var profit = stMqOutputs[mi] ? (stMqOutputs[mi].operatingProfit || 0) : 0;
                 totalProfit += profit;
                 bodyHtml += '<td style="text-align:right;">' + fmt(profit) + '</td>';
             }
-            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#bbdefb;">' + fmt(totalProfit) + '</td></tr>';
-
-            // 限界利益単価M（P × (1 - VR)で計算）
-            var totalM = 0;
-            bodyHtml += '<tr><td style="font-weight:bold;color:#7b1fa2;">📊 限界利益単価M（円）</td>';
-            for (var i = 0; i < stActiveMonths.length; i++) {
-                var mi = stActiveMonths[i];
-                var out = stMqOutputs[mi];
-                var m = 0;
-                if (out) {
-                    var vr = (out.variableRate || 0) / 100;
-                    m = Math.round((out.unitPrice || 0) * (1 - vr));
-                }
-                totalM += m;
-                bodyHtml += '<td style="text-align:right;">' + fmt(m) + '</td>';
-            }
-            var avgM = stActiveMonths.length > 0 ? Math.round(totalM / stActiveMonths.length) : 0;
-            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#e1bee7;">' + fmt(avgM) + '</td></tr>';
+            bodyHtml += '<td style="font-weight:bold;text-align:right;background:#c8e6c9;">' + fmt(totalProfit) + '</td></tr>';
 
             bodyHtml += '</tbody>';
-
             table.innerHTML = headerHtml + bodyHtml;
+
+            // ステータス表示（売上差異の判定）
+            if (statusEl) {
+                if (Math.abs(salesDiff) < totalCustomerSales * 0.05) {
+                    statusEl.textContent = '✅ 予算達成可能（差異5%以内）';
+                    statusEl.style.background = '#c8e6c9';
+                    statusEl.style.color = '#2e7d32';
+                } else if (salesDiff > 0) {
+                    statusEl.textContent = '⚠️ MQ売上 > 顧客予算（+' + salesDiffRate + '%）';
+                    statusEl.style.background = '#fff3e0';
+                    statusEl.style.color = '#e65100';
+                } else {
+                    statusEl.textContent = '⚠️ MQ売上 < 顧客予算（' + salesDiffRate + '%）';
+                    statusEl.style.background = '#ffebee';
+                    statusEl.style.color = '#c62828';
+                }
+            }
+
+            // 比較サマリー
+            if (summary) {
+                var summaryHtml = '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:15px;">';
+                summaryHtml += '<div style="text-align:center;padding:10px;background:#e3f2fd;border-radius:6px;">';
+                summaryHtml += '<div style="font-size:11px;color:#666;">顧客予算売上（年間）</div>';
+                summaryHtml += '<div style="font-size:18px;font-weight:bold;color:#1565c0;">' + fmt(totalCustomerSales) + ' 千円</div>';
+                summaryHtml += '</div>';
+                summaryHtml += '<div style="text-align:center;padding:10px;background:#f3e5f5;border-radius:6px;">';
+                summaryHtml += '<div style="font-size:11px;color:#666;">MQ算出売上（年間）</div>';
+                summaryHtml += '<div style="font-size:18px;font-weight:bold;color:#7b1fa2;">' + fmt(totalMqSales) + ' 千円</div>';
+                summaryHtml += '</div>';
+                summaryHtml += '<div style="text-align:center;padding:10px;background:' + (salesDiff >= 0 ? '#e8f5e9' : '#ffebee') + ';border-radius:6px;">';
+                summaryHtml += '<div style="font-size:11px;color:#666;">売上差異</div>';
+                summaryHtml += '<div style="font-size:18px;font-weight:bold;color:' + totalDiffColor + ';">' + (salesDiff >= 0 ? '+' : '') + fmt(salesDiff) + ' 千円（' + salesDiffRate + '%）</div>';
+                summaryHtml += '</div>';
+                summaryHtml += '</div>';
+                summaryHtml += '<div style="margin-top:12px;padding:10px;background:#fafafa;border-radius:4px;font-size:11px;color:#666;">';
+                summaryHtml += '<strong>解説：</strong> MQ算出売上は「目標営業利益（G）を達成するために必要な売上」です。';
+                if (salesDiff > 0) {
+                    summaryHtml += '<br>顧客予算よりMQ売上が高い場合、利益目標達成には売上増か費用削減が必要です。';
+                } else if (salesDiff < 0) {
+                    summaryHtml += '<br>顧客予算よりMQ売上が低い場合、予算達成時に目標利益を上回る可能性があります。';
+                } else {
+                    summaryHtml += '<br>予算と逆算値がほぼ一致しています。';
+                }
+                summaryHtml += '</div>';
+                summary.innerHTML = summaryHtml;
+            }
+
             container.style.display = 'block';
+        }
+
+        // MQ計算結果サマリーを表示（予算試算タブ用）- 旧UI互換用
+        function renderSimMQResultSummary() {
+            // 新UIではrenderSimMQComparisonResultを使用
+            renderSimMQComparisonResult();
         }
 
         // ★ 予算試算用MQ逆算
@@ -3561,23 +3734,17 @@
 
             // ラクミー予算項目（★ MQ計算結果を使用）
             var rakumyItems = [
-                // ★★★ MQ入力パラメータ（月次予算設定の入力値）★★★
-                { section: 'MQ入力', name: '【F】固定費用予算', highlight: true, isInput: true, calc: function(m) { return getRI(m, 'fixedCostTotal'); } },
-                { section: 'MQ入力', name: '【G】目標月次利益', highlight: true, isInput: true, calc: function(m) { return getRI(m, 'targetProfit'); } },
-                { section: 'MQ入力', name: '【FD%】FD仕入費率', isRate: true, isInput: true, calc: function(m) { return getRI(m, 'fdRate'); } },
-                { section: 'MQ入力', name: '【PA%】PA人件費率', isRate: true, isInput: true, calc: function(m) { return getRI(m, 'paRate'); } },
-                { section: 'MQ入力', name: '【VR】変動費率（FD+PA）', isRate: true, isInput: true, calc: function(m) { return getRI(m, 'fdRate') + getRI(m, 'paRate'); } },
-                { section: 'MQ入力', name: '【P】目標客単価（税抜）', isYen: true, isInput: true, calc: function(m) { return getRI(m, 'targetUnitPrice'); } },
-                // ★★★ MQ逆算結果 ★★★
-                { section: 'MQ逆算', name: '【M】粗利単価', isYen: true, isCalc: true, calc: function(m) {
+                // ★★★ MQ試算結果（顧客にとって最重要！）★★★
+                { section: 'MQ試算結果', name: '🎯 目標客数', highlight: true, isPerson: true, isCalc: true, calc: function(m) { return getMQ(m, 'customers'); } },
+                { section: 'MQ試算結果', name: '💰 必要売上（税抜）', highlight: true, isCalc: true, calc: function(m) { return getMQ(m, 'sales'); } },
+                { section: 'MQ試算結果', name: '📈 目標営業利益', highlight: true, isCalc: true, calc: function(m) { return getMQ(m, 'operatingProfit'); } },
+                { section: 'MQ試算結果', name: '必要粗利（F+G）', isCalc: true, calc: function(m) { return getMQ(m, 'requiredGrossProfit'); } },
+                { section: 'MQ試算結果', name: '粗利単価（M）', isYen: true, isCalc: true, calc: function(m) {
                     var p = getRI(m, 'targetUnitPrice');
                     var vr = (getRI(m, 'fdRate') + getRI(m, 'paRate')) / 100;
                     return Math.round(p * (1 - vr));
                 } },
-                { section: 'MQ逆算', name: '【F+G】必要粗利', highlight: true, isCalc: true, calc: function(m) { return getMQ(m, 'requiredGrossProfit'); } },
-                { section: 'MQ逆算', name: '【Q】目標客数', highlight: true, isPerson: true, isCalc: true, calc: function(m) { return getMQ(m, 'customers'); } },
-                // 売上予算（★ MQ計算: 客数×客単価）
-                { section: '売上予算', name: '売上予算（税抜）', highlight: true, calc: function(m) { return getMQ(m, 'sales'); } },
+                // 売上予算は上に統合済み
                 // 変動費予算（★ MQ計算結果を使用）
                 { section: '変動費予算', name: 'FD仕入費', calc: function(m) { return getMQ(m, 'sales') * fdCostRate; } },
                 { section: '変動費予算', name: 'PA人件費', calc: function(m) { return getMQ(m, 'sales') * paCostRate; } },
@@ -3636,7 +3803,14 @@
                 } },
                 { section: '損益', name: '営業利益', highlight: true, profit: true, calc: function(m) {
                     return getMQ(m, 'operatingProfit');
-                } }
+                } },
+                // ★★★ MQ計算パラメータ（参照用・最後に配置）★★★
+                { section: 'MQ計算パラメータ', name: '固定費用予算（F）', isParam: true, calc: function(m) { return getRI(m, 'fixedCostTotal'); } },
+                { section: 'MQ計算パラメータ', name: '目標月次利益（G）', isParam: true, calc: function(m) { return getRI(m, 'targetProfit'); } },
+                { section: 'MQ計算パラメータ', name: 'FD仕入費率', isRate: true, isParam: true, calc: function(m) { return getRI(m, 'fdRate'); } },
+                { section: 'MQ計算パラメータ', name: 'PA人件費率', isRate: true, isParam: true, calc: function(m) { return getRI(m, 'paRate'); } },
+                { section: 'MQ計算パラメータ', name: '変動費率（FD+PA）', isRate: true, isParam: true, calc: function(m) { return getRI(m, 'fdRate') + getRI(m, 'paRate'); } },
+                { section: 'MQ計算パラメータ', name: '目標客単価（P）', isYen: true, isParam: true, calc: function(m) { return getRI(m, 'targetUnitPrice'); } }
             ];
 
             // MQ逆算用の変数
@@ -3669,9 +3843,11 @@
                     if (item.section !== lastSection) {
                         var cols = monthIndices.length + 2;
                         var sectionBg = '#607d8b';
+                        if (item.section === 'MQ試算結果') sectionBg = '#d32f2f';  // 赤（最重要！）
+                        if (item.section === 'MQ計算パラメータ') sectionBg = '#78909c';  // グレー（参照用）
                         if (item.section === 'MQ指標') sectionBg = '#9c27b0';
-                        if (item.section === 'MQ入力') sectionBg = '#4caf50';  // 緑（入力パラメータ）
-                        if (item.section === 'MQ逆算') sectionBg = '#ff9800';  // オレンジ（逆算結果）
+                        if (item.section === 'MQ入力') sectionBg = '#4caf50';
+                        if (item.section === 'MQ逆算') sectionBg = '#ff9800';
                         if (item.section === '売上構成比') sectionBg = '#1976d2';
                         if (item.section === '原価率') sectionBg = '#ff5722';
                         html += '<tr><td colspan="' + cols + '" style="background:' + sectionBg + ';color:#fff;font-weight:bold;padding:5px 10px;font-size:11px;">' + item.section + '</td></tr>';
@@ -3679,11 +3855,13 @@
                     }
 
                     var rowBg = item.highlight ? '#fff8e1' : '#fff';
+                    if (item.section === 'MQ試算結果') rowBg = item.highlight ? '#ffcdd2' : '#ffebee';  // 赤系（目立つ）
+                    if (item.section === 'MQ計算パラメータ') rowBg = '#eceff1';  // グレー系（控えめ）
                     if (item.section === '売上構成比') rowBg = '#e3f2fd';
                     if (item.section === '原価率') rowBg = '#fbe9e7';
                     if (item.section === 'MQ指標') rowBg = '#f3e5f5';
-                    if (item.section === 'MQ入力') rowBg = item.highlight ? '#c8e6c9' : '#e8f5e9';  // 緑系
-                    if (item.section === 'MQ逆算') rowBg = item.highlight ? '#ffe0b2' : '#fff3e0';  // オレンジ系
+                    if (item.section === 'MQ入力') rowBg = item.highlight ? '#c8e6c9' : '#e8f5e9';
+                    if (item.section === 'MQ逆算') rowBg = item.highlight ? '#ffe0b2' : '#fff3e0';
                     html += '<tr style="background:' + rowBg + ';">';
 
                     // 項目名
@@ -3713,7 +3891,8 @@
                                 // 表示のみ（★ 単位に応じた表示）
                                 var valColor = item.profit ? (val >= 0 ? '#2e7d32' : '#c62828') : '#333';
                                 if (item.isInput) valColor = '#2e7d32';  // 入力値は緑
-                                if (item.isCalc) valColor = '#e65100';   // 逆算値はオレンジ
+                                if (item.isCalc) valColor = '#c62828';   // MQ試算結果は赤（目立つ）
+                                if (item.isParam) valColor = '#607d8b';  // パラメータはグレー（控えめ）
                                 var displayVal;
                                 if (item.isRate) {
                                     displayVal = val.toFixed(1) + '%';
@@ -3749,61 +3928,128 @@
                 return html;
             }
 
-            // 両テーブルを生成
-            var html = '<div style="display:flex;gap:20px;flex-wrap:wrap;">';
-            html += '<div style="flex:1;min-width:400px;">';
-            html += buildTable(customerItems, '📝 顧客予算（編集可能）', '#1976d2', true);
-            html += '</div>';
-            html += '<div style="flex:1;min-width:400px;">';
-            html += buildTable(rakumyItems, '📊 ラクミー予算（MQ試算結果）', '#7b1fa2', false);
-            html += '</div>';
-            html += '</div>';
-
-            // 差異サマリー（顧客予算 vs MQ試算結果）
-            var custProfit = 0, rakumyProfit = 0;
+            // ========== 予算比較サマリー（最上部に配置）==========
+            // 顧客予算の売上・利益
+            var custSales = 0, custProfit = 0;
             monthIndices.forEach(function(m) {
-                // 顧客予算: 営業利益（CSVから読み込んだ値）- No.63が正しい営業利益
-                custProfit += get(63, m);
-                // ラクミー予算: MQ計算による営業利益（売上 - 変動費 - 固定費）
-                rakumyProfit += calcRakumyProfit(m);
+                custSales += get(4, m);  // 売上高合計
+                custProfit += get(63, m);  // 営業利益
             });
-            var diff = custProfit - rakumyProfit;
 
-            html += '<div style="margin-top:15px;padding:15px;background:#fff3e0;border-radius:8px;border:2px solid #ff9800;">';
-            html += '<h4 style="color:#e65100;margin-bottom:10px;">' + totalLabel + ' 営業利益比較</h4>';
-            html += '<div style="display:flex;gap:30px;flex-wrap:wrap;">';
-            html += '<div><span style="color:#1976d2;font-weight:bold;">顧客予算:</span> <span style="font-size:18px;font-weight:bold;color:' + (custProfit >= 0 ? '#2e7d32' : '#c62828') + ';">' + fmt(custProfit) + ' 千円</span></div>';
-            html += '<div><span style="color:#7b1fa2;font-weight:bold;">ラクミー予算(MQ):</span> <span style="font-size:18px;font-weight:bold;color:' + (rakumyProfit >= 0 ? '#2e7d32' : '#c62828') + ';">' + fmt(rakumyProfit) + ' 千円</span></div>';
-            html += '<div><span style="font-weight:bold;">差異:</span> <span style="font-size:18px;font-weight:bold;color:' + (diff === 0 ? '#999' : (diff > 0 ? '#1565c0' : '#c62828')) + ';">' + (diff === 0 ? '-' : fmt(diff) + ' 千円') + '</span></div>';
+            // MQ試算の売上・利益・客数
+            var mqSales = 0, mqProfit = 0, mqCustomers = 0;
+            monthIndices.forEach(function(m) {
+                mqSales += getMQ(m, 'sales') || 0;
+                mqProfit += getMQ(m, 'operatingProfit') || 0;
+                mqCustomers += getMQ(m, 'customers') || 0;
+            });
+
+            // 差異計算
+            var salesDiff = custSales - mqSales;
+            var profitDiff = custProfit - mqProfit;
+            var salesDiffRate = mqSales > 0 ? (salesDiff / mqSales * 100).toFixed(1) : 0;
+
+            // 判定ロジック
+            var isAchievable = salesDiff >= 0;  // 顧客予算売上 >= MQ必要売上 なら達成可能
+            var judgmentText = isAchievable ? '✅ 達成可能' : '⚠️ 要調整';
+            var judgmentColor = isAchievable ? '#2e7d32' : '#c62828';
+            var judgmentBg = isAchievable ? '#e8f5e9' : '#ffebee';
+
+            // 結論文
+            var conclusionText = '';
+            if (isAchievable) {
+                conclusionText = '顧客予算売上（' + fmt(custSales) + '千円）でMQ必要売上（' + fmt(mqSales) + '千円）を達成可能です。売上余裕 +' + fmt(salesDiff) + '千円';
+            } else {
+                conclusionText = 'MQ必要売上（' + fmt(mqSales) + '千円）に対し、顧客予算売上（' + fmt(custSales) + '千円）が ' + fmt(Math.abs(salesDiff)) + '千円 不足しています。売上増または費用削減が必要です。';
+            }
+
+            var html = '';
+
+            // ========== 予算比較サマリー ==========
+            html += '<div style="background:linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);border-radius:12px;padding:20px;margin-bottom:20px;border:3px solid #1565c0;box-shadow:0 4px 12px rgba(0,0,0,0.1);">';
+            html += '<h3 style="color:#1565c0;margin:0 0 15px 0;font-size:16px;">📊 予算比較サマリー（顧客予算 vs MQ試算）</h3>';
+
+            // 比較テーブル
+            html += '<div style="overflow-x:auto;margin-bottom:15px;">';
+            html += '<table style="width:100%;border-collapse:collapse;font-size:13px;background:#fff;border-radius:8px;overflow:hidden;">';
+            html += '<thead><tr style="background:#1565c0;color:#fff;">';
+            html += '<th style="padding:12px;text-align:left;min-width:120px;">項目</th>';
+            html += '<th style="padding:12px;text-align:right;min-width:100px;">顧客予算</th>';
+            html += '<th style="padding:12px;text-align:right;min-width:100px;">MQ試算</th>';
+            html += '<th style="padding:12px;text-align:right;min-width:100px;">差異</th>';
+            html += '<th style="padding:12px;text-align:center;min-width:80px;">判定</th>';
+            html += '</tr></thead><tbody>';
+
+            // 売上高
+            var salesJudge = salesDiff >= 0 ? '✅' : '⚠️';
+            html += '<tr style="background:#e3f2fd;">';
+            html += '<td style="padding:10px;font-weight:bold;">💰 売上高（千円）</td>';
+            html += '<td style="padding:10px;text-align:right;font-weight:bold;color:#1976d2;">' + fmt(custSales) + '</td>';
+            html += '<td style="padding:10px;text-align:right;font-weight:bold;color:#7b1fa2;">' + fmt(mqSales) + '</td>';
+            html += '<td style="padding:10px;text-align:right;font-weight:bold;color:' + (salesDiff >= 0 ? '#2e7d32' : '#c62828') + ';">' + (salesDiff >= 0 ? '+' : '') + fmt(salesDiff) + '</td>';
+            html += '<td style="padding:10px;text-align:center;font-size:16px;">' + salesJudge + '</td>';
+            html += '</tr>';
+
+            // 営業利益
+            html += '<tr>';
+            html += '<td style="padding:10px;font-weight:bold;">📈 営業利益（千円）</td>';
+            html += '<td style="padding:10px;text-align:right;color:#1976d2;">' + fmt(custProfit) + '</td>';
+            html += '<td style="padding:10px;text-align:right;color:#7b1fa2;">' + fmt(mqProfit) + '</td>';
+            html += '<td style="padding:10px;text-align:right;color:' + (profitDiff >= 0 ? '#2e7d32' : '#c62828') + ';">' + (profitDiff >= 0 ? '+' : '') + fmt(profitDiff) + '</td>';
+            html += '<td style="padding:10px;text-align:center;">-</td>';
+            html += '</tr>';
+
+            // MQ目標客数（ラクミー独自）
+            html += '<tr style="background:#fff3e0;">';
+            html += '<td style="padding:10px;font-weight:bold;">🎯 MQ目標客数（人）</td>';
+            html += '<td style="padding:10px;text-align:right;color:#999;">-</td>';
+            html += '<td style="padding:10px;text-align:right;font-weight:bold;font-size:16px;color:#e65100;">' + fmt(mqCustomers) + '</td>';
+            html += '<td style="padding:10px;text-align:right;color:#999;">-</td>';
+            html += '<td style="padding:10px;text-align:center;font-size:16px;">🎯</td>';
+            html += '</tr>';
+
+            html += '</tbody></table></div>';
+
+            // 結論ボックス
+            html += '<div style="background:' + judgmentBg + ';border-radius:8px;padding:15px;border-left:5px solid ' + judgmentColor + ';">';
+            html += '<div style="display:flex;align-items:center;gap:10px;">';
+            html += '<span style="font-size:24px;">' + (isAchievable ? '✅' : '⚠️') + '</span>';
+            html += '<div>';
+            html += '<div style="font-weight:bold;font-size:14px;color:' + judgmentColor + ';">' + judgmentText + '</div>';
+            html += '<div style="font-size:12px;color:#666;margin-top:4px;">' + conclusionText + '</div>';
+            html += '</div></div></div>';
+
             html += '</div>';
-            // 売上構成比サマリー
-            html += '<div style="margin-top:10px;padding-top:10px;border-top:1px solid #ffcc80;">';
-            html += '<div style="font-weight:bold;color:#e65100;margin-bottom:5px;">売上構成比</div>';
-            html += '<div style="display:flex;gap:20px;flex-wrap:wrap;font-size:12px;">';
-            html += '<div><span style="color:#1976d2;">フード:</span> <strong>' + (foodSalesRate * 100).toFixed(1) + '%</strong> (' + fmt(annualFoodSales) + '千円)</div>';
-            html += '<div><span style="color:#1976d2;">ドリンク:</span> <strong>' + (drinkSalesRate * 100).toFixed(1) + '%</strong> (' + fmt(annualDrinkSales) + '千円)</div>';
-            html += '<div><span style="color:#1976d2;">その他:</span> <strong>' + (otherSalesRate * 100).toFixed(1) + '%</strong> (' + fmt(annualOtherSales) + '千円)</div>';
-            html += '</div></div>';
-            // MQ構成サマリー
-            html += '<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #ffcc80;">';
-            html += '<div style="font-weight:bold;color:#e65100;margin-bottom:5px;">MQ構成（年間）</div>';
-            html += '<div style="display:flex;gap:20px;flex-wrap:wrap;font-size:12px;">';
-            html += '<div><span style="color:#ff5722;">FD仕入費:</span> <strong>' + fmt(annualFDCost) + '千円</strong> (' + (fdCostRate * 100).toFixed(1) + '%)</div>';
-            html += '<div><span style="color:#ff5722;">PA人件費:</span> <strong>' + fmt(annualPACost) + '千円</strong> (' + (paCostRate * 100).toFixed(1) + '%)</div>';
-            html += '<div><span style="color:#2196f3;">固定人件費:</span> <strong>' + fmt(annualFixedLabor) + '千円</strong></div>';
-            html += '<div><span style="color:#2196f3;">固定費合計:</span> <strong>' + fmt(annualFixedCost) + '千円</strong></div>';
-            html += '</div></div>';
-            // MQ指標サマリー表示
-            html += '<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #ffcc80;">';
-            html += '<div style="font-weight:bold;color:#e65100;margin-bottom:5px;">MQ指標</div>';
-            html += '<div style="display:flex;gap:20px;flex-wrap:wrap;font-size:12px;">';
-            html += '<div><span style="color:#7b1fa2;">PA人件費率:</span> <strong>' + (paCostRate * 100).toFixed(1) + '%</strong></div>';
+
+            // ========== 詳細テーブル（折りたたみ式）==========
+            html += '<div style="display:flex;gap:20px;flex-wrap:wrap;">';
+
+            // 顧客予算詳細（折りたたみ）
+            html += '<div style="flex:1;min-width:400px;">';
+            html += '<details style="background:#fff;border:2px solid #1976d2;border-radius:8px;">';
+            html += '<summary style="cursor:pointer;padding:12px 15px;background:#e3f2fd;font-weight:bold;color:#1976d2;font-size:13px;">📝 顧客予算詳細（編集可能）<span style="font-weight:normal;color:#666;margin-left:10px;">クリックで展開</span></summary>';
+            html += '<div style="padding:10px;">' + buildTable(customerItems, '', '#1976d2', true) + '</div>';
+            html += '</details></div>';
+
+            // ラクミー予算詳細（折りたたみ）
+            html += '<div style="flex:1;min-width:400px;">';
+            html += '<details style="background:#fff;border:2px solid #7b1fa2;border-radius:8px;">';
+            html += '<summary style="cursor:pointer;padding:12px 15px;background:#f3e5f5;font-weight:bold;color:#7b1fa2;font-size:13px;">📊 ラクミー予算詳細（MQ試算結果）<span style="font-weight:normal;color:#666;margin-left:10px;">クリックで展開</span></summary>';
+            html += '<div style="padding:10px;">' + buildTable(rakumyItems, '', '#7b1fa2', false) + '</div>';
+            html += '</details></div>';
+
+            html += '</div>';
+
+            // ========== MQ指標サマリー（コンパクト表示）==========
+            html += '<div style="margin-top:15px;padding:12px;background:#f5f5f5;border-radius:8px;border:1px solid #ddd;">';
+            html += '<div style="display:flex;gap:20px;flex-wrap:wrap;font-size:11px;color:#666;">';
+            html += '<div><span style="color:#ff5722;">FD率:</span> <strong>' + (fdCostRate * 100).toFixed(1) + '%</strong></div>';
+            html += '<div><span style="color:#ff5722;">PA率:</span> <strong>' + (paCostRate * 100).toFixed(1) + '%</strong></div>';
             html += '<div><span style="color:#7b1fa2;">変動費率:</span> <strong>' + (variableCostRate * 100).toFixed(1) + '%</strong></div>';
             html += '<div><span style="color:#7b1fa2;">粗利率:</span> <strong>' + (grossProfitRate * 100).toFixed(1) + '%</strong></div>';
-            html += '<div><span style="color:#9c27b0;">推定客単価:</span> <strong>' + fmt(unitPrice) + '円</strong></div>';
+            html += '<div><span style="color:#9c27b0;">目標客単価:</span> <strong>' + fmt(unitPrice) + '円</strong></div>';
             html += '<div><span style="color:#9c27b0;">粗利単価:</span> <strong>' + fmt(grossProfitUnit) + '円</strong></div>';
             html += '</div></div>';
-            html += '</div>';
 
             container.innerHTML = html;
 
