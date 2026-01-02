@@ -4322,37 +4322,66 @@
 
             html += '</div>'; // grid終了
 
-            // ========== 判定結果バー ==========
-            html += '<div style="background:' + judgmentBg + ';border:3px solid ' + judgmentColor + ';border-radius:12px;padding:20px;margin-bottom:15px;">';
-            html += '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:15px;">';
+            // ========== 判定結果バー（日次・月次表示対応）==========
+            var OPERATING_DAYS = 25;  // 営業日数
+            var numMonths = monthIndices.length || 12;
 
-            // 左：判定アイコンとテキスト
-            html += '<div style="display:flex;align-items:center;gap:15px;">';
+            // 日次・月次計算
+            var custSalesMonthly = custSales / numMonths;
+            var custSalesDaily = custSalesMonthly / OPERATING_DAYS;
+            var mqSalesMonthly = mqSales / numMonths;
+            var mqSalesDaily = mqSalesMonthly / OPERATING_DAYS;
+            var salesDiffMonthly = salesDiff / numMonths;
+            var salesDiffDaily = salesDiffMonthly / OPERATING_DAYS;
+
+            html += '<div style="background:' + judgmentBg + ';border:3px solid ' + judgmentColor + ';border-radius:12px;padding:20px;margin-bottom:15px;">';
+
+            // 上部：判定アイコンとテキスト
+            html += '<div style="display:flex;align-items:center;gap:15px;margin-bottom:20px;">';
             html += '<span style="font-size:40px;">' + (isAchievable ? '✅' : '⚠️') + '</span>';
             html += '<div>';
             html += '<div style="font-size:18px;font-weight:bold;color:' + judgmentColor + ';">' + judgmentText + '</div>';
-            html += '<div style="font-size:12px;color:#666;margin-top:4px;">';
+            html += '<div style="font-size:11px;color:#666;margin-top:4px;">';
             if (isAchievable) {
-                html += '顧客予算売上 ' + fmtYen(custSales) + '円 ≧ MQ必要売上 ' + fmtYen(mqSales) + '円　→　<strong style="color:#2e7d32;">余裕 +' + fmtYen(salesDiff) + '円</strong>';
+                html += '顧客予算売上 ≧ MQ必要売上　→　<strong style="color:#2e7d32;">余裕あり</strong>';
             } else {
-                html += '顧客予算売上 ' + fmtYen(custSales) + '円 ＜ MQ必要売上 ' + fmtYen(mqSales) + '円　→　<strong style="color:#c62828;">不足 ' + fmtYen(Math.abs(salesDiff)) + '円</strong>';
+                html += '顧客予算売上 ＜ MQ必要売上　→　<strong style="color:#c62828;">売上増または費用削減が必要</strong>';
             }
             html += '</div></div></div>';
 
-            // 右：比較数値
-            html += '<div style="display:flex;gap:20px;">';
-            html += '<div style="text-align:center;padding:10px 20px;background:#fff;border-radius:8px;">';
-            html += '<div style="font-size:10px;color:#1976d2;">顧客予算売上</div>';
-            html += '<div style="font-size:16px;font-weight:bold;color:#1976d2;">' + fmtYen(custSales) + '円</div>';
+            // 下部：日次・月次の比較カード
+            html += '<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:15px;align-items:stretch;">';
+
+            // 左：顧客予算売上
+            html += '<div style="text-align:center;padding:15px;background:#fff;border-radius:10px;border:2px solid #1976d2;">';
+            html += '<div style="font-size:11px;color:#1976d2;font-weight:bold;margin-bottom:8px;">📊 顧客予算売上</div>';
+            html += '<div style="font-size:24px;font-weight:bold;color:#1976d2;">' + fmtYen(custSalesDaily) + '<span style="font-size:12px;">円/日</span></div>';
+            html += '<div style="font-size:11px;color:#666;margin-top:4px;">月 ' + fmtYen(custSalesMonthly) + '円</div>';
+            html += '<div style="font-size:9px;color:#999;margin-top:2px;">期間計 ' + fmtYen(custSales) + '円</div>';
             html += '</div>';
-            html += '<div style="font-size:20px;display:flex;align-items:center;">vs</div>';
-            html += '<div style="text-align:center;padding:10px 20px;background:#fff;border-radius:8px;">';
-            html += '<div style="font-size:10px;color:#7b1fa2;">MQ必要売上</div>';
-            html += '<div style="font-size:16px;font-weight:bold;color:#7b1fa2;">' + fmtYen(mqSales) + '円</div>';
+
+            // 中央：VS + 差異
+            html += '<div style="display:flex;flex-direction:column;justify-content:center;align-items:center;gap:8px;">';
+            html += '<div style="font-size:18px;font-weight:bold;color:#666;">vs</div>';
+            var diffColor = salesDiff >= 0 ? '#2e7d32' : '#c62828';
+            var diffSign = salesDiff >= 0 ? '+' : '';
+            html += '<div style="background:' + (salesDiff >= 0 ? '#e8f5e9' : '#ffebee') + ';padding:8px 12px;border-radius:6px;text-align:center;">';
+            html += '<div style="font-size:9px;color:#666;">差異</div>';
+            html += '<div style="font-size:14px;font-weight:bold;color:' + diffColor + ';">' + diffSign + fmtYen(salesDiffDaily) + '<span style="font-size:10px;">円/日</span></div>';
+            html += '<div style="font-size:9px;color:' + diffColor + ';">月 ' + diffSign + fmtYen(salesDiffMonthly) + '円</div>';
             html += '</div>';
             html += '</div>';
 
-            html += '</div></div>';
+            // 右：MQ必要売上
+            html += '<div style="text-align:center;padding:15px;background:#fff;border-radius:10px;border:2px solid #7b1fa2;">';
+            html += '<div style="font-size:11px;color:#7b1fa2;font-weight:bold;margin-bottom:8px;">🎯 MQ必要売上</div>';
+            html += '<div style="font-size:24px;font-weight:bold;color:#7b1fa2;">' + fmtYen(mqSalesDaily) + '<span style="font-size:12px;">円/日</span></div>';
+            html += '<div style="font-size:11px;color:#666;margin-top:4px;">月 ' + fmtYen(mqSalesMonthly) + '円</div>';
+            html += '<div style="font-size:9px;color:#999;margin-top:2px;">期間計 ' + fmtYen(mqSales) + '円</div>';
+            html += '</div>';
+
+            html += '</div>'; // grid終了
+            html += '</div>'; // 判定結果バー終了
 
             // ========== MQパラメータ & 客単価変更セクション ==========
             html += '<div style="margin-bottom:15px;background:linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);border-radius:12px;border:2px solid #ff9800;overflow:hidden;">';
