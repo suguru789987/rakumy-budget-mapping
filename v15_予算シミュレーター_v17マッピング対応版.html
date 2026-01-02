@@ -852,7 +852,7 @@
 
                     <!-- 試算サマリー -->
                     <div style="margin-top:20px;background:#fff8e1;border-radius:8px;padding:20px;border:2px solid #ffc107;">
-                        <h3 style="color:#f57c00;font-size:14px;margin-bottom:15px;">📈 試算サマリー（年間合計比較）</h3>
+                        <h3 style="color:#f57c00;font-size:14px;margin-bottom:15px;">📈 試算サマリー（日次・月次換算）</h3>
                         <div id="simulationSummary"></div>
                     </div>
                 </div>
@@ -3367,22 +3367,67 @@
                 }
             }
 
-            // 比較サマリー
+            // 比較サマリー（日次・月次表示）
             if (summary) {
-                var summaryHtml = '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:15px;">';
-                summaryHtml += '<div style="text-align:center;padding:10px;background:#e3f2fd;border-radius:6px;">';
-                summaryHtml += '<div style="font-size:11px;color:#666;">顧客予算売上（年間）</div>';
-                summaryHtml += '<div style="font-size:18px;font-weight:bold;color:#1565c0;">' + fmt(totalCustomerSales) + ' 千円</div>';
+                var numMonths = stActiveMonths.length || 12;
+                var OPERATING_DAYS = 25;
+                var custSalesMonthly = Math.round(totalCustomerSales / numMonths);
+                var custSalesDaily = Math.round(custSalesMonthly / OPERATING_DAYS);
+                var mqSalesMonthly = Math.round(totalMqSales / numMonths);
+                var mqSalesDaily = Math.round(mqSalesMonthly / OPERATING_DAYS);
+                var diffMonthly = Math.round(salesDiff / numMonths);
+                var diffDaily = Math.round(diffMonthly / OPERATING_DAYS);
+                var totalQMonthly = Math.round(totalQ / numMonths);
+                var totalQDaily = Math.round(totalQMonthly / OPERATING_DAYS);
+                var totalProfitMonthly = Math.round(totalProfit / numMonths);
+                var totalProfitDaily = Math.round(totalProfitMonthly / OPERATING_DAYS);
+
+                var summaryHtml = '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:12px;">';
+
+                // 顧客予算売上
+                summaryHtml += '<div style="text-align:center;padding:12px;background:#e3f2fd;border-radius:6px;">';
+                summaryHtml += '<div style="font-size:10px;color:#666;">顧客予算売上</div>';
+                summaryHtml += '<div style="font-size:22px;font-weight:bold;color:#1565c0;">' + fmt(custSalesDaily) + '<span style="font-size:12px;">千円/日</span></div>';
+                summaryHtml += '<div style="font-size:10px;color:#888;">月 ' + fmt(custSalesMonthly) + '千円</div>';
                 summaryHtml += '</div>';
-                summaryHtml += '<div style="text-align:center;padding:10px;background:#f3e5f5;border-radius:6px;">';
-                summaryHtml += '<div style="font-size:11px;color:#666;">MQ算出売上（年間）</div>';
-                summaryHtml += '<div style="font-size:18px;font-weight:bold;color:#7b1fa2;">' + fmt(totalMqSales) + ' 千円</div>';
+
+                // MQ算出売上
+                summaryHtml += '<div style="text-align:center;padding:12px;background:#f3e5f5;border-radius:6px;">';
+                summaryHtml += '<div style="font-size:10px;color:#666;">MQ算出売上</div>';
+                summaryHtml += '<div style="font-size:22px;font-weight:bold;color:#7b1fa2;">' + fmt(mqSalesDaily) + '<span style="font-size:12px;">千円/日</span></div>';
+                summaryHtml += '<div style="font-size:10px;color:#888;">月 ' + fmt(mqSalesMonthly) + '千円</div>';
                 summaryHtml += '</div>';
-                summaryHtml += '<div style="text-align:center;padding:10px;background:' + (salesDiff >= 0 ? '#e8f5e9' : '#ffebee') + ';border-radius:6px;">';
-                summaryHtml += '<div style="font-size:11px;color:#666;">売上差異</div>';
-                summaryHtml += '<div style="font-size:18px;font-weight:bold;color:' + totalDiffColor + ';">' + (salesDiff >= 0 ? '+' : '') + fmt(salesDiff) + ' 千円（' + salesDiffRate + '%）</div>';
+
+                // 売上差異
+                summaryHtml += '<div style="text-align:center;padding:12px;background:' + (salesDiff >= 0 ? '#e8f5e9' : '#ffebee') + ';border-radius:6px;">';
+                summaryHtml += '<div style="font-size:10px;color:#666;">売上差異</div>';
+                summaryHtml += '<div style="font-size:22px;font-weight:bold;color:' + totalDiffColor + ';">' + (diffDaily >= 0 ? '+' : '') + fmt(diffDaily) + '<span style="font-size:12px;">千円/日</span></div>';
+                summaryHtml += '<div style="font-size:10px;color:#888;">月 ' + (diffMonthly >= 0 ? '+' : '') + fmt(diffMonthly) + '千円（' + salesDiffRate + '%）</div>';
                 summaryHtml += '</div>';
+
+                // MQ目標客数
+                summaryHtml += '<div style="text-align:center;padding:12px;background:#fff3e0;border-radius:6px;">';
+                summaryHtml += '<div style="font-size:10px;color:#666;">MQ目標客数</div>';
+                summaryHtml += '<div style="font-size:22px;font-weight:bold;color:#e65100;">' + fmt(totalQDaily) + '<span style="font-size:12px;">人/日</span></div>';
+                summaryHtml += '<div style="font-size:10px;color:#888;">月 ' + fmt(totalQMonthly) + '人</div>';
                 summaryHtml += '</div>';
+
+                // 目標営業利益
+                summaryHtml += '<div style="text-align:center;padding:12px;background:' + (totalProfit >= 0 ? '#e8f5e9' : '#ffebee') + ';border-radius:6px;">';
+                summaryHtml += '<div style="font-size:10px;color:#666;">目標営業利益</div>';
+                summaryHtml += '<div style="font-size:22px;font-weight:bold;color:' + (totalProfit >= 0 ? '#2e7d32' : '#c62828') + ';">' + fmt(totalProfitDaily) + '<span style="font-size:12px;">千円/日</span></div>';
+                summaryHtml += '<div style="font-size:10px;color:#888;">月 ' + fmt(totalProfitMonthly) + '千円</div>';
+                summaryHtml += '</div>';
+
+                summaryHtml += '</div>';
+
+                // 注釈（営業日数と計算式定義）
+                summaryHtml += '<div style="text-align:right;font-size:9px;color:#999;margin-top:10px;line-height:1.6;">';
+                summaryHtml += '※営業日数 ' + OPERATING_DAYS + '日/月 想定<br>';
+                summaryHtml += '※月平均＝取込期間合計÷' + numMonths + 'ヶ月　日平均＝月平均÷' + OPERATING_DAYS + '日';
+                summaryHtml += '</div>';
+
+                // 解説
                 summaryHtml += '<div style="margin-top:12px;padding:10px;background:#fafafa;border-radius:4px;font-size:11px;color:#666;">';
                 summaryHtml += '<strong>解説：</strong> MQ算出売上は「目標営業利益（G）を達成するために必要な売上」です。';
                 if (salesDiff > 0) {
@@ -4349,15 +4394,22 @@
             updateSimulationSummary();
         }
 
-        // ★ 試算サマリー更新
+        // ★ 試算サマリー更新（日次・月次表示）
         function updateSimulationSummary() {
             var summaryDiv = document.getElementById('simulationSummary');
             if (!summaryDiv || !simulationData.annualData || !simulationOriginal.annualData) return;
 
+            // 月数を取得
+            var monthIndices = getMonthIndicesFromMode();
+            var numMonths = monthIndices.length || 12;
+            var OPERATING_DAYS = 25;
+
             var calcTotal = function(data, no) {
                 var total = 0;
                 if (data[no]) {
-                    for (var m = 0; m < 12; m++) total += data[no][m] || 0;
+                    monthIndices.forEach(function(m) {
+                        total += data[no][m] || 0;
+                    });
                 }
                 return total;
             };
@@ -4376,18 +4428,40 @@
             var salesDiff = newSales - origSales;
             var profitDiff = newProfit - origProfit;
 
+            // 日次・月次計算
+            var salesMonthly = Math.round(newSales / numMonths);
+            var salesDaily = Math.round(salesMonthly / OPERATING_DAYS);
+            var salesDiffMonthly = Math.round(salesDiff / numMonths);
+            var salesDiffDaily = Math.round(salesDiffMonthly / OPERATING_DAYS);
+            var profitMonthly = Math.round(newProfit / numMonths);
+            var profitDaily = Math.round(profitMonthly / OPERATING_DAYS);
+            var profitDiffMonthly = Math.round(profitDiff / numMonths);
+            var profitDiffDaily = Math.round(profitDiffMonthly / OPERATING_DAYS);
+
             var html = '<div style="display:flex;gap:20px;flex-wrap:wrap;">';
+
+            // 売上高
             html += '<div style="flex:1;min-width:200px;padding:15px;background:#fff;border-radius:8px;border:2px solid #2196f3;">';
-            html += '<div style="font-size:11px;color:#666;">売上高（年間）</div>';
-            html += '<div style="font-size:18px;font-weight:bold;color:#1565c0;">' + fmt(newSales) + ' 千円</div>';
-            html += '<div style="font-size:11px;color:' + (salesDiff >= 0 ? '#2e7d32' : '#c62828') + ';">' + (salesDiff >= 0 ? '▲' : '▼') + ' ' + fmt(Math.abs(salesDiff)) + ' 千円</div>';
+            html += '<div style="font-size:10px;color:#666;">売上高</div>';
+            html += '<div style="font-size:24px;font-weight:bold;color:#1565c0;">' + fmt(salesDaily) + '<span style="font-size:12px;">千円/日</span></div>';
+            html += '<div style="font-size:11px;color:#888;">月 ' + fmt(salesMonthly) + '千円</div>';
+            html += '<div style="font-size:11px;color:' + (salesDiff >= 0 ? '#2e7d32' : '#c62828') + ';margin-top:5px;">' + (salesDiffDaily >= 0 ? '▲' : '▼') + ' ' + fmt(Math.abs(salesDiffDaily)) + '千円/日（月 ' + (salesDiffMonthly >= 0 ? '+' : '') + fmt(salesDiffMonthly) + '千円）</div>';
             html += '</div>';
 
+            // 営業利益
             html += '<div style="flex:1;min-width:200px;padding:15px;background:#fff;border-radius:8px;border:2px solid ' + (newProfit >= 0 ? '#4caf50' : '#f44336') + ';">';
-            html += '<div style="font-size:11px;color:#666;">営業利益（年間）</div>';
-            html += '<div style="font-size:18px;font-weight:bold;color:' + (newProfit >= 0 ? '#2e7d32' : '#c62828') + ';">' + fmt(newProfit) + ' 千円</div>';
-            html += '<div style="font-size:11px;color:' + (profitDiff >= 0 ? '#2e7d32' : '#c62828') + ';">' + (profitDiff >= 0 ? '▲' : '▼') + ' ' + fmt(Math.abs(profitDiff)) + ' 千円</div>';
+            html += '<div style="font-size:10px;color:#666;">営業利益</div>';
+            html += '<div style="font-size:24px;font-weight:bold;color:' + (newProfit >= 0 ? '#2e7d32' : '#c62828') + ';">' + fmt(profitDaily) + '<span style="font-size:12px;">千円/日</span></div>';
+            html += '<div style="font-size:11px;color:#888;">月 ' + fmt(profitMonthly) + '千円</div>';
+            html += '<div style="font-size:11px;color:' + (profitDiff >= 0 ? '#2e7d32' : '#c62828') + ';margin-top:5px;">' + (profitDiffDaily >= 0 ? '▲' : '▼') + ' ' + fmt(Math.abs(profitDiffDaily)) + '千円/日（月 ' + (profitDiffMonthly >= 0 ? '+' : '') + fmt(profitDiffMonthly) + '千円）</div>';
             html += '</div>';
+
+            html += '</div>';
+
+            // 注釈（営業日数と計算式定義）
+            html += '<div style="text-align:right;font-size:9px;color:#999;margin-top:10px;line-height:1.6;">';
+            html += '※営業日数 ' + OPERATING_DAYS + '日/月 想定<br>';
+            html += '※月平均＝取込期間合計÷' + numMonths + 'ヶ月　日平均＝月平均÷' + OPERATING_DAYS + '日';
             html += '</div>';
 
             summaryDiv.innerHTML = html;
