@@ -6324,7 +6324,7 @@
                     };
                 }
 
-                // === 費用予算設定（固定費用）=== 新ロジック: デフォルト値を出力
+                // === 費用予算設定（固定費用）=== 新ロジック: デフォルト値を出力（円単位）
                 for (var key in RAKUMY_ITEMS) {
                     var item = RAKUMY_ITEMS[key];
                     if (item.category !== 'cost') continue;
@@ -6332,17 +6332,17 @@
                     var analysis = analyzeMonthlyValuesForStore(key);
                     var row = [stName, '費用予算設定', item.name, item.type];
 
-                    // デフォルト値（最頻値）を全月に出力
+                    // デフォルト値（最頻値）を全月に出力（円単位：×1000）
                     var total = 0;
                     for (var m = 0; m < stActiveMonths.length; m++) {
-                        row.push(Math.round(analysis.defaultValue));
+                        row.push(Math.round(analysis.defaultValue * 1000));
                         total += analysis.defaultValue;
                     }
-                    row.push(Math.round(total), Math.round(analysis.defaultValue));
+                    row.push(Math.round(total * 1000), Math.round(analysis.defaultValue * 1000));
                     csv.push(row.join(','));
                 }
 
-                // === 単月費用予算（固定費用）=== 新ロジック: 差異月のみ値を出力
+                // === 単月費用予算（固定費用）=== 新ロジック: 差異月のみ値を出力（円単位）
                 for (var key in RAKUMY_ITEMS) {
                     var item = RAKUMY_ITEMS[key];
                     if (item.category !== 'monthly') continue;
@@ -6358,16 +6358,16 @@
                         if (isDiffMonth) {
                             var val = stRakumyInputs[m] ? (stRakumyInputs[m][key] || 0) : 0;
                             diffTotal += val;
-                            row.push(Math.round(val));
+                            row.push(Math.round(val * 1000));
                         } else {
                             row.push('-'); // デフォルト適用月は「-」
                         }
                     }
-                    row.push(Math.round(diffTotal), '(' + analysis.diffMonths.length + '月)');
+                    row.push(Math.round(diffTotal * 1000), '(' + analysis.diffMonths.length + '月)');
                     csv.push(row.join(','));
                 }
 
-                // === 予算設定（変動費用）===
+                // === 予算設定（変動費用）===（円単位）
                 for (var key in RAKUMY_ITEMS) {
                     var item = RAKUMY_ITEMS[key];
                     if (item.category !== 'budget') continue;
@@ -6378,12 +6378,12 @@
                     for (var m = 0; m < stActiveMonths.length; m++) {
                         var val = stRakumyInputs[m] ? (stRakumyInputs[m][key] || 0) : 0;
                         total += val;
-                        row.push(isRate ? Math.round(val) + '%' : Math.round(val));
+                        row.push(isRate ? Math.round(val) + '%' : Math.round(val * 1000));
                     }
                     if (isRate) {
                         row.push('-', Math.round(total / stActiveMonths.length) + '%');
                     } else {
-                        row.push(Math.round(total), Math.round(total / stActiveMonths.length));
+                        row.push(Math.round(total * 1000), Math.round(total * 1000 / stActiveMonths.length));
                     }
                     csv.push(row.join(','));
                 }
@@ -6446,18 +6446,27 @@
                     csv.push('');
                 }
 
-                function addRow(section, name, values, isRate) {
+                // addRow: isRate=true→率, isYenAlready=true→既に円単位, それ以外→千円→円変換
+                function addRow(section, name, values, isRate, isYenAlready) {
                     var row = [stName, section, name];
                     var total = 0;
                     for (var m = 0; m < values.length; m++) {
                         var val = values[m] || 0;
                         total += val;
-                        row.push(isRate ? val.toFixed(1) + '%' : Math.round(val));
+                        if (isRate) {
+                            row.push(val.toFixed(1) + '%');
+                        } else if (isYenAlready) {
+                            row.push(Math.round(val));  // 既に円単位
+                        } else {
+                            row.push(Math.round(val * 1000));  // 千円→円変換
+                        }
                     }
                     if (isRate) {
                         row.push('-', (total / values.length).toFixed(1) + '%');
-                    } else {
+                    } else if (isYenAlready) {
                         row.push(Math.round(total), Math.round(total / values.length));
+                    } else {
+                        row.push(Math.round(total * 1000), Math.round(total * 1000 / values.length));
                     }
                     csv.push(row.join(','));
                 }
@@ -6471,10 +6480,10 @@
                 }
 
                 // 目標設定
-                addRow('目標設定', '月次目標利益', getMonthlyData(function(m) { return stAnnualData[63] ? (stAnnualData[63][m] || 0) : 0; }), false);
-                addRow('目標設定', '目標FD仕入費率', getMonthlyData(function(m) { return stRakumyInputs[m] ? (stRakumyInputs[m].fdRate || 0) : 0; }), true);
-                addRow('目標設定', '目標PA人件費率', getMonthlyData(function(m) { return stRakumyInputs[m] ? (stRakumyInputs[m].paRate || 0) : 0; }), true);
-                addRow('目標設定', '目標客単価', getMonthlyData(function(m) { return stRakumyInputs[m] ? (stRakumyInputs[m].targetUnitPrice || 0) : 0; }), false);
+                addRow('目標設定', '月次目標利益', getMonthlyData(function(m) { return stAnnualData[63] ? (stAnnualData[63][m] || 0) : 0; }), false, false);
+                addRow('目標設定', '目標FD仕入費率', getMonthlyData(function(m) { return stRakumyInputs[m] ? (stRakumyInputs[m].fdRate || 0) : 0; }), true, false);
+                addRow('目標設定', '目標PA人件費率', getMonthlyData(function(m) { return stRakumyInputs[m] ? (stRakumyInputs[m].paRate || 0) : 0; }), true, false);
+                addRow('目標設定', '目標客単価', getMonthlyData(function(m) { return stRakumyInputs[m] ? (stRakumyInputs[m].targetUnitPrice || 0) : 0; }), false, true);  // 既に円単位
 
                 // 売上
                 addRow('売上', '売上 計', getMonthlyData(function(m) { return stMqOutputs[m] ? (stMqOutputs[m].sales || 0) : 0; }), false);
@@ -6573,16 +6582,17 @@
             header.push('合計', '平均');
             csv.push(header.join(','));
 
+            // MQ項目定義: isPerson=人数, isYen=円単位, isMoney=千円→円変換
             var mqItems = [
-                { key: 'customers', name: '客数', isRate: false },
-                { key: 'unitPrice', name: '客単価', isRate: false },
-                { key: 'sales', name: '売上', isRate: false },
-                { key: 'variableCost', name: '変動費', isRate: false },
+                { key: 'customers', name: '客数', isRate: false, isPerson: true },
+                { key: 'unitPrice', name: '客単価', isRate: false, isYen: true },
+                { key: 'sales', name: '売上', isRate: false, isMoney: true },
+                { key: 'variableCost', name: '変動費', isRate: false, isMoney: true },
                 { key: 'variableRate', name: '変動費率', isRate: true },
-                { key: 'grossProfit', name: '粗利', isRate: false },
+                { key: 'grossProfit', name: '粗利', isRate: false, isMoney: true },
                 { key: 'grossProfitRate', name: '粗利率', isRate: true },
-                { key: 'fixedCost', name: '固定費', isRate: false },
-                { key: 'operatingProfit', name: '営業利益', isRate: false },
+                { key: 'fixedCost', name: '固定費', isRate: false, isMoney: true },
+                { key: 'operatingProfit', name: '営業利益', isRate: false, isMoney: true },
                 { key: 'operatingProfitRate', name: '営業利益率', isRate: true }
             ];
 
@@ -6600,36 +6610,48 @@
                     csv.push('');
                 }
 
-                // MQ項目
+                // MQ項目（円単位変換対応）
                 mqItems.forEach(function(item) {
                     var row = [stName, item.name];
                     var total = 0;
                     for (var m = 0; m < stActiveMonths.length; m++) {
                         var val = stMqOutputs[m] ? (stMqOutputs[m][item.key] || 0) : 0;
                         total += val;
-                        row.push(item.isRate ? val.toFixed(1) + '%' : Math.round(val));
+                        if (item.isRate) {
+                            row.push(val.toFixed(1) + '%');
+                        } else if (item.isPerson || item.isYen) {
+                            row.push(Math.round(val));  // 人数・円単位はそのまま
+                        } else if (item.isMoney) {
+                            row.push(Math.round(val * 1000));  // 千円→円変換
+                        } else {
+                            row.push(Math.round(val));
+                        }
                     }
                     if (item.isRate) {
                         row.push('-', (total / stActiveMonths.length).toFixed(1) + '%');
+                    } else if (item.isPerson || item.isYen) {
+                        row.push(Math.round(total), Math.round(total / stActiveMonths.length));
+                    } else if (item.isMoney) {
+                        row.push(Math.round(total * 1000), Math.round(total * 1000 / stActiveMonths.length));
                     } else {
                         row.push(Math.round(total), Math.round(total / stActiveMonths.length));
                     }
                     csv.push(row.join(','));
                 });
 
-                // 顧客予算との比較
+                // 顧客予算との比較（円単位変換）
                 // 顧客予算売上（No.4 売上高合計）
                 var budgetSalesRow = [stName, '顧客予算売上'];
                 var budgetSalesTotal = 0;
                 for (var m = 0; m < stActiveMonths.length; m++) {
                     var val = stAnnualData[4] ? (stAnnualData[4][m] || 0) : 0;
                     budgetSalesTotal += val;
-                    budgetSalesRow.push(Math.round(val));
+                    budgetSalesRow.push(Math.round(val * 1000));
                 }
-                budgetSalesRow.push(Math.round(budgetSalesTotal), Math.round(budgetSalesTotal / stActiveMonths.length));
+                budgetSalesRow.push(Math.round(budgetSalesTotal * 1000), Math.round(budgetSalesTotal * 1000 / stActiveMonths.length));
                 csv.push(budgetSalesRow.join(','));
 
-                // 売上差異
+                // 売上差異（円単位変換）
                 var salesDiffRow = [stName, '売上差異（MQ-予算）'];
                 var salesDiffTotal = 0;
                 for (var m = 0; m < stActiveMonths.length; m++) {
@@ -6637,23 +6659,23 @@
                     var budgetSales = stAnnualData[4] ? (stAnnualData[4][m] || 0) : 0;
                     var diff = mqSales - budgetSales;
                     salesDiffTotal += diff;
-                    salesDiffRow.push((diff >= 0 ? '+' : '') + Math.round(diff));
+                    salesDiffRow.push((diff >= 0 ? '+' : '') + Math.round(diff * 1000));
                 }
-                salesDiffRow.push((salesDiffTotal >= 0 ? '+' : '') + Math.round(salesDiffTotal), '-');
+                salesDiffRow.push((salesDiffTotal >= 0 ? '+' : '') + Math.round(salesDiffTotal * 1000), '-');
                 csv.push(salesDiffRow.join(','));
 
-                // 顧客予算営業利益（No.63 営業利益）
+                // 顧客予算営業利益（No.63 営業利益）（円単位変換）
                 var budgetProfitRow = [stName, '顧客予算営業利益'];
                 var budgetProfitTotal = 0;
                 for (var m = 0; m < stActiveMonths.length; m++) {
                     var val = stAnnualData[63] ? (stAnnualData[63][m] || 0) : 0;
                     budgetProfitTotal += val;
-                    budgetProfitRow.push(Math.round(val));
+                    budgetProfitRow.push(Math.round(val * 1000));
                 }
-                budgetProfitRow.push(Math.round(budgetProfitTotal), Math.round(budgetProfitTotal / stActiveMonths.length));
+                budgetProfitRow.push(Math.round(budgetProfitTotal * 1000), Math.round(budgetProfitTotal * 1000 / stActiveMonths.length));
                 csv.push(budgetProfitRow.join(','));
 
-                // 営業利益差異
+                // 営業利益差異（円単位変換）
                 var profitDiffRow = [stName, '営業利益差異（MQ-予算）'];
                 var profitDiffTotal = 0;
                 for (var m = 0; m < stActiveMonths.length; m++) {
@@ -6661,9 +6683,9 @@
                     var budgetProfit = stAnnualData[60] ? (stAnnualData[60][m] || 0) : 0;
                     var diff = mqProfit - budgetProfit;
                     profitDiffTotal += diff;
-                    profitDiffRow.push((diff >= 0 ? '+' : '') + Math.round(diff));
+                    profitDiffRow.push((diff >= 0 ? '+' : '') + Math.round(diff * 1000));
                 }
-                profitDiffRow.push((profitDiffTotal >= 0 ? '+' : '') + Math.round(profitDiffTotal), '-');
+                profitDiffRow.push((profitDiffTotal >= 0 ? '+' : '') + Math.round(profitDiffTotal * 1000), '-');
                 csv.push(profitDiffRow.join(','));
             });
 
