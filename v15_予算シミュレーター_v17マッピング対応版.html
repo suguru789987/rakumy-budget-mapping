@@ -6312,17 +6312,95 @@
             var csv = [];
             var BOM = '\uFEFF';
 
-            // ヘッダー行（コード, 項目名, 4月〜3月）
-            csv.push('コード,項目名,4月,5月,6月,7月,8月,9月,10月,11月,12月,1月,2月,3月');
+            // ヘッダー行（予算カテゴリ, 科目コード, 予算項目名, 1月〜12月）
+            csv.push('予算カテゴリ,科目コード,予算項目名,1月,2月,3月,4月,5月,6月,7月,8月,9月,10月,11月,12月');
 
-            // データ行（CUSTOMER_CODE_MAPから項目を出力）
-            var sortedCodes = Object.keys(CUSTOMER_CODE_MAP).sort(function(a, b) {
-                return CUSTOMER_CODE_MAP[a].v15No - CUSTOMER_CODE_MAP[b].v15No;
-            });
+            // テンプレートデータ定義（カテゴリ別）
+            var templateItems = [
+                // 売上高
+                { category: '売上高', code: '101', name: '店舗売上高' },
+                { category: '売上高', code: '102', name: 'ドリンク売上' },
+                { category: '売上高', code: '103', name: 'その他売上高' },
+                { category: '売上高', code: '104', name: '売上高合計（税抜）' },
+                // 売上原価
+                { category: '売上原価', code: '201', name: '食材期首棚' },
+                { category: '売上原価', code: '202', name: '食材仕入高' },
+                { category: '売上原価', code: '203', name: '食材期末棚' },
+                { category: '売上原価', code: '204', name: '食材原価' },
+                { category: '売上原価', code: '205', name: 'ﾄﾞﾘﾝｸ期首棚' },
+                { category: '売上原価', code: '206', name: 'ドリンク仕入高' },
+                { category: '売上原価', code: '207', name: 'ﾄﾞﾘﾝｸ期末棚' },
+                { category: '売上原価', code: '208', name: 'ドリンク原価' },
+                { category: '売上原価', code: '209', name: '内部振替' },
+                { category: '売上原価', code: '210', name: '原価合計' },
+                { category: '売上原価', code: '211', name: '売上総利益' },
+                // 人件費
+                { category: '人件費', code: '301', name: '給料手当' },
+                { category: '人件費', code: '302', name: '店長料理長昇給' },
+                { category: '人件費', code: '303', name: '社員給与' },
+                { category: '人件費', code: '304', name: '雑給' },
+                { category: '人件費', code: '305', name: 'ヘルプ人件費' },
+                { category: '人件費', code: '306', name: '法定福利費' },
+                { category: '人件費', code: '307', name: '通勤交通費' },
+                { category: '人件費', code: '308', name: '賞与引当金繰入' },
+                { category: '人件費', code: '309', name: '社宅家賃' },
+                { category: '人件費', code: '310', name: '休業手当' },
+                { category: '人件費', code: '311', name: '人件費合計' },
+                // 水道光熱費
+                { category: '水道光熱費', code: '401', name: '電気代' },
+                { category: '水道光熱費', code: '402', name: 'ガス代' },
+                { category: '水道光熱費', code: '403', name: '水道代' },
+                { category: '水道光熱費', code: '404', name: '水道光熱費合計' },
+                // 販促費
+                { category: '販促費', code: '501', name: '販売促進費' },
+                { category: '販促費', code: '502', name: 'メニューコピー' },
+                { category: '販促費', code: '503', name: '調査費' },
+                { category: '販促費', code: '504', name: 'サービス費' },
+                { category: '販促費', code: '505', name: '販促費合計' },
+                // 店舗運営費
+                { category: '店舗運営費', code: '601', name: '衛生費' },
+                { category: '店舗運営費', code: '602', name: '消耗品費' },
+                { category: '店舗運営費', code: '603', name: '保守修繕費' },
+                { category: '店舗運営費', code: '604', name: '店舗運営費合計' },
+                // 管理費
+                { category: '管理費', code: '701', name: '租税公課' },
+                { category: '管理費', code: '702', name: '接待交際費' },
+                { category: '管理費', code: '703', name: '旅費交通費' },
+                { category: '管理費', code: '704', name: '通信費' },
+                { category: '管理費', code: '705', name: 'ｸﾚｼﾞｯﾄ手数料' },
+                { category: '管理費', code: '706', name: '支払手数料' },
+                { category: '管理費', code: '707', name: '会議費' },
+                { category: '管理費', code: '708', name: '諸会費' },
+                { category: '管理費', code: '709', name: '雑費' },
+                { category: '管理費', code: '710', name: '管理費合計' },
+                // 教育・採用費
+                { category: '教育・採用費', code: '801', name: '図書教育費' },
+                { category: '教育・採用費', code: '802', name: '研修費' },
+                { category: '教育・採用費', code: '803', name: '業態研究費' },
+                { category: '教育・採用費', code: '804', name: '採用費' },
+                { category: '教育・採用費', code: '805', name: '教育・採用費合計' },
+                // IT・外注費
+                { category: 'IT・外注費', code: '901', name: 'IT費' },
+                { category: 'IT・外注費', code: '902', name: '外注費' },
+                { category: 'IT・外注費', code: '903', name: 'IT・外注費合計' },
+                { category: 'IT・外注費', code: '904', name: '変動費合計' },
+                { category: 'IT・外注費', code: '905', name: '限界利益' },
+                // 固定費
+                { category: '固定費', code: '951', name: '減価償却費' },
+                { category: '固定費', code: '952', name: '家賃' },
+                { category: '固定費', code: '953', name: '警備料' },
+                { category: '固定費', code: '954', name: 'リース料' },
+                { category: '固定費', code: '955', name: '賃借料' },
+                { category: '固定費', code: '956', name: '固定費合計' },
+                // 損益
+                { category: '損益', code: '991', name: '店舗営業利益' },
+                { category: '損益', code: '992', name: '販売管理費合計' },
+                { category: '損益', code: '993', name: '営業利益' }
+            ];
 
-            sortedCodes.forEach(function(code) {
-                var item = CUSTOMER_CODE_MAP[code];
-                csv.push([code, item.name, '', '', '', '', '', '', '', '', '', '', '', ''].join(','));
+            // データ行を出力
+            templateItems.forEach(function(item) {
+                csv.push([item.category, item.code, item.name, '', '', '', '', '', '', '', '', '', '', '', ''].join(','));
             });
 
             var blob = new Blob([BOM + csv.join('\n')], { type: 'text/csv;charset=utf-8' });
@@ -6331,7 +6409,7 @@
             link.download = '予算テンプレート_' + new Date().toISOString().slice(0,10) + '.csv';
             link.click();
 
-            showStatus('success', '予算テンプレートをダウンロードしました');
+            showStatus('success', '予算テンプレートをダウンロードしました（' + templateItems.length + '項目）');
         }
 
         // ★★★ 店番テンプレートダウンロード ★★★
