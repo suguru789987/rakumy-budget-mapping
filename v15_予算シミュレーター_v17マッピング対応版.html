@@ -5049,7 +5049,7 @@
         // ★★★ 予算試算用 目標客単価編集モーダル表示 ★★★
         function showSimUnitPriceEditModal() {
             try {
-                console.log('showSimUnitPriceEditModal called');
+                console.log('=== showSimUnitPriceEditModal 開始 ===');
                 hideUnitPriceConfirmModal();
                 // 店舗名を取得
                 var select = document.getElementById('simulationStoreSelect');
@@ -5057,15 +5057,27 @@
                 console.log('storeName:', storeName);
                 // 客単価テーブルをモーダル内に再描画してデフォルト値をセット
                 initSimUnitPrices(storeName);
+
                 var modal = document.getElementById('simUnitPriceEditModal');
+                console.log('modal要素:', modal);
+                console.log('modal存在:', modal ? 'YES' : 'NO');
+
                 if (modal) {
+                    console.log('表示前display:', modal.style.display);
                     modal.style.display = 'flex';
+                    console.log('表示後display:', modal.style.display);
+                    console.log('modal.offsetWidth:', modal.offsetWidth);
+                    console.log('modal.offsetHeight:', modal.offsetHeight);
+                } else {
+                    console.error('★★★ simUnitPriceEditModal が見つかりません！ ★★★');
+                    alert('エラー: 客単価編集モーダルが見つかりません');
                 }
                 // 月数表示を更新
                 var countEl = document.getElementById('simMonthCountDisplay2');
                 if (countEl && simulationData && simulationData.activeMonths) {
                     countEl.textContent = simulationData.activeMonths.length;
                 }
+                console.log('=== showSimUnitPriceEditModal 終了 ===');
             } catch (e) {
                 console.error('showSimUnitPriceEditModal error:', e);
                 alert('エラー: ' + e.message);
