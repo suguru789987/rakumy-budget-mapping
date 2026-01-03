@@ -1089,6 +1089,17 @@
                         この設定は予算CSVインポート時の項目マッチングに使用されます。
                     </p>
 
+                    <!-- 店舗別マスタ選択 -->
+                    <div style="margin-bottom:15px;padding:12px;background:linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);border-radius:8px;border:1px solid #90caf9;">
+                        <div style="display:flex;align-items:center;gap:15px;flex-wrap:wrap;">
+                            <span style="font-weight:bold;color:#1976d2;font-size:13px;">🏪 店舗別マスタ:</span>
+                            <div id="storeMasterSelector">
+                                <!-- JavaScript で描画 -->
+                            </div>
+                            <span style="font-size:11px;color:#666;">※CSVインポート時に店舗マスタが自動保存されます</span>
+                        </div>
+                    </div>
+
                     <!-- 操作ボタン群 -->
                     <div style="margin-bottom:15px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
                         <button id="toggleCategorySummaryBtn" class="btn" style="background:#ff9800;color:#fff;padding:10px 20px;font-size:12px;" onclick="toggleCategorySummary()">
@@ -3002,201 +3013,183 @@
         // 店舗別月別目標客単価（ユーザー編集用）
         var storeUnitPrices = {}; // { storeName: { 0: {total, lunch, dinner}, 1: {...}, ... } }
 
-        // ★★★ 予算カテゴリマッピング（カテゴリ表示順・出力先設定） ★★★
-        // costType: 'fixed'=固定費, 'variable'=変動費, 'both'=両方, 'none'=対象外
+        // ★★★ 予算カテゴリマッピング（予算テンプレートCSVのカテゴリ構造に対応） ★★★
+        // costType: 'fixed'=固定費（顧客予算は全て固定費）
+        // output: 'cost'=費用予算設定, 'mq'=月次予算設定, 'none'=自動演算/参照
         var BUDGET_CATEGORY_MAP = {
             '売上高': {
-                output: 'mq',           // 出力先: mq=MQ計算, cost=費用予算設定, both=両方
+                output: 'mq',           // 月次予算設定
                 type: 'sales',
-                costType: 'none',       // 費用区分（固定費/変動費）
+                costType: 'fixed',
                 displayOrder: 1,
                 color: '#4caf50',
-                items: []               // カテゴリ内項目（sortOrder順）
+                items: []
             },
             '売上原価': {
-                output: 'mq',
+                output: 'mq',           // 月次予算設定（原価）、参照のみ（棚卸・仕入）
                 type: 'cost_of_sales',
-                costType: 'none',
+                costType: 'fixed',
                 displayOrder: 2,
                 color: '#ff9800',
                 items: []
             },
             '人件費': {
-                output: 'both',         // 詳細で分岐（固定/変動）
+                output: 'both',         // 固定人件費→費用予算設定、PA人件費→月次予算設定
                 type: 'labor',
-                costType: 'both',       // 固定人件費・変動人件費の両方あり
+                costType: 'fixed',
                 displayOrder: 3,
                 color: '#2196f3',
                 items: []
             },
             '水道光熱費': {
-                output: 'cost',
+                output: 'cost',         // 費用予算設定
                 type: 'utility',
-                costType: 'variable',   // 変動費
+                costType: 'fixed',
                 displayOrder: 4,
-                color: '#9c27b0',
+                color: '#009688',
                 items: []
             },
             '販促費': {
-                output: 'cost',
+                output: 'cost',         // 費用予算設定
                 type: 'promotion',
-                costType: 'variable',
+                costType: 'fixed',
                 displayOrder: 5,
                 color: '#e91e63',
                 items: []
             },
             '店舗運営費': {
-                output: 'cost',
+                output: 'cost',         // 費用予算設定
                 type: 'operation',
-                costType: 'variable',
+                costType: 'fixed',
                 displayOrder: 6,
                 color: '#00bcd4',
                 items: []
             },
             '管理費': {
-                output: 'cost',
+                output: 'cost',         // 費用予算設定
                 type: 'admin',
-                costType: 'variable',
+                costType: 'fixed',
                 displayOrder: 7,
                 color: '#607d8b',
                 items: []
             },
             '教育・採用費': {
-                output: 'cost',
+                output: 'cost',         // 費用予算設定
                 type: 'education',
-                costType: 'variable',
+                costType: 'fixed',
                 displayOrder: 8,
                 color: '#795548',
                 items: []
             },
             'IT・外注費': {
-                output: 'cost',
+                output: 'cost',         // 費用予算設定
                 type: 'it',
-                costType: 'variable',
+                costType: 'fixed',
                 displayOrder: 9,
                 color: '#3f51b5',
                 items: []
             },
             '固定費': {
-                output: 'cost',
+                output: 'cost',         // 費用予算設定
                 type: 'fixed',
-                costType: 'fixed',      // 固定費
+                costType: 'fixed',
                 displayOrder: 10,
                 color: '#f44336',
                 items: []
             },
             '損益': {
-                output: 'mq',
+                output: 'mq',           // 店舗営業利益→月次予算設定、他は自動演算
                 type: 'profit',
-                costType: 'none',
+                costType: 'fixed',
                 displayOrder: 11,
                 color: '#673ab7',
-                items: []
-            },
-            'その他変動費': {
-                output: 'cost',
-                type: 'variable',
-                costType: 'variable',
-                displayOrder: 12,
-                color: '#009688',
-                items: []
-            },
-            'KPI': {
-                output: 'mq',
-                type: 'kpi',
-                costType: 'none',
-                displayOrder: 13,
-                color: '#ff5722',
                 items: []
             }
         };
 
-        // 設定データ（v17マッピング準拠）
-        // v17: 顧客予算_ラクミー_パイプラインマッピング表_v17_MUGEN限定.csv
-        // ★ budgetCategory: 予算テンプレートカテゴリ、sortOrder: カテゴリ内表示順
+        // ★★★ 設定データ（予算テンプレートCSV科目コード対応・V17マッピング準拠） ★★★
+        // 予算テンプレートCSVの科目コード（101, 102, 201...）に対応
+        // screen属性: '設定>費用予算設定' → 費用出力, '設定>月次予算設定' → MQ出力, '参照のみ' → 参照のみ, '自動' → 自動演算
         var CUSTOMER_CODE_MAP = {
             // === 売上高（No.1-4） ===
-            '810': { v15No: 1, name: '店舗売上高', category: '売上高', budgetCategory: '売上高', sortOrder: 1, inputStyle: 'C.自動演算', screen: '自動' },
-            '811': { v15No: 2, name: 'ドリンク売上', category: '売上高', budgetCategory: '売上高', sortOrder: 2, inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定>売上構成比設定' },
-            '812': { v15No: 3, name: 'その他売上高', category: '売上高', budgetCategory: '売上高', sortOrder: 3, inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定>売上構成比設定' },
-            '999': { v15No: 4, name: '売上高合計（税抜）', category: '売上高', budgetCategory: '売上高', sortOrder: 4, inputStyle: 'C.自動演算', screen: '自動' },
+            '101': { v15No: 1, name: '店舗売上高', category: '売上高', budgetCategory: '売上高', sortOrder: 1, inputStyle: 'C.自動演算', screen: '自動' },
+            '102': { v15No: 2, name: 'ドリンク売上', category: '売上高', budgetCategory: '売上高', sortOrder: 2, inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定' },
+            '103': { v15No: 3, name: 'その他売上高', category: '売上高', budgetCategory: '売上高', sortOrder: 3, inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定' },
+            '104': { v15No: 4, name: '売上高合計（税抜）', category: '売上高', budgetCategory: '売上高', sortOrder: 4, inputStyle: 'C.自動演算', screen: '自動' },
             // === 売上原価（No.5-15） ===
-            '2028': { v15No: 5, name: '食材期首棚', category: '売上原価', budgetCategory: '売上原価', sortOrder: 1, inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定' },
-            '461': { v15No: 6, name: '食材仕入高', category: '売上原価', budgetCategory: '売上原価', sortOrder: 2, inputStyle: 'D.参照のみ', screen: '参照のみ' },
-            '2029': { v15No: 7, name: '食材期末棚', category: '売上原価', budgetCategory: '売上原価', sortOrder: 3, inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定' },
-            '4611': { v15No: 8, name: '食材原価', category: '売上原価', budgetCategory: '売上原価', sortOrder: 4, inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定' },
-            '2030': { v15No: 9, name: 'ドリンク期首棚', category: '売上原価', budgetCategory: '売上原価', sortOrder: 5, inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定' },
-            '462': { v15No: 10, name: 'ドリンク仕入高', category: '売上原価', budgetCategory: '売上原価', sortOrder: 6, inputStyle: 'D.参照のみ', screen: '参照のみ' },
-            '2031': { v15No: 11, name: 'ドリンク期末棚', category: '売上原価', budgetCategory: '売上原価', sortOrder: 7, inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定' },
-            '4621': { v15No: 12, name: 'ドリンク原価', category: '売上原価', budgetCategory: '売上原価', sortOrder: 8, inputStyle: 'B.合算して入力', screen: '設定>月次予算設定' },
-            '9991': { v15No: 13, name: '内部振替', category: '売上原価', budgetCategory: '売上原価', sortOrder: 9, inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定' },
-            '9992': { v15No: 14, name: '原価合計', category: '売上原価', budgetCategory: '売上原価', sortOrder: 10, inputStyle: 'C.自動演算', screen: '自動' },
-            '9993': { v15No: 15, name: '売上総利益', category: '売上原価', budgetCategory: '売上原価', sortOrder: 11, inputStyle: 'C.自動演算', screen: '自動' },
+            '201': { v15No: 5, name: '食材期首棚', category: '売上原価', budgetCategory: '売上原価', sortOrder: 1, inputStyle: 'D.参照のみ', screen: '参照のみ' },
+            '202': { v15No: 6, name: '食材仕入高', category: '売上原価', budgetCategory: '売上原価', sortOrder: 2, inputStyle: 'D.参照のみ', screen: '参照のみ' },
+            '203': { v15No: 7, name: '食材期末棚', category: '売上原価', budgetCategory: '売上原価', sortOrder: 3, inputStyle: 'D.参照のみ', screen: '参照のみ' },
+            '204': { v15No: 8, name: '食材原価', category: '売上原価', budgetCategory: '売上原価', sortOrder: 4, inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定' },
+            '205': { v15No: 9, name: 'ドリンク期首棚', category: '売上原価', budgetCategory: '売上原価', sortOrder: 5, inputStyle: 'D.参照のみ', screen: '参照のみ' },
+            '206': { v15No: 10, name: 'ドリンク仕入高', category: '売上原価', budgetCategory: '売上原価', sortOrder: 6, inputStyle: 'D.参照のみ', screen: '参照のみ' },
+            '207': { v15No: 11, name: 'ドリンク期末棚', category: '売上原価', budgetCategory: '売上原価', sortOrder: 7, inputStyle: 'D.参照のみ', screen: '参照のみ' },
+            '208': { v15No: 12, name: 'ドリンク原価', category: '売上原価', budgetCategory: '売上原価', sortOrder: 8, inputStyle: 'B.合算して入力', screen: '設定>月次予算設定' },
+            '209': { v15No: 13, name: '内部振替', category: '売上原価', budgetCategory: '売上原価', sortOrder: 9, inputStyle: 'D.参照のみ', screen: '参照のみ' },
+            '210': { v15No: 14, name: '原価合計', category: '売上原価', budgetCategory: '売上原価', sortOrder: 10, inputStyle: 'C.自動演算', screen: '自動' },
+            '211': { v15No: 15, name: '売上総利益', category: '売上原価', budgetCategory: '売上原価', sortOrder: 11, inputStyle: 'C.自動演算', screen: '自動' },
             // === 人件費（No.16-26） ===
-            '501': { v15No: 16, name: '給料手当', category: '人件費', budgetCategory: '人件費', sortOrder: 1, inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
-            '5011': { v15No: 17, name: '店長料理長昇給', category: '人件費', budgetCategory: '人件費', sortOrder: 2, inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
-            '5012': { v15No: 18, name: '社員給与', category: '人件費', budgetCategory: '人件費', sortOrder: 3, inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
-            '509': { v15No: 19, name: '雑給', category: '人件費', budgetCategory: '人件費', sortOrder: 4, inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定' },
-            '503': { v15No: 20, name: 'ヘルプ人件費', category: '人件費', budgetCategory: '人件費', sortOrder: 5, inputStyle: 'B.合算して入力', screen: '設定>月次予算設定' },
-            '504': { v15No: 21, name: '法定福利費', category: '人件費', budgetCategory: '人件費', sortOrder: 6, inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
-            '508': { v15No: 22, name: '通勤交通費', category: '人件費', budgetCategory: '人件費', sortOrder: 7, inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
-            '506': { v15No: 23, name: '賞与引当金繰入', category: '人件費', budgetCategory: '人件費', sortOrder: 8, inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
-            '553': { v15No: 24, name: '社宅家賃', category: '人件費', budgetCategory: '人件費', sortOrder: 9, inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
-            '2105': { v15No: 25, name: '休業手当', category: '人件費', budgetCategory: '人件費', sortOrder: 10, inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
-            '9994': { v15No: 26, name: '人件費合計', category: '人件費', budgetCategory: '人件費', sortOrder: 11, inputStyle: 'C.自動演算', screen: '自動' },
-            // === 水道光熱費（No.27-30） ===
-            '520': { v15No: 32, name: '電気代', category: '水道光熱費', budgetCategory: '水道光熱費', sortOrder: 1, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '521': { v15No: 33, name: 'ガス代', category: '水道光熱費', budgetCategory: '水道光熱費', sortOrder: 2, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '522': { v15No: 34, name: '水道代', category: '水道光熱費', budgetCategory: '水道光熱費', sortOrder: 3, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '9995': { v15No: 0, name: '水道光熱費合計', category: '水道光熱費', budgetCategory: '水道光熱費', sortOrder: 4, inputStyle: 'C.自動演算', screen: '自動' },
-            // === 販促費（No.31-35） ===
-            '510': { v15No: 27, name: '販売促進費', category: '販促費', budgetCategory: '販促費', sortOrder: 1, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '541': { v15No: 28, name: 'メニューコピー', category: '販促費', budgetCategory: '販促費', sortOrder: 2, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '516': { v15No: 29, name: '調査費', category: '販促費', budgetCategory: '販促費', sortOrder: 3, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '542': { v15No: 31, name: 'サービス費', category: '販促費', budgetCategory: '販促費', sortOrder: 4, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '9996': { v15No: 0, name: '販促費合計', category: '販促費', budgetCategory: '販促費', sortOrder: 5, inputStyle: 'C.自動演算', screen: '自動' },
-            // === 店舗運営費（No.36-39） ===
-            '514': { v15No: 30, name: '衛生費', category: '店舗運営費', budgetCategory: '店舗運営費', sortOrder: 1, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '523': { v15No: 35, name: '消耗品費', category: '店舗運営費', budgetCategory: '店舗運営費', sortOrder: 2, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '526': { v15No: 36, name: '保守修繕費', category: '店舗運営費', budgetCategory: '店舗運営費', sortOrder: 3, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '9997': { v15No: 0, name: '店舗運営費合計', category: '店舗運営費', budgetCategory: '店舗運営費', sortOrder: 4, inputStyle: 'C.自動演算', screen: '自動' },
-            // === 管理費（No.40-49） ===
-            '527': { v15No: 37, name: '租税公課', category: '管理費', budgetCategory: '管理費', sortOrder: 1, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '529': { v15No: 38, name: '接待交際費', category: '管理費', budgetCategory: '管理費', sortOrder: 2, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '530': { v15No: 39, name: '旅費交通費', category: '管理費', budgetCategory: '管理費', sortOrder: 3, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '531': { v15No: 40, name: '通信費', category: '管理費', budgetCategory: '管理費', sortOrder: 4, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '5321': { v15No: 41, name: 'クレジット手数料', category: '管理費', budgetCategory: '管理費', sortOrder: 5, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '532': { v15No: 42, name: '支払手数料', category: '管理費', budgetCategory: '管理費', sortOrder: 6, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '533': { v15No: 43, name: '会議費', category: '管理費', budgetCategory: '管理費', sortOrder: 7, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '534': { v15No: 44, name: '諸会費', category: '管理費', budgetCategory: '管理費', sortOrder: 8, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '539': { v15No: 51, name: '雑費', category: '管理費', budgetCategory: '管理費', sortOrder: 9, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '9998': { v15No: 0, name: '管理費合計', category: '管理費', budgetCategory: '管理費', sortOrder: 10, inputStyle: 'C.自動演算', screen: '自動' },
-            // === 教育・採用費（No.50-54） ===
-            '536': { v15No: 45, name: '図書教育費', category: '教育・採用費', budgetCategory: '教育・採用費', sortOrder: 1, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '546': { v15No: 46, name: '研修費', category: '教育・採用費', budgetCategory: '教育・採用費', sortOrder: 2, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '537': { v15No: 47, name: '業態研究費', category: '教育・採用費', budgetCategory: '教育・採用費', sortOrder: 3, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '518': { v15No: 48, name: '採用費', category: '教育・採用費', budgetCategory: '教育・採用費', sortOrder: 4, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '9999': { v15No: 0, name: '教育・採用費合計', category: '教育・採用費', budgetCategory: '教育・採用費', sortOrder: 5, inputStyle: 'C.自動演算', screen: '自動' },
-            // === IT・外注費（No.55-58） ===
-            '550': { v15No: 49, name: 'IT費', category: 'IT・外注費', budgetCategory: 'IT・外注費', sortOrder: 1, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '2128': { v15No: 50, name: '外注費', category: 'IT・外注費', budgetCategory: 'IT・外注費', sortOrder: 2, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '99991': { v15No: 0, name: 'IT・外注費合計', category: 'IT・外注費', budgetCategory: 'IT・外注費', sortOrder: 3, inputStyle: 'C.自動演算', screen: '自動' },
-            '99992': { v15No: 0, name: '変動費合計', category: 'IT・外注費', budgetCategory: 'IT・外注費', sortOrder: 4, inputStyle: 'C.自動演算', screen: '自動' },
-            '99993': { v15No: 0, name: '限界利益', category: 'IT・外注費', budgetCategory: 'IT・外注費', sortOrder: 5, inputStyle: 'C.自動演算', screen: '自動' },
-            // === 固定費（No.59-64） ===
-            '528': { v15No: 55, name: '減価償却費', category: '固定費', budgetCategory: '固定費', sortOrder: 1, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '554': { v15No: 56, name: '家賃', category: '固定費', budgetCategory: '固定費', sortOrder: 2, inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
-            '552': { v15No: 57, name: '警備料', category: '固定費', budgetCategory: '固定費', sortOrder: 3, inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
-            '5241': { v15No: 58, name: 'リース料', category: '固定費', budgetCategory: '固定費', sortOrder: 4, inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
-            '524': { v15No: 59, name: '賃借料', category: '固定費', budgetCategory: '固定費', sortOrder: 5, inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
-            '99994': { v15No: 0, name: '固定費合計', category: '固定費', budgetCategory: '固定費', sortOrder: 6, inputStyle: 'C.自動演算', screen: '自動' },
-            // === 損益（No.65-67） ===
-            '99995': { v15No: 63, name: '店舗営業利益', category: '損益', budgetCategory: '損益', sortOrder: 1, inputStyle: 'C.自動演算', screen: '自動' },
-            '99996': { v15No: 0, name: '販売管理費合計', category: '損益', budgetCategory: '損益', sortOrder: 2, inputStyle: 'C.自動演算', screen: '自動' },
-            '9640': { v15No: 63, name: '営業利益', category: '損益', budgetCategory: '損益', sortOrder: 3, inputStyle: 'C.自動演算', screen: '自動' },
-            // === KPI（No.64-70） ===
-            '9641': { v15No: 64, name: '客数', category: 'KPI', budgetCategory: 'KPI', sortOrder: 1, inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定' },
-            '9642': { v15No: 65, name: '客単価', category: 'KPI', budgetCategory: 'KPI', sortOrder: 2, inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定' }
+            '301': { v15No: 16, name: '給料手当', category: '人件費', budgetCategory: '人件費', sortOrder: 1, inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
+            '302': { v15No: 17, name: '店長料理長昇給', category: '人件費', budgetCategory: '人件費', sortOrder: 2, inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
+            '303': { v15No: 18, name: '社員給与', category: '人件費', budgetCategory: '人件費', sortOrder: 3, inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
+            '304': { v15No: 19, name: '雑給', category: '人件費', budgetCategory: '人件費', sortOrder: 4, inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定' },
+            '305': { v15No: 20, name: 'ヘルプ人件費', category: '人件費', budgetCategory: '人件費', sortOrder: 5, inputStyle: 'B.合算して入力', screen: '設定>月次予算設定' },
+            '306': { v15No: 21, name: '法定福利費', category: '人件費', budgetCategory: '人件費', sortOrder: 6, inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
+            '307': { v15No: 22, name: '通勤交通費', category: '人件費', budgetCategory: '人件費', sortOrder: 7, inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
+            '308': { v15No: 23, name: '賞与引当金繰入', category: '人件費', budgetCategory: '人件費', sortOrder: 8, inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
+            '309': { v15No: 24, name: '社宅家賃', category: '人件費', budgetCategory: '人件費', sortOrder: 9, inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
+            '310': { v15No: 25, name: '休業手当', category: '人件費', budgetCategory: '人件費', sortOrder: 10, inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
+            '311': { v15No: 26, name: '人件費合計', category: '人件費', budgetCategory: '人件費', sortOrder: 11, inputStyle: 'C.自動演算', screen: '自動' },
+            // === 水道光熱費 ===
+            '401': { v15No: 32, name: '電気代', category: '水道光熱費', budgetCategory: '水道光熱費', sortOrder: 1, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '402': { v15No: 33, name: 'ガス代', category: '水道光熱費', budgetCategory: '水道光熱費', sortOrder: 2, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '403': { v15No: 34, name: '水道代', category: '水道光熱費', budgetCategory: '水道光熱費', sortOrder: 3, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '404': { v15No: 0, name: '水道光熱費合計', category: '水道光熱費', budgetCategory: '水道光熱費', sortOrder: 4, inputStyle: 'C.自動演算', screen: '自動' },
+            // === 販促費 ===
+            '501': { v15No: 27, name: '販売促進費', category: '販促費', budgetCategory: '販促費', sortOrder: 1, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '502': { v15No: 28, name: 'メニューコピー', category: '販促費', budgetCategory: '販促費', sortOrder: 2, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '503': { v15No: 29, name: '調査費', category: '販促費', budgetCategory: '販促費', sortOrder: 3, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '504': { v15No: 31, name: 'サービス費', category: '販促費', budgetCategory: '販促費', sortOrder: 4, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '505': { v15No: 0, name: '販促費合計', category: '販促費', budgetCategory: '販促費', sortOrder: 5, inputStyle: 'C.自動演算', screen: '自動' },
+            // === 店舗運営費 ===
+            '601': { v15No: 30, name: '衛生費', category: '店舗運営費', budgetCategory: '店舗運営費', sortOrder: 1, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '602': { v15No: 35, name: '消耗品費', category: '店舗運営費', budgetCategory: '店舗運営費', sortOrder: 2, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '603': { v15No: 36, name: '保守修繕費', category: '店舗運営費', budgetCategory: '店舗運営費', sortOrder: 3, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '604': { v15No: 0, name: '店舗運営費合計', category: '店舗運営費', budgetCategory: '店舗運営費', sortOrder: 4, inputStyle: 'C.自動演算', screen: '自動' },
+            // === 管理費 ===
+            '701': { v15No: 37, name: '租税公課', category: '管理費', budgetCategory: '管理費', sortOrder: 1, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '702': { v15No: 38, name: '接待交際費', category: '管理費', budgetCategory: '管理費', sortOrder: 2, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '703': { v15No: 39, name: '旅費交通費', category: '管理費', budgetCategory: '管理費', sortOrder: 3, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '704': { v15No: 40, name: '通信費', category: '管理費', budgetCategory: '管理費', sortOrder: 4, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '705': { v15No: 41, name: 'クレジット手数料', category: '管理費', budgetCategory: '管理費', sortOrder: 5, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '706': { v15No: 42, name: '支払手数料', category: '管理費', budgetCategory: '管理費', sortOrder: 6, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '707': { v15No: 43, name: '会議費', category: '管理費', budgetCategory: '管理費', sortOrder: 7, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '708': { v15No: 44, name: '諸会費', category: '管理費', budgetCategory: '管理費', sortOrder: 8, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '709': { v15No: 51, name: '雑費', category: '管理費', budgetCategory: '管理費', sortOrder: 9, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '710': { v15No: 0, name: '管理費合計', category: '管理費', budgetCategory: '管理費', sortOrder: 10, inputStyle: 'C.自動演算', screen: '自動' },
+            // === 教育・採用費 ===
+            '801': { v15No: 45, name: '図書教育費', category: '教育・採用費', budgetCategory: '教育・採用費', sortOrder: 1, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '802': { v15No: 46, name: '研修費', category: '教育・採用費', budgetCategory: '教育・採用費', sortOrder: 2, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '803': { v15No: 47, name: '業態研究費', category: '教育・採用費', budgetCategory: '教育・採用費', sortOrder: 3, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '804': { v15No: 48, name: '採用費', category: '教育・採用費', budgetCategory: '教育・採用費', sortOrder: 4, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '805': { v15No: 0, name: '教育・採用費合計', category: '教育・採用費', budgetCategory: '教育・採用費', sortOrder: 5, inputStyle: 'C.自動演算', screen: '自動' },
+            // === IT・外注費 ===
+            '901': { v15No: 49, name: 'IT費', category: 'IT・外注費', budgetCategory: 'IT・外注費', sortOrder: 1, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '902': { v15No: 50, name: '外注費', category: 'IT・外注費', budgetCategory: 'IT・外注費', sortOrder: 2, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '903': { v15No: 0, name: 'IT・外注費合計', category: 'IT・外注費', budgetCategory: 'IT・外注費', sortOrder: 3, inputStyle: 'C.自動演算', screen: '自動' },
+            // '904': 変動費合計 → 自動演算項目のためスキップ（v17No.53はロイヤリティ用）
+            // '905': 限界利益 → v17No.75であり、自動演算項目のためスキップ
+            // === 固定費 ===
+            '951': { v15No: 55, name: '減価償却費', category: '固定費', budgetCategory: '固定費', sortOrder: 1, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '952': { v15No: 56, name: '家賃', category: '固定費', budgetCategory: '固定費', sortOrder: 2, inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
+            '953': { v15No: 57, name: '警備料', category: '固定費', budgetCategory: '固定費', sortOrder: 3, inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
+            '954': { v15No: 58, name: 'リース料', category: '固定費', budgetCategory: '固定費', sortOrder: 4, inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
+            '955': { v15No: 59, name: '賃借料', category: '固定費', budgetCategory: '固定費', sortOrder: 5, inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
+            '956': { v15No: 60, name: '固定費合計', category: '固定費', budgetCategory: '固定費', sortOrder: 6, inputStyle: 'C.自動演算', screen: '自動' },
+            // === 損益 ===
+            '991': { v15No: 61, name: '店舗営業利益', category: '損益', budgetCategory: '損益', sortOrder: 1, inputStyle: 'A.そのまま入力', screen: '参照のみ' },
+            '992': { v15No: 62, name: '販売管理費合計', category: '損益', budgetCategory: '損益', sortOrder: 2, inputStyle: 'C.自動演算', screen: '自動' },
+            '993': { v15No: 63, name: '営業利益', category: '損益', budgetCategory: '損益', sortOrder: 3, inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定' }
         };
 
         // ★ 項目名ベースのマッピング（E列空欄・セル結合解除対応）
@@ -3328,85 +3321,89 @@
             '労務費計': { v17No: 26, category: '人件費' },
             '総人件費': { v17No: 26, category: '人件費' },
             '人件費総額': { v17No: 26, category: '人件費' },
-            // === その他変動費（No.27-51） ===
-            '販売促進費': { v17No: 27, category: 'その他変動費' },
-            '販促費': { v17No: 27, category: 'その他変動費' },
-            '広告宣伝費': { v17No: 27, category: 'その他変動費' },
-            'メニューコピー': { v17No: 28, category: 'その他変動費' },
-            'ﾒﾆｭｰｺﾋﾟｰ': { v17No: 28, category: 'その他変動費' },  // 半角カタカナ
-            'メニュー印刷': { v17No: 28, category: 'その他変動費' },
-            '調査費': { v17No: 29, category: 'その他変動費' },
-            '市場調査費': { v17No: 29, category: 'その他変動費' },
-            '衛生費': { v17No: 30, category: 'その他変動費' },
-            '衛生管理費': { v17No: 30, category: 'その他変動費' },
-            '清掃費': { v17No: 30, category: 'その他変動費' },
-            'サービス費': { v17No: 31, category: 'その他変動費' },
-            'ｻｰﾋﾞｽ費': { v17No: 31, category: 'その他変動費' },  // 半角カタカナ
-            '電気代': { v17No: 32, category: 'その他変動費' },
-            '電気料': { v17No: 32, category: 'その他変動費' },
-            '電力費': { v17No: 32, category: 'その他変動費' },
-            'ガス代': { v17No: 33, category: 'その他変動費' },
-            'ｶﾞｽ代': { v17No: 33, category: 'その他変動費' },  // 半角カタカナ
-            'ガス料': { v17No: 33, category: 'その他変動費' },
-            '水道代': { v17No: 34, category: 'その他変動費' },
-            '水道料': { v17No: 34, category: 'その他変動費' },
-            '上下水道': { v17No: 34, category: 'その他変動費' },
-            '消耗品費': { v17No: 35, category: 'その他変動費' },
-            '消耗品': { v17No: 35, category: 'その他変動費' },
-            '事務用品費': { v17No: 35, category: 'その他変動費' },
-            '保守修繕費': { v17No: 36, category: 'その他変動費' },
-            '修繕費': { v17No: 36, category: 'その他変動費' },
-            '修理費': { v17No: 36, category: 'その他変動費' },
-            '保守費': { v17No: 36, category: 'その他変動費' },
-            '租税公課': { v17No: 37, category: 'その他変動費' },
-            '税金': { v17No: 37, category: 'その他変動費' },
-            '公租公課': { v17No: 37, category: 'その他変動費' },
-            '接待交際費': { v17No: 38, category: 'その他変動費' },
-            '交際費': { v17No: 38, category: 'その他変動費' },
-            '接待費': { v17No: 38, category: 'その他変動費' },
-            '旅費交通費': { v17No: 39, category: 'その他変動費' },
-            '旅費': { v17No: 39, category: 'その他変動費' },
-            '出張費': { v17No: 39, category: 'その他変動費' },
-            '通信費': { v17No: 40, category: 'その他変動費' },
-            '電話代': { v17No: 40, category: 'その他変動費' },
-            'インターネット費': { v17No: 40, category: 'その他変動費' },
-            'ｲﾝﾀｰﾈｯﾄ費': { v17No: 40, category: 'その他変動費' },  // 半角カタカナ
-            'クレジット手数料': { v17No: 41, category: 'その他変動費' },
-            'ｸﾚｼﾞｯﾄ手数料': { v17No: 41, category: 'その他変動費' },  // 半角カタカナ
-            'カード手数料': { v17No: 41, category: 'その他変動費' },
-            'ｶｰﾄﾞ手数料': { v17No: 41, category: 'その他変動費' },  // 半角カタカナ
-            '決済手数料': { v17No: 41, category: 'その他変動費' },
-            '支払手数料': { v17No: 42, category: 'その他変動費' },
-            '振込手数料': { v17No: 42, category: 'その他変動費' },
-            '手数料': { v17No: 42, category: 'その他変動費' },
-            '会議費': { v17No: 43, category: 'その他変動費' },
-            '諸会費': { v17No: 44, category: 'その他変動費' },
-            '組合費': { v17No: 44, category: 'その他変動費' },
-            '会費': { v17No: 44, category: 'その他変動費' },
-            '図書教育費': { v17No: 45, category: 'その他変動費' },
-            '教育費': { v17No: 45, category: 'その他変動費' },
-            '図書費': { v17No: 45, category: 'その他変動費' },
-            '研修費': { v17No: 46, category: 'その他変動費' },
-            '教育研修費': { v17No: 46, category: 'その他変動費' },
-            '業態研究費': { v17No: 47, category: 'その他変動費' },
-            '研究開発費': { v17No: 47, category: 'その他変動費' },
-            '採用費': { v17No: 48, category: 'その他変動費' },
-            '求人費': { v17No: 48, category: 'その他変動費' },
-            '人材採用費': { v17No: 48, category: 'その他変動費' },
-            'IT費': { v17No: 49, category: 'その他変動費' },
-            'システム費': { v17No: 49, category: 'その他変動費' },
-            'ｼｽﾃﾑ費': { v17No: 49, category: 'その他変動費' },  // 半角カタカナ
-            'ソフトウェア費': { v17No: 49, category: 'その他変動費' },
-            '外注費': { v17No: 50, category: 'その他変動費' },
-            '業務委託費': { v17No: 50, category: 'その他変動費' },
-            '雑費': { v17No: 51, category: 'その他変動費' },
-            'その他経費': { v17No: 51, category: 'その他変動費' },
-            '雑損失': { v17No: 51, category: 'その他変動費' },
+            // === 販促費（No.27-29, 31） ===
+            '販売促進費': { v17No: 27, category: '販促費' },
+            '販促費': { v17No: 27, category: '販促費' },
+            '広告宣伝費': { v17No: 27, category: '販促費' },
+            'メニューコピー': { v17No: 28, category: '販促費' },
+            'ﾒﾆｭｰｺﾋﾟｰ': { v17No: 28, category: '販促費' },  // 半角カタカナ
+            'メニュー印刷': { v17No: 28, category: '販促費' },
+            '調査費': { v17No: 29, category: '販促費' },
+            '市場調査費': { v17No: 29, category: '販促費' },
+            'サービス費': { v17No: 31, category: '販促費' },
+            'ｻｰﾋﾞｽ費': { v17No: 31, category: '販促費' },  // 半角カタカナ
+            // === 店舗運営費（No.30, 35-36） ===
+            '衛生費': { v17No: 30, category: '店舗運営費' },
+            '衛生管理費': { v17No: 30, category: '店舗運営費' },
+            '清掃費': { v17No: 30, category: '店舗運営費' },
+            '消耗品費': { v17No: 35, category: '店舗運営費' },
+            '消耗品': { v17No: 35, category: '店舗運営費' },
+            '事務用品費': { v17No: 35, category: '店舗運営費' },
+            '保守修繕費': { v17No: 36, category: '店舗運営費' },
+            '修繕費': { v17No: 36, category: '店舗運営費' },
+            '修理費': { v17No: 36, category: '店舗運営費' },
+            '保守費': { v17No: 36, category: '店舗運営費' },
+            // === 水道光熱費（No.32-34） ===
+            '電気代': { v17No: 32, category: '水道光熱費' },
+            '電気料': { v17No: 32, category: '水道光熱費' },
+            '電力費': { v17No: 32, category: '水道光熱費' },
+            'ガス代': { v17No: 33, category: '水道光熱費' },
+            'ｶﾞｽ代': { v17No: 33, category: '水道光熱費' },  // 半角カタカナ
+            'ガス料': { v17No: 33, category: '水道光熱費' },
+            '水道代': { v17No: 34, category: '水道光熱費' },
+            '水道料': { v17No: 34, category: '水道光熱費' },
+            '上下水道': { v17No: 34, category: '水道光熱費' },
+            // === 管理費（No.37-44, 51） ===
+            '租税公課': { v17No: 37, category: '管理費' },
+            '税金': { v17No: 37, category: '管理費' },
+            '公租公課': { v17No: 37, category: '管理費' },
+            '接待交際費': { v17No: 38, category: '管理費' },
+            '交際費': { v17No: 38, category: '管理費' },
+            '接待費': { v17No: 38, category: '管理費' },
+            '旅費交通費': { v17No: 39, category: '管理費' },
+            '旅費': { v17No: 39, category: '管理費' },
+            '出張費': { v17No: 39, category: '管理費' },
+            '通信費': { v17No: 40, category: '管理費' },
+            '電話代': { v17No: 40, category: '管理費' },
+            'インターネット費': { v17No: 40, category: '管理費' },
+            'ｲﾝﾀｰﾈｯﾄ費': { v17No: 40, category: '管理費' },  // 半角カタカナ
+            'クレジット手数料': { v17No: 41, category: '管理費' },
+            'ｸﾚｼﾞｯﾄ手数料': { v17No: 41, category: '管理費' },  // 半角カタカナ
+            'カード手数料': { v17No: 41, category: '管理費' },
+            'ｶｰﾄﾞ手数料': { v17No: 41, category: '管理費' },  // 半角カタカナ
+            '決済手数料': { v17No: 41, category: '管理費' },
+            '支払手数料': { v17No: 42, category: '管理費' },
+            '振込手数料': { v17No: 42, category: '管理費' },
+            '手数料': { v17No: 42, category: '管理費' },
+            '会議費': { v17No: 43, category: '管理費' },
+            '諸会費': { v17No: 44, category: '管理費' },
+            '組合費': { v17No: 44, category: '管理費' },
+            '会費': { v17No: 44, category: '管理費' },
+            '雑費': { v17No: 51, category: '管理費' },
+            'その他経費': { v17No: 51, category: '管理費' },
+            '雑損失': { v17No: 51, category: '管理費' },
+            // === 教育・採用費（No.45-48） ===
+            '図書教育費': { v17No: 45, category: '教育・採用費' },
+            '教育費': { v17No: 45, category: '教育・採用費' },
+            '図書費': { v17No: 45, category: '教育・採用費' },
+            '研修費': { v17No: 46, category: '教育・採用費' },
+            '教育研修費': { v17No: 46, category: '教育・採用費' },
+            '業態研究費': { v17No: 47, category: '教育・採用費' },
+            '研究開発費': { v17No: 47, category: '教育・採用費' },
+            '採用費': { v17No: 48, category: '教育・採用費' },
+            '求人費': { v17No: 48, category: '教育・採用費' },
+            '人材採用費': { v17No: 48, category: '教育・採用費' },
+            // === IT・外注費（No.49-50） ===
+            'IT費': { v17No: 49, category: 'IT・外注費' },
+            'システム費': { v17No: 49, category: 'IT・外注費' },
+            'ｼｽﾃﾑ費': { v17No: 49, category: 'IT・外注費' },  // 半角カタカナ
+            'ソフトウェア費': { v17No: 49, category: 'IT・外注費' },
+            '外注費': { v17No: 50, category: 'IT・外注費' },
+            '業務委託費': { v17No: 50, category: 'IT・外注費' },
             // === 集計（No.52, 60, 62, 75） ===
-            'その他変動費合計': { v17No: 52, category: '集計' },
-            'その他変動費計': { v17No: 52, category: '集計' },
-            '変動費合計': { v17No: 52, category: '集計' },
-            '変動費計': { v17No: 52, category: '集計' },
+            '経費合計': { v17No: 52, category: '集計' },
+            '経費計': { v17No: 52, category: '集計' },
+            '諸経費合計': { v17No: 52, category: '集計' },
             '経費合計': { v17No: 52, category: '集計' },
             '経費計': { v17No: 52, category: '集計' },
             '諸経費合計': { v17No: 52, category: '集計' },
@@ -3418,6 +3415,11 @@
             '固定費合計': { v17No: 60, category: '集計' },
             '固定費計': { v17No: 60, category: '集計' },
             '固定経費合計': { v17No: 60, category: '集計' },
+            // ★ 変動費合計系（自動演算項目 - CSVマッチ用、値はスキップ）
+            '変動費合計': { v17No: 53, category: '集計', skip: true, reason: '自動演算項目' },
+            '変動費計': { v17No: 53, category: '集計', skip: true, reason: '自動演算項目' },
+            'その他変動費合計': { v17No: 53, category: '集計', skip: true, reason: '自動演算項目' },
+            'その他変動費計': { v17No: 53, category: '集計', skip: true, reason: '自動演算項目' },
             '販売管理費合計': { v17No: 62, category: '集計' },
             '販売管理費計': { v17No: 62, category: '集計' },
             '販管費合計': { v17No: 62, category: '集計' },
@@ -3523,32 +3525,37 @@
             '506': { v17No: 23, category: '人件費', name: '賞与引当金繰入' },
             '553': { v17No: 24, category: '人件費', name: '社宅家賃' },
             '2105': { v17No: 25, category: '人件費', name: '休業手当' },
-            // === その他変動費（No.27-51） ===
-            '510': { v17No: 27, category: 'その他変動費', name: '販売促進費' },
-            '541': { v17No: 28, category: 'その他変動費', name: 'メニューコピー' },
-            '516': { v17No: 29, category: 'その他変動費', name: '調査費' },
-            '514': { v17No: 30, category: 'その他変動費', name: '衛生費' },
-            '542': { v17No: 31, category: 'その他変動費', name: 'サービス費' },
-            '520': { v17No: 32, category: 'その他変動費', name: '電気代' },
-            '521': { v17No: 33, category: 'その他変動費', name: 'ガス代' },
-            '522': { v17No: 34, category: 'その他変動費', name: '水道代' },
-            '523': { v17No: 35, category: 'その他変動費', name: '消耗品費' },
-            '526': { v17No: 36, category: 'その他変動費', name: '保守修繕費' },
-            '527': { v17No: 37, category: 'その他変動費', name: '租税公課' },
-            '529': { v17No: 38, category: 'その他変動費', name: '接待交際費' },
-            '530': { v17No: 39, category: 'その他変動費', name: '旅費交通費' },
-            '531': { v17No: 40, category: 'その他変動費', name: '通信費' },
-            '5321': { v17No: 41, category: 'その他変動費', name: 'クレジット手数料' },
-            '532': { v17No: 42, category: 'その他変動費', name: '支払手数料' },
-            '533': { v17No: 43, category: 'その他変動費', name: '会議費' },
-            '534': { v17No: 44, category: 'その他変動費', name: '諸会費' },
-            '536': { v17No: 45, category: 'その他変動費', name: '図書教育費' },
-            '546': { v17No: 46, category: 'その他変動費', name: '研修費' },
-            '537': { v17No: 47, category: 'その他変動費', name: '業態研究費' },
-            '518': { v17No: 48, category: 'その他変動費', name: '採用費' },
-            '550': { v17No: 49, category: 'その他変動費', name: 'IT費' },
-            '2128': { v17No: 50, category: 'その他変動費', name: '外注費' },
-            '539': { v17No: 51, category: 'その他変動費', name: '雑費' },
+            // === 販促費（No.27-29, 31） ===
+            '510': { v17No: 27, category: '販促費', name: '販売促進費' },
+            '541': { v17No: 28, category: '販促費', name: 'メニューコピー' },
+            '516': { v17No: 29, category: '販促費', name: '調査費' },
+            '542': { v17No: 31, category: '販促費', name: 'サービス費' },
+            // === 店舗運営費（No.30, 35-36） ===
+            '514': { v17No: 30, category: '店舗運営費', name: '衛生費' },
+            '523': { v17No: 35, category: '店舗運営費', name: '消耗品費' },
+            '526': { v17No: 36, category: '店舗運営費', name: '保守修繕費' },
+            // === 水道光熱費（No.32-34） ===
+            '520': { v17No: 32, category: '水道光熱費', name: '電気代' },
+            '521': { v17No: 33, category: '水道光熱費', name: 'ガス代' },
+            '522': { v17No: 34, category: '水道光熱費', name: '水道代' },
+            // === 管理費（No.37-44, 51） ===
+            '527': { v17No: 37, category: '管理費', name: '租税公課' },
+            '529': { v17No: 38, category: '管理費', name: '接待交際費' },
+            '530': { v17No: 39, category: '管理費', name: '旅費交通費' },
+            '531': { v17No: 40, category: '管理費', name: '通信費' },
+            '5321': { v17No: 41, category: '管理費', name: 'クレジット手数料' },
+            '532': { v17No: 42, category: '管理費', name: '支払手数料' },
+            '533': { v17No: 43, category: '管理費', name: '会議費' },
+            '534': { v17No: 44, category: '管理費', name: '諸会費' },
+            '539': { v17No: 51, category: '管理費', name: '雑費' },
+            // === 教育・採用費（No.45-48） ===
+            '536': { v17No: 45, category: '教育・採用費', name: '図書教育費' },
+            '546': { v17No: 46, category: '教育・採用費', name: '研修費' },
+            '537': { v17No: 47, category: '教育・採用費', name: '業態研究費' },
+            '518': { v17No: 48, category: '教育・採用費', name: '採用費' },
+            // === IT・外注費（No.49-50） ===
+            '550': { v17No: 49, category: 'IT・外注費', name: 'IT費' },
+            '2128': { v17No: 50, category: 'IT・外注費', name: '外注費' },
             // === ロイヤリティ・店舗補填（No.53-54） ===
             '512': { v17No: 53, category: '固定費', name: 'ロイヤリティ' },
             '2124': { v17No: 53, category: '固定費', name: 'ロイヤリティ' },  // 店舗別ロイヤリティ
@@ -3563,12 +3570,110 @@
             // 営業利益(63), 経常利益(74)等はCSVの項目名から直接マッピング
         };
 
+        // ★★★ インデックス混同防止ヘルパー関数 ★★★
+        // 【重要】データ格納方式の説明：
+        // - annualData[v17No][arrayIdx]: 配列インデックス(0,1,2...)でアクセス
+        // - calcResults[arrayIdx]: 配列インデックス(0,1,2...)でアクセス
+        // - mqInputs[calMonth]: カレンダー月(0=1月, 3=4月...)でアクセス
+        // - result.monthlyXxx[calMonth]: カレンダー月をキーに結果格納
+        // - activeMonths[i]: i番目の配列インデックスに対応するカレンダー月を取得
+
+        /**
+         * annualDataから値を安全に取得
+         * @param {number} v17No - 項目番号
+         * @param {number} arrayIdx - 配列インデックス（0, 1, 2...）※カレンダー月ではない
+         * @param {object} dataSource - データソース（省略時はグローバルannualData）
+         * @returns {number} 値（未定義の場合は0）
+         */
+        function getAnnualValue(v17No, arrayIdx, dataSource) {
+            var data = dataSource || annualData;
+            if (!data[v17No]) return 0;
+            var val = data[v17No][arrayIdx];
+            return (val !== undefined && val !== null) ? val : 0;
+        }
+
+        /**
+         * calcResultsから値を安全に取得
+         * @param {string} fieldName - フィールド名（例: 'grossProfit', 'totalCost'）
+         * @param {number} arrayIdx - 配列インデックス（0, 1, 2...）※カレンダー月ではない
+         * @param {object} dataSource - データソース（省略時はグローバルcalcResults）
+         * @returns {number} 値（未定義の場合は0）
+         */
+        function getCalcValue(fieldName, arrayIdx, dataSource) {
+            var data = dataSource || calcResults;
+            if (!data[arrayIdx]) return 0;
+            var val = data[arrayIdx][fieldName];
+            return (val !== undefined && val !== null) ? val : 0;
+        }
+
+        /**
+         * 配列インデックスからカレンダー月を取得
+         * @param {number} arrayIdx - 配列インデックス（0, 1, 2...）
+         * @param {array} monthsArray - 月配列（省略時はグローバルactiveMonths）
+         * @returns {number} カレンダー月（0=1月, 3=4月...）
+         */
+        function getCalMonthFromIndex(arrayIdx, monthsArray) {
+            var months = monthsArray || activeMonths;
+            return months[arrayIdx];
+        }
+
+        /**
+         * カレンダー月から配列インデックスを取得
+         * @param {number} calMonth - カレンダー月（0=1月, 3=4月...）
+         * @param {array} monthsArray - 月配列（省略時はグローバルactiveMonths）
+         * @returns {number} 配列インデックス（見つからない場合は-1）
+         */
+        function getIndexFromCalMonth(calMonth, monthsArray) {
+            var months = monthsArray || activeMonths;
+            return months.indexOf(calMonth);
+        }
+
+        /**
+         * mqInputsから値を安全に取得（カレンダー月キー）
+         * @param {number} calMonth - カレンダー月（0=1月, 3=4月...）
+         * @param {string} fieldName - フィールド名（例: 'targetProfit', 'fdRate'）
+         * @param {object} defaultValue - デフォルト値
+         * @param {object} dataSource - データソース（省略時はグローバルmqInputs）
+         * @returns {*} 値
+         */
+        function getMQInputValue(calMonth, fieldName, defaultValue, dataSource) {
+            var data = dataSource || (typeof getMQInputs === 'function' ? getMQInputs() : {});
+            if (!data[calMonth]) return defaultValue;
+            var val = data[calMonth][fieldName];
+            return (val !== undefined && val !== null) ? val : defaultValue;
+        }
+
+        /**
+         * activeMonthsをループする際の標準パターン
+         * 使用例：
+         *   forEachMonth(function(arrayIdx, calMonth, monthLabel) {
+         *       var value = getAnnualValue(63, arrayIdx);
+         *       result[calMonth] = value;
+         *   });
+         * @param {function} callback - コールバック関数(arrayIdx, calMonth, monthLabel)
+         * @param {array} monthsArray - 月配列（省略時はグローバルactiveMonths）
+         */
+        function forEachMonth(callback, monthsArray) {
+            var months = monthsArray || activeMonths;
+            for (var arrayIdx = 0; arrayIdx < months.length; arrayIdx++) {
+                var calMonth = months[arrayIdx];
+                var label = (calMonth + 1) + '月';
+                callback(arrayIdx, calMonth, label);
+            }
+        }
+
         // 勘定科目コードからv17Noを検索（強化版）
         function findV17NoByCode(code) {
             if (!code) return null;
             var codeStr = String(code).trim();
 
-            // 直接マッチ
+            // ★ 1. CUSTOMER_CODE_MAP（予算テンプレートCSVコード: 101, 102等）を優先チェック
+            if (CUSTOMER_CODE_MAP[codeStr]) {
+                var entry = CUSTOMER_CODE_MAP[codeStr];
+                return { v17No: entry.v15No, category: entry.budgetCategory || entry.category, name: entry.name };
+            }
+
+            // 2. CODE_BASED_MAP（会計システムコード: 810, 811等）をチェック
             if (CODE_BASED_MAP[codeStr]) {
                 return CODE_BASED_MAP[codeStr];
             }
@@ -3713,12 +3818,12 @@
             '地代家賃合計': { type: 'sum', items: [56, 59], desc: '家賃+賃借料', v17Ref: 'No.56,59' },
             '資材費合計': { type: 'sum', items: [57, 58], desc: '警備料+リース料', v17Ref: 'No.57,58' },
 
-            // === その他変動費系（合計）v17 No.27-51 ===
+            // === 経費系（合計）v17 No.27-51 ===
             '水道光熱費合計': { type: 'sum', items: [32, 33, 34], desc: '電気代+ガス代+水道代', v17Ref: 'No.32-34' },
-            'その他変動費合計': {
+            '経費合計': {
                 type: 'sum',
                 items: [27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51],
-                desc: '全その他変動費合計',
+                desc: '販促費+店舗運営費+水道光熱費+管理費+教育採用費+IT外注費',
                 v17Ref: 'No.52自動演算'
             },
 
@@ -3734,7 +3839,7 @@
             '固定費合計': {
                 type: 'sum',
                 items: [16, 17, 18, 21, 22, 23, 24, 25, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 55, 56, 57, 58, 59],
-                desc: '固定人件費+その他変動費+固定費',
+                desc: '固定人件費+経費+固定費',
                 v17Ref: 'No.60自動演算'
             },
 
@@ -3787,34 +3892,39 @@
             24: { name: '社宅家賃', category: '人件費', inputStyle: 'B.合算して入力' },
             25: { name: '休業手当', category: '人件費', inputStyle: 'B.合算して入力' },
             26: { name: '人件費合計', category: '人件費', inputStyle: 'C.自動演算' },
-            // === その他変動費（No.27-51） ===
-            27: { name: '販売促進費', category: 'その他変動費', inputStyle: 'A.そのまま入力' },
-            28: { name: 'メニューコピー', category: 'その他変動費', inputStyle: 'A.そのまま入力' },
-            29: { name: '調査費', category: 'その他変動費', inputStyle: 'A.そのまま入力' },
-            30: { name: '衛生費', category: 'その他変動費', inputStyle: 'A.そのまま入力' },
-            31: { name: 'サービス費', category: 'その他変動費', inputStyle: 'A.そのまま入力' },
-            32: { name: '電気代', category: 'その他変動費', inputStyle: 'A.そのまま入力' },
-            33: { name: 'ガス代', category: 'その他変動費', inputStyle: 'A.そのまま入力' },
-            34: { name: '水道代', category: 'その他変動費', inputStyle: 'A.そのまま入力' },
-            35: { name: '消耗品費', category: 'その他変動費', inputStyle: 'A.そのまま入力' },
-            36: { name: '保守修繕費', category: 'その他変動費', inputStyle: 'A.そのまま入力' },
-            37: { name: '租税公課', category: 'その他変動費', inputStyle: 'A.そのまま入力' },
-            38: { name: '接待交際費', category: 'その他変動費', inputStyle: 'A.そのまま入力' },
-            39: { name: '旅費交通費', category: 'その他変動費', inputStyle: 'A.そのまま入力' },
-            40: { name: '通信費', category: 'その他変動費', inputStyle: 'A.そのまま入力' },
-            41: { name: 'クレジット手数料', category: 'その他変動費', inputStyle: 'A.そのまま入力' },
-            42: { name: '支払手数料', category: 'その他変動費', inputStyle: 'A.そのまま入力' },
-            43: { name: '会議費', category: 'その他変動費', inputStyle: 'A.そのまま入力' },
-            44: { name: '諸会費', category: 'その他変動費', inputStyle: 'A.そのまま入力' },
-            45: { name: '図書教育費', category: 'その他変動費', inputStyle: 'A.そのまま入力' },
-            46: { name: '研修費', category: 'その他変動費', inputStyle: 'A.そのまま入力' },
-            47: { name: '業態研究費', category: 'その他変動費', inputStyle: 'A.そのまま入力' },
-            48: { name: '採用費', category: 'その他変動費', inputStyle: 'A.そのまま入力' },
-            49: { name: 'IT費', category: 'その他変動費', inputStyle: 'A.そのまま入力' },
-            50: { name: '外注費', category: 'その他変動費', inputStyle: 'A.そのまま入力' },
-            51: { name: '雑費', category: 'その他変動費', inputStyle: 'A.そのまま入力' },
+            // === 販促費（No.27-29, 31） ===
+            27: { name: '販売促進費', category: '販促費', inputStyle: 'A.そのまま入力' },
+            28: { name: 'メニューコピー', category: '販促費', inputStyle: 'A.そのまま入力' },
+            29: { name: '調査費', category: '販促費', inputStyle: 'A.そのまま入力' },
+            31: { name: 'サービス費', category: '販促費', inputStyle: 'A.そのまま入力' },
+            // === 店舗運営費（No.30, 35-36） ===
+            30: { name: '衛生費', category: '店舗運営費', inputStyle: 'A.そのまま入力' },
+            35: { name: '消耗品費', category: '店舗運営費', inputStyle: 'A.そのまま入力' },
+            36: { name: '保守修繕費', category: '店舗運営費', inputStyle: 'A.そのまま入力' },
+            // === 水道光熱費（No.32-34） ===
+            32: { name: '電気代', category: '水道光熱費', inputStyle: 'A.そのまま入力' },
+            33: { name: 'ガス代', category: '水道光熱費', inputStyle: 'A.そのまま入力' },
+            34: { name: '水道代', category: '水道光熱費', inputStyle: 'A.そのまま入力' },
+            // === 管理費（No.37-44, 51） ===
+            37: { name: '租税公課', category: '管理費', inputStyle: 'A.そのまま入力' },
+            38: { name: '接待交際費', category: '管理費', inputStyle: 'A.そのまま入力' },
+            39: { name: '旅費交通費', category: '管理費', inputStyle: 'A.そのまま入力' },
+            40: { name: '通信費', category: '管理費', inputStyle: 'A.そのまま入力' },
+            41: { name: 'クレジット手数料', category: '管理費', inputStyle: 'A.そのまま入力' },
+            42: { name: '支払手数料', category: '管理費', inputStyle: 'A.そのまま入力' },
+            43: { name: '会議費', category: '管理費', inputStyle: 'A.そのまま入力' },
+            44: { name: '諸会費', category: '管理費', inputStyle: 'A.そのまま入力' },
+            51: { name: '雑費', category: '管理費', inputStyle: 'A.そのまま入力' },
+            // === 教育・採用費（No.45-48） ===
+            45: { name: '図書教育費', category: '教育・採用費', inputStyle: 'A.そのまま入力' },
+            46: { name: '研修費', category: '教育・採用費', inputStyle: 'A.そのまま入力' },
+            47: { name: '業態研究費', category: '教育・採用費', inputStyle: 'A.そのまま入力' },
+            48: { name: '採用費', category: '教育・採用費', inputStyle: 'A.そのまま入力' },
+            // === IT・外注費（No.49-50） ===
+            49: { name: 'IT費', category: 'IT・外注費', inputStyle: 'A.そのまま入力' },
+            50: { name: '外注費', category: 'IT・外注費', inputStyle: 'A.そのまま入力' },
             // === 集計（No.52） ===
-            52: { name: 'その他変動費合計', category: '集計', inputStyle: 'C.自動演算' },
+            52: { name: '経費合計', category: '集計', inputStyle: 'C.自動演算' },
             // === ロイヤリティ・店舗補填（No.53-54） ===
             53: { name: 'ロイヤリティ', category: '固定費', inputStyle: 'A.そのまま入力' },
             54: { name: '店舗補填', category: '固定費', inputStyle: 'A.そのまま入力' },
@@ -3829,7 +3939,7 @@
             // === 利益（No.61, 63） ===
             61: { name: '店舗営業利益', category: '利益', inputStyle: 'A.そのまま入力' },
             62: { name: '販売管理費合計', category: '集計', inputStyle: 'C.自動演算' },
-            63: { name: '営業利益', category: '利益', inputStyle: 'C.自動演算' },
+            63: { name: '営業利益', category: '利益', inputStyle: 'A.そのまま入力' },
             // === KPI（No.64-70） ===
             64: { name: '客数', category: 'KPI', inputStyle: 'A.そのまま入力' },
             65: { name: '客単価', category: 'KPI', inputStyle: 'A.そのまま入力' },
@@ -5541,6 +5651,14 @@
                         addLog('CSVファイル ' + (index + 1) + '/' + totalFiles + ': ' + file.name, 'info');
                         parseCustomerCSV(e.target.result);
 
+                        // ★ フラグ自動判定（screen属性に基づく）
+                        initializeItemFlags();
+
+                        // ★ 店舗別マスタ設定を自動保存
+                        if (storeName) {
+                            saveStoreMasterSettings(storeName, true);
+                        }
+
                         // シミュレーション実行
                         runSimulation();
 
@@ -5578,6 +5696,9 @@
 
                         // インポート完了後、選択ファイルをクリア
                         clearSelectedFiles();
+
+                        // ★ 店舗マスタセレクターを更新
+                        renderStoreMasterSelector();
                     }
                 };
                 reader.readAsText(file, 'UTF-8');
@@ -6002,9 +6123,10 @@
         }
 
         // ★ 予算試算用自動パラメータ取得
+        // ★ ヘルパー関数使用版（インデックス混同防止）
         function getSimMQAutoParams() {
             var result = {
-                monthlyG: {},  // オブジェクト形式に変更（月インデックスをキーに）
+                monthlyG: {},  // カレンダー月をキー
                 monthlyF: {},
                 fdRate: 0,
                 paRate: 0,
@@ -6014,9 +6136,8 @@
 
             if (!simulationData || !simulationData.annualData) return result;
 
-            var get = function(no, m) { return simulationData.annualData[no] ? (simulationData.annualData[no][m] || 0) : 0; };
-
-            // 取り込まれた月のみ処理
+            // シミュレーション用データソース
+            var simData = simulationData.annualData;
             var stActiveMonths = simulationData.activeMonths || [];
             var monthCount = stActiveMonths.length || 1;
 
@@ -6025,38 +6146,55 @@
             var totalVariableCost = 0;
             var totalSales = 0;
 
-            for (var i = 0; i < stActiveMonths.length; i++) {
-                var m = stActiveMonths[i];
-
+            // ★ forEachMonthでarrayIdx/calMonthを明確に分離
+            forEachMonth(function(arrayIdx, calMonth, label) {
                 // No.63 = 営業利益
-                var g = get(63, m);
-                result.monthlyG[m] = g;
+                var g = getAnnualValue(63, arrayIdx, simData);
+                result.monthlyG[calMonth] = g;  // カレンダー月をキーに格納
                 result.totalG += g;
 
                 // 固定費
-                var fixedCost = get(56,m) + get(59,m) + get(16,m) + get(17,m) + get(18,m) + get(21,m) + get(22,m) + get(23,m) + get(24,m) + get(25,m) + get(55,m) + get(57,m) + get(58,m) +
-                    get(27,m) + get(28,m) + get(29,m) + get(30,m) + get(31,m) + get(32,m) + get(33,m) + get(34,m) + get(35,m) + get(36,m) +
-                    get(37,m) + get(38,m) + get(39,m) + get(40,m) + get(41,m) + get(42,m) + get(43,m) + get(44,m) + get(45,m) + get(46,m) +
-                    get(47,m) + get(48,m) + get(49,m) + get(50,m) + get(51,m);
-                result.monthlyF[m] = fixedCost;
+                var fixedCost =
+                    getAnnualValue(56, arrayIdx, simData) + getAnnualValue(59, arrayIdx, simData) +
+                    getAnnualValue(16, arrayIdx, simData) + getAnnualValue(17, arrayIdx, simData) +
+                    getAnnualValue(18, arrayIdx, simData) + getAnnualValue(21, arrayIdx, simData) +
+                    getAnnualValue(22, arrayIdx, simData) + getAnnualValue(23, arrayIdx, simData) +
+                    getAnnualValue(24, arrayIdx, simData) + getAnnualValue(25, arrayIdx, simData) +
+                    getAnnualValue(55, arrayIdx, simData) + getAnnualValue(57, arrayIdx, simData) +
+                    getAnnualValue(58, arrayIdx, simData) +
+                    getAnnualValue(27, arrayIdx, simData) + getAnnualValue(28, arrayIdx, simData) +
+                    getAnnualValue(29, arrayIdx, simData) + getAnnualValue(30, arrayIdx, simData) +
+                    getAnnualValue(31, arrayIdx, simData) + getAnnualValue(32, arrayIdx, simData) +
+                    getAnnualValue(33, arrayIdx, simData) + getAnnualValue(34, arrayIdx, simData) +
+                    getAnnualValue(35, arrayIdx, simData) + getAnnualValue(36, arrayIdx, simData) +
+                    getAnnualValue(37, arrayIdx, simData) + getAnnualValue(38, arrayIdx, simData) +
+                    getAnnualValue(39, arrayIdx, simData) + getAnnualValue(40, arrayIdx, simData) +
+                    getAnnualValue(41, arrayIdx, simData) + getAnnualValue(42, arrayIdx, simData) +
+                    getAnnualValue(43, arrayIdx, simData) + getAnnualValue(44, arrayIdx, simData) +
+                    getAnnualValue(45, arrayIdx, simData) + getAnnualValue(46, arrayIdx, simData) +
+                    getAnnualValue(47, arrayIdx, simData) + getAnnualValue(48, arrayIdx, simData) +
+                    getAnnualValue(49, arrayIdx, simData) + getAnnualValue(50, arrayIdx, simData) +
+                    getAnnualValue(51, arrayIdx, simData);
+                result.monthlyF[calMonth] = fixedCost;  // カレンダー月をキーに格納
                 totalFixedCost += fixedCost;
 
                 // 変動費
-                var variableCost = get(6, m) + get(10, m) + get(19, m);
+                var variableCost = getAnnualValue(6, arrayIdx, simData) +
+                    getAnnualValue(10, arrayIdx, simData) +
+                    getAnnualValue(19, arrayIdx, simData);
                 totalVariableCost += variableCost;
-                totalSales += get(4, m);
-            }
+                totalSales += getAnnualValue(4, arrayIdx, simData);
+            }, stActiveMonths);
 
             result.avgF = Math.round(totalFixedCost / monthCount);
 
             // FD%とPA%を計算
             if (totalSales > 0) {
                 var fdCost = 0, paCost = 0;
-                for (var i = 0; i < stActiveMonths.length; i++) {
-                    var m = stActiveMonths[i];
-                    fdCost += get(6, m) + get(10, m);
-                    paCost += get(19, m);
-                }
+                forEachMonth(function(arrayIdx, calMonth, label) {
+                    fdCost += getAnnualValue(6, arrayIdx, simData) + getAnnualValue(10, arrayIdx, simData);
+                    paCost += getAnnualValue(19, arrayIdx, simData);
+                }, stActiveMonths);
                 result.fdRate = Math.round((fdCost / totalSales) * 1000) / 10;
                 result.paRate = Math.round((paCost / totalSales) * 1000) / 10;
             }
@@ -6311,6 +6449,7 @@
         }
 
         // ★★★ MQ試算結果比較テーブル生成 ★★★
+        // ★ ヘルパー関数使用版（インデックス混同防止）
         function renderSimMQComparisonResult() {
             var container = document.getElementById('simMqResultSection');
             var table = document.getElementById('simMqResultTable');
@@ -6327,13 +6466,12 @@
                 return;
             }
 
-            // ヘッダー行
+            // ヘッダー行（forEachMonthで明確にarrayIdx/calMonthを分離）
             var headerHtml = '<thead><tr style="background:#1565c0;">';
             headerHtml += '<th style="min-width:150px;padding:8px;color:#fff;font-weight:bold;">項目</th>';
-            for (var i = 0; i < stActiveMonths.length; i++) {
-                var mi = stActiveMonths[i];
-                headerHtml += '<th style="min-width:75px;color:#fff;font-weight:bold;">' + FISCAL_ORDER[mi] + '</th>';
-            }
+            forEachMonth(function(arrayIdx, calMonth, label) {
+                headerHtml += '<th style="min-width:75px;color:#fff;font-weight:bold;">' + label + '</th>';
+            }, stActiveMonths);
             headerHtml += '<th style="min-width:85px;background:#0d47a1;color:#fff;font-weight:bold;">合計</th>';
             headerHtml += '</tr></thead>';
 
@@ -6343,60 +6481,55 @@
             // ===== 顧客予算売上 =====
             var totalCustomerSales = 0;
             bodyHtml += '<tr style="background:#e3f2fd;"><td style="font-weight:bold;color:#1565c0;">📝 顧客予算売上（円）</td>';
-            for (var i = 0; i < stActiveMonths.length; i++) {
-                var mi = stActiveMonths[i];
-                var customerSales = stAnnualData[4] ? (stAnnualData[4][mi] || 0) : 0;
+            forEachMonth(function(arrayIdx, calMonth, label) {
+                var customerSales = getAnnualValue(4, arrayIdx, stAnnualData);
                 totalCustomerSales += customerSales;
                 bodyHtml += '<td style="text-align:right;">' + fmtYen(customerSales) + '</td>';
-            }
+            }, stActiveMonths);
             bodyHtml += '<td style="font-weight:bold;text-align:right;background:#bbdefb;">' + fmtYen(totalCustomerSales) + '</td></tr>';
 
             // ===== MQ算出売上 =====
             var totalMqSales = 0;
             bodyHtml += '<tr style="background:#f3e5f5;"><td style="font-weight:bold;color:#7b1fa2;">📊 MQ算出売上（円）</td>';
-            for (var i = 0; i < stActiveMonths.length; i++) {
-                var mi = stActiveMonths[i];
-                var mqSales = stMqOutputs[mi] ? (stMqOutputs[mi].sales || 0) : 0;
+            forEachMonth(function(arrayIdx, calMonth, label) {
+                var mqSales = stMqOutputs[arrayIdx] ? (stMqOutputs[arrayIdx].sales || 0) : 0;
                 totalMqSales += mqSales;
                 bodyHtml += '<td style="text-align:right;">' + fmtYen(mqSales) + '</td>';
-            }
+            }, stActiveMonths);
             bodyHtml += '<td style="font-weight:bold;text-align:right;background:#e1bee7;">' + fmtYen(totalMqSales) + '</td></tr>';
 
             // ===== 売上差異 =====
             var salesDiff = totalMqSales - totalCustomerSales;
             var salesDiffRate = totalCustomerSales > 0 ? ((salesDiff / totalCustomerSales) * 100).toFixed(1) : 0;
             bodyHtml += '<tr><td style="font-weight:bold;color:#ff5722;">📉 売上差異（円）</td>';
-            for (var i = 0; i < stActiveMonths.length; i++) {
-                var mi = stActiveMonths[i];
-                var customerSales = stAnnualData[4] ? (stAnnualData[4][mi] || 0) : 0;
-                var mqSales = stMqOutputs[mi] ? (stMqOutputs[mi].sales || 0) : 0;
+            forEachMonth(function(arrayIdx, calMonth, label) {
+                var customerSales = getAnnualValue(4, arrayIdx, stAnnualData);
+                var mqSales = stMqOutputs[arrayIdx] ? (stMqOutputs[arrayIdx].sales || 0) : 0;
                 var diff = mqSales - customerSales;
                 var diffColor = diff >= 0 ? '#4caf50' : '#f44336';
                 bodyHtml += '<td style="text-align:right;color:' + diffColor + ';font-weight:bold;">' + (diff >= 0 ? '+' : '') + fmtYen(diff) + '</td>';
-            }
+            }, stActiveMonths);
             var totalDiffColor = salesDiff >= 0 ? '#4caf50' : '#f44336';
             bodyHtml += '<td style="font-weight:bold;text-align:right;color:' + totalDiffColor + ';">' + (salesDiff >= 0 ? '+' : '') + fmtYen(salesDiff) + '</td></tr>';
 
             // ===== MQ目標客数 =====
             var totalQ = 0;
             bodyHtml += '<tr style="background:#fff3e0;"><td style="font-weight:bold;color:#e65100;">🎯 MQ目標客数（人）</td>';
-            for (var i = 0; i < stActiveMonths.length; i++) {
-                var mi = stActiveMonths[i];
-                var q = stMqOutputs[mi] ? (stMqOutputs[mi].customers || 0) : 0;
+            forEachMonth(function(arrayIdx, calMonth, label) {
+                var q = stMqOutputs[arrayIdx] ? (stMqOutputs[arrayIdx].customers || 0) : 0;
                 totalQ += q;
                 bodyHtml += '<td style="text-align:right;">' + fmt(q) + '</td>';
-            }
+            }, stActiveMonths);
             bodyHtml += '<td style="font-weight:bold;text-align:right;background:#ffe0b2;">' + fmt(totalQ) + '</td></tr>';
 
             // ===== 目標営業利益 =====
             var totalProfit = 0;
             bodyHtml += '<tr style="background:#e8f5e9;"><td style="font-weight:bold;color:#2e7d32;">💰 目標営業利益（円）</td>';
-            for (var i = 0; i < stActiveMonths.length; i++) {
-                var mi = stActiveMonths[i];
-                var profit = stMqOutputs[mi] ? (stMqOutputs[mi].operatingProfit || 0) : 0;
+            forEachMonth(function(arrayIdx, calMonth, label) {
+                var profit = stMqOutputs[arrayIdx] ? (stMqOutputs[arrayIdx].operatingProfit || 0) : 0;
                 totalProfit += profit;
                 bodyHtml += '<td style="text-align:right;">' + fmtYen(profit) + '</td>';
-            }
+            }, stActiveMonths);
             bodyHtml += '<td style="font-weight:bold;text-align:right;background:#c8e6c9;">' + fmtYen(totalProfit) + '</td></tr>';
 
             bodyHtml += '</tbody>';
@@ -11377,16 +11510,159 @@
         // ===== カテゴリ表示順設定機能 =====
         var CATEGORY_ORDER_KEY = 'rakumy_category_order';
         var ITEM_ORDER_KEY = 'rakumy_item_order';
+        var STORE_MASTER_KEY_PREFIX = 'rakumy_store_master_';  // 店舗別マスタキー
+        var currentMasterStore = '';  // 現在選択中の店舗マスタ
+
+        // 店舗別マスタ設定一覧を取得
+        function getStoreMasterList() {
+            var list = [];
+            for (var i = 0; i < localStorage.length; i++) {
+                var key = localStorage.key(i);
+                if (key && key.indexOf(STORE_MASTER_KEY_PREFIX) === 0) {
+                    var storeName = key.replace(STORE_MASTER_KEY_PREFIX, '');
+                    list.push(storeName);
+                }
+            }
+            return list.sort();
+        }
+
+        // 店舗別マスタ設定を保存
+        function saveStoreMasterSettings(storeName, silent) {
+            if (!storeName) {
+                console.warn('[saveStoreMasterSettings] 店舗名が未指定');
+                return;
+            }
+            try {
+                var itemSettings = {};
+                for (var code in CUSTOMER_CODE_MAP) {
+                    var item = CUSTOMER_CODE_MAP[code];
+                    itemSettings[code] = {
+                        sortOrder: item.sortOrder || 0,
+                        isCostInput: item.isCostInput,
+                        isBudgetInput: item.isBudgetInput,
+                        isReferenceOnly: item.isReferenceOnly,
+                        isTotal: item.isTotal,
+                        isCalculated: item.isCalculated,
+                        costType: item.costType
+                    };
+                }
+
+                var settings = {
+                    storeName: storeName,
+                    itemSettings: itemSettings,
+                    savedAt: new Date().toISOString()
+                };
+
+                localStorage.setItem(STORE_MASTER_KEY_PREFIX + storeName, JSON.stringify(settings));
+                currentMasterStore = storeName;
+                if (!silent) {
+                    showStatus('success', '店舗マスタ「' + storeName + '」を保存しました');
+                }
+                console.log('[saveStoreMasterSettings] ' + storeName + ' を保存しました');
+                // 店舗プルダウンを更新
+                renderStoreMasterSelector();
+            } catch (e) {
+                console.error('[saveStoreMasterSettings] エラー:', e);
+            }
+        }
+
+        // 店舗別マスタ設定を読込
+        function loadStoreMasterSettings(storeName) {
+            if (!storeName) return false;
+            try {
+                var saved = localStorage.getItem(STORE_MASTER_KEY_PREFIX + storeName);
+                if (!saved) return false;
+
+                var settings = JSON.parse(saved);
+                if (settings.itemSettings) {
+                    for (var code in settings.itemSettings) {
+                        if (CUSTOMER_CODE_MAP[code]) {
+                            var itemData = settings.itemSettings[code];
+                            if (typeof itemData.isCostInput !== 'undefined') {
+                                CUSTOMER_CODE_MAP[code].isCostInput = itemData.isCostInput;
+                            }
+                            if (typeof itemData.isBudgetInput !== 'undefined') {
+                                CUSTOMER_CODE_MAP[code].isBudgetInput = itemData.isBudgetInput;
+                            }
+                            if (typeof itemData.isReferenceOnly !== 'undefined') {
+                                CUSTOMER_CODE_MAP[code].isReferenceOnly = itemData.isReferenceOnly;
+                            }
+                            if (typeof itemData.isTotal !== 'undefined') {
+                                CUSTOMER_CODE_MAP[code].isTotal = itemData.isTotal;
+                            }
+                            if (typeof itemData.isCalculated !== 'undefined') {
+                                CUSTOMER_CODE_MAP[code].isCalculated = itemData.isCalculated;
+                            }
+                            if (typeof itemData.costType !== 'undefined') {
+                                CUSTOMER_CODE_MAP[code].costType = itemData.costType;
+                            }
+                        }
+                    }
+                }
+                currentMasterStore = storeName;
+                console.log('[loadStoreMasterSettings] ' + storeName + ' を読み込みました');
+                return true;
+            } catch (e) {
+                console.error('[loadStoreMasterSettings] エラー:', e);
+                return false;
+            }
+        }
+
+        // 店舗マスタを切り替え
+        function switchStoreMaster(storeName) {
+            if (!storeName) return;
+            if (loadStoreMasterSettings(storeName)) {
+                showStatus('success', '店舗マスタ「' + storeName + '」に切り替えました');
+                renderCategorySummary();
+            } else {
+                showStatus('warn', '店舗マスタ「' + storeName + '」が見つかりません');
+            }
+        }
+
+        // 店舗マスタを削除
+        function deleteStoreMaster(storeName) {
+            if (!storeName) return;
+            if (!confirm('店舗マスタ「' + storeName + '」を削除しますか？')) return;
+            localStorage.removeItem(STORE_MASTER_KEY_PREFIX + storeName);
+            showStatus('success', '店舗マスタ「' + storeName + '」を削除しました');
+            if (currentMasterStore === storeName) {
+                currentMasterStore = '';
+            }
+            renderStoreMasterSelector();
+        }
+
+        // 店舗プルダウンを描画
+        function renderStoreMasterSelector() {
+            var container = document.getElementById('storeMasterSelector');
+            if (!container) return;
+
+            var stores = getStoreMasterList();
+            var html = '<select id="storeMasterSelect" onchange="switchStoreMaster(this.value)" style="padding:8px;border-radius:4px;border:1px solid #ccc;font-size:12px;min-width:150px;">';
+            html += '<option value="">-- 店舗マスタ選択 --</option>';
+            stores.forEach(function(store) {
+                var selected = (store === currentMasterStore) ? ' selected' : '';
+                html += '<option value="' + escapeHtml(store) + '"' + selected + '>' + escapeHtml(store) + '</option>';
+            });
+            html += '</select>';
+            html += ' <span style="font-size:11px;color:#666;">(' + stores.length + '店舗)</span>';
+
+            if (currentMasterStore) {
+                html += ' <button onclick="deleteStoreMaster(\'' + escapeHtml(currentMasterStore) + '\')" style="margin-left:10px;padding:5px 10px;background:#f44336;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px;">🗑️ 削除</button>';
+            }
+
+            container.innerHTML = html;
+        }
 
         // 表示順設定を保存
-        function saveCategorySettings() {
+        function saveCategorySettings(silent) {
             try {
-                // カテゴリ情報を保存（displayOrder + costType）
+                // カテゴリ情報を保存（displayOrder + costType + output）
                 var categorySettings = {};
                 for (var cat in BUDGET_CATEGORY_MAP) {
                     categorySettings[cat] = {
                         displayOrder: BUDGET_CATEGORY_MAP[cat].displayOrder,
-                        costType: BUDGET_CATEGORY_MAP[cat].costType || 'variable'
+                        costType: BUDGET_CATEGORY_MAP[cat].costType || 'variable',
+                        output: BUDGET_CATEGORY_MAP[cat].output || 'cost'  // 出力先（MQ計算/費用予算/両方）
                     };
                 }
 
@@ -11399,6 +11675,7 @@
                         costType: item.costType,
                         isCostInput: item.isCostInput,
                         isBudgetInput: item.isBudgetInput,
+                        isReferenceOnly: item.isReferenceOnly,
                         isTotal: item.isTotal,
                         isCalculated: item.isCalculated
                     };
@@ -11411,10 +11688,17 @@
                 };
 
                 localStorage.setItem(CATEGORY_ORDER_KEY, JSON.stringify(settings));
-                showStatus('success', 'マッピング設定を保存しました');
+                if (!silent) {
+                    showStatus('success', 'マッピング設定を保存しました');
+                    // 保存後にカテゴリサマリーを再描画（値の種別を更新）
+                    renderCategorySummary();
+                }
+                console.log('[saveCategorySettings] 設定を保存しました:', settings.savedAt);
             } catch (e) {
                 console.error('マッピング設定の保存に失敗:', e);
-                showStatus('error', 'マッピング設定の保存に失敗しました');
+                if (!silent) {
+                    showStatus('error', 'マッピング設定の保存に失敗しました');
+                }
             }
         }
 
@@ -11435,6 +11719,10 @@
                             if (catData.costType) {
                                 BUDGET_CATEGORY_MAP[cat].costType = catData.costType;
                             }
+                            // 出力先を復元（MQ計算/費用予算/両方）
+                            if (catData.output) {
+                                BUDGET_CATEGORY_MAP[cat].output = catData.output;
+                            }
                         }
                     }
                 }
@@ -11447,28 +11735,14 @@
                     }
                 }
 
-                // 新形式: itemSettings
+                // 新形式: itemSettings（表示順のみ復元、フラグはV17マッピング優先）
                 if (settings.itemSettings) {
                     for (var code in settings.itemSettings) {
                         if (CUSTOMER_CODE_MAP[code]) {
                             var itemData = settings.itemSettings[code];
                             CUSTOMER_CODE_MAP[code].sortOrder = itemData.sortOrder || 0;
-                            // フラグを復元（undefinedでない場合のみ）
-                            if (typeof itemData.costType !== 'undefined') {
-                                CUSTOMER_CODE_MAP[code].costType = itemData.costType;
-                            }
-                            if (typeof itemData.isCostInput !== 'undefined') {
-                                CUSTOMER_CODE_MAP[code].isCostInput = itemData.isCostInput;
-                            }
-                            if (typeof itemData.isBudgetInput !== 'undefined') {
-                                CUSTOMER_CODE_MAP[code].isBudgetInput = itemData.isBudgetInput;
-                            }
-                            if (typeof itemData.isTotal !== 'undefined') {
-                                CUSTOMER_CODE_MAP[code].isTotal = itemData.isTotal;
-                            }
-                            if (typeof itemData.isCalculated !== 'undefined') {
-                                CUSTOMER_CODE_MAP[code].isCalculated = itemData.isCalculated;
-                            }
+                            // ★ フラグはV17マッピング(screen属性)から自動設定するため、
+                            // ★ LocalStorageからの復元は行わない（initializeItemFlagsで設定）
                         }
                     }
                 }
@@ -11503,7 +11777,7 @@
             var defaultCategoryOrder = {
                 '売上高': 1, '売上原価': 2, '人件費': 3, '水道光熱費': 4,
                 '販促費': 5, '店舗運営費': 6, '管理費': 7, '教育・採用費': 8,
-                'IT・外注費': 9, '固定費': 10, '損益': 11, 'その他変動費': 12, 'KPI': 13
+                'IT・外注費': 9, '固定費': 10, '損益': 11, 'KPI': 12
             };
             for (var cat in defaultCategoryOrder) {
                 if (BUDGET_CATEGORY_MAP[cat]) {
@@ -11528,7 +11802,13 @@
                 });
             }
 
-            showStatus('success', '表示順設定を初期状態に戻しました');
+            // フラグを自動設定
+            initializeItemFlags();
+
+            // 自動保存（サイレントモード）
+            saveCategorySettings(true);
+
+            showStatus('success', '表示順設定を初期状態に戻しました（フラグも自動設定・保存済み）');
             renderCategorySummary();
             renderMappingCategoryFilter();
         }
@@ -11637,82 +11917,127 @@
         // - 演算(isCalculated): 合計値同士を演算した値（変動費合計、限界利益、営業利益など）
 
         // 演算項目リスト（合計値同士を演算した結果）
-        // 例: 変動費合計 = 原価合計 + 人件費合計 + その他変動費合計
+        // 例: 変動費合計 = 原価合計 + PA人件費合計（MQ計算用）
         //     限界利益 = 売上高合計 - 変動費合計
         //     営業利益 = 店舗営業利益 - 販売管理費合計
+        // 演算項目リスト（合計値同士を「演算」した結果のみ）
+        // ★注意: 「〜合計」は個別項目の合計なのでCALCULATED_ITEMSには含めない
+        // ★注意: 店舗営業利益/営業利益はscreen属性で出力先が決まるため除外
         var CALCULATED_ITEMS = [
-            '変動費合計',       // = 原価合計 + 人件費合計 + その他変動費合計
             '限界利益',         // = 売上高合計 - 変動費合計
             '売上総利益',       // = 売上高合計 - 原価合計
             '粗利益',           // = 売上高合計 - 原価合計
-            '店舗営業利益',     // = 限界利益 - 固定費合計
-            '営業利益',         // = 店舗営業利益 - 販売管理費合計
-            '経常利益',
-            '税引前利益',
-            '原価合計'          // = 食材原価 + ドリンク原価 + 内部振替（個別原価の合計だが演算扱い）
+            '経常利益',         // = 営業利益 + 営業外損益
+            '税引前利益'
         ];
 
+        // 項目のフラグを取得（明示的に設定された値のみ、デフォルトは全てfalse）
+        // フラグの意味:
+        //   isCostInput  = 費用予算設定に出力する項目
+        //   isBudgetInput = MQ計算に出力する項目
+        //   isTotal      = 合計値（個別項目の合計）
+        //   isCalculated = 演算値（合計値同士の演算結果）
         function getItemFlags(item) {
-            var inputStyle = item.inputStyle || '';
             var categoryInfo = BUDGET_CATEGORY_MAP[item.budgetCategory || item.category] || {};
-            var output = categoryInfo.output || 'cost';
-            var costType = item.costType || categoryInfo.costType || 'variable';
-            var name = item.name || '';
+            var costType = item.costType || categoryInfo.costType || 'none';
 
-            // 名前に「合計」「小計」が含まれるか
-            var hasTotalInName = name.indexOf('合計') >= 0 || name.indexOf('小計') >= 0;
-            // 演算項目リストに含まれるか（合計値同士の演算結果）
-            var isCalculatedItem = CALCULATED_ITEMS.indexOf(name) >= 0;
-            // 利益系の判定（名前に「利益」を含む）
-            var isProfitName = name.indexOf('利益') >= 0;
-
-            // デフォルト値を計算
-            var defaults = {
-                isCostInput: false,     // 費用入力値
-                isBudgetInput: false,   // 予算入力値（MQ計算用）
-                isTotal: false,         // 合計値（個別項目の合計）
-                isCalculated: false,    // 演算値（合計値同士の演算）
-                costType: costType      // 固定費/変動費
+            // 明示的に設定された値のみを使用（デフォルトは全てfalse）
+            return {
+                isCostInput: item.isCostInput === true,       // 費用予算設定に出力
+                isBudgetInput: item.isBudgetInput === true,   // MQ計算に出力
+                isReferenceOnly: item.isReferenceOnly === true, // 参照のみ（出力なし）
+                isTotal: item.isTotal === true,               // 合計値
+                isCalculated: item.isCalculated === true,     // 演算値
+                costType: costType
             };
+        }
 
-            // inputStyleに基づくデフォルト値
-            if (inputStyle === 'A.そのまま入力') {
-                // 顧客予算からそのままインポートする値
-                if (output === 'mq' || output === 'both') {
-                    defaults.isBudgetInput = true;
+        // フラグが1つでも設定されているかチェック
+        function checkIfFlagsExist() {
+            for (var code in CUSTOMER_CODE_MAP) {
+                var item = CUSTOMER_CODE_MAP[code];
+                if (!item) continue;
+                // いずれかのフラグがtrue/falseで明示的に設定されていればtrue
+                if (item.isCostInput === true || item.isBudgetInput === true ||
+                    item.isReferenceOnly === true ||
+                    item.isTotal === true || item.isCalculated === true) {
+                    return true;
                 }
-                if (output === 'cost' || output === 'both') {
-                    defaults.isCostInput = true;
+            }
+            return false;
+        }
+
+        // 項目のフラグを自動設定（screen属性・inputStyle・項目名から判定）
+        function initializeItemFlags() {
+            var count = { cost: 0, mq: 0, total: 0, calc: 0, ref: 0 };
+
+            for (var code in CUSTOMER_CODE_MAP) {
+                var item = CUSTOMER_CODE_MAP[code];
+                if (!item) continue;
+
+                var name = item.name || '';
+                var screen = item.screen || '';
+                var inputStyle = item.inputStyle || '';
+                var cat = item.budgetCategory || item.category || '';
+                var catInfo = BUDGET_CATEGORY_MAP[cat] || {};
+
+                // === 1. 出力先フラグを設定（screen属性から判定） ===
+                item.isCostInput = false;
+                item.isBudgetInput = false;
+                item.isReferenceOnly = false;
+
+                // screen属性から出力先を判定
+                // ★ '自動'の場合は出力フラグなし（システムが自動計算するため）
+                if (screen === '参照のみ') {
+                    // 参照のみ → どちらにも出力しない
+                    item.isReferenceOnly = true;
+                    count.ref++;
+                } else if (screen === '自動') {
+                    // 自動演算項目：出力フラグなし、合計/演算フラグのみ設定（下で処理）
+                    count.auto = (count.auto || 0) + 1;
+                } else if (screen.indexOf('費用予算設定') >= 0) {
+                    // 費用予算設定画面 → 費用出力
+                    item.isCostInput = true;
+                    count.cost++;
+                } else if (screen.indexOf('月次予算設定') >= 0 || screen.indexOf('売上構成比設定') >= 0) {
+                    // 月次予算設定・売上構成比設定 → MQ出力
+                    item.isBudgetInput = true;
+                    count.mq++;
                 }
-            } else if (inputStyle === 'B.合算して入力') {
-                // 複数項目を合算して入力する費用項目
-                defaults.isCostInput = true;
-            } else if (inputStyle === 'C.自動演算') {
-                // 演算項目リストに含まれる、または利益系 → 演算値
-                if (isCalculatedItem || isProfitName) {
-                    defaults.isCalculated = true;
+
+                // === 2. 合計/演算フラグを設定 ===
+                var hasTotalInName = name.indexOf('合計') >= 0 || name.indexOf('小計') >= 0;
+                var isCalculatedItem = CALCULATED_ITEMS.indexOf(name) >= 0;
+                var isProfitName = name.indexOf('利益') >= 0;
+                var isAutoCalc = inputStyle === 'C.自動演算';
+
+                // ★ 演算フラグは「自動演算」のinputStyleを持つ場合のみ設定
+                // 店舗営業利益(No.61)は「A.そのまま入力」なので演算ではなくMQ出力
+                if (isAutoCalc && (isCalculatedItem || isProfitName)) {
+                    // CALCULATED_ITEMS配列に含まれる or 利益 → 演算値（自動演算の場合のみ）
+                    item.isCalculated = true;
+                    item.isTotal = false;
+                    count.calc++;
+                } else if (hasTotalInName && isAutoCalc) {
+                    // 合計を含み、自動演算 → 合計値
+                    item.isTotal = true;
+                    item.isCalculated = false;
+                    count.total++;
+                } else {
+                    item.isTotal = false;
+                    item.isCalculated = false;
                 }
-                // 「合計」を含むが演算項目でない → 合計値（個別項目の合計）
-                else if (hasTotalInName) {
-                    defaults.isTotal = true;
+
+                // === 3. 費用区分（固定費/変動費）を設定 ===
+                // 費用予算設定に出力する項目のみcostTypeを設定
+                if (item.isCostInput) {
+                    item.costType = catInfo.costType || 'variable';
+                } else {
+                    item.costType = 'none';
                 }
-                // それ以外（店舗売上高など）→ 予算値としてインポート
-                else {
-                    defaults.isBudgetInput = true;
-                }
-            } else if (inputStyle === 'D.参照のみ') {
-                // 参照のみの項目は予算値として扱う
-                defaults.isBudgetInput = true;
             }
 
-            // 明示的に設定されている場合はその値を使用
-            return {
-                isCostInput: typeof item.isCostInput !== 'undefined' ? item.isCostInput : defaults.isCostInput,
-                isBudgetInput: typeof item.isBudgetInput !== 'undefined' ? item.isBudgetInput : defaults.isBudgetInput,
-                isTotal: typeof item.isTotal !== 'undefined' ? item.isTotal : defaults.isTotal,
-                isCalculated: typeof item.isCalculated !== 'undefined' ? item.isCalculated : defaults.isCalculated,
-                costType: item.costType || defaults.costType
-            };
+            console.log('[initializeItemFlags] 初期化完了: 費用出力=' + count.cost + ', MQ出力=' + count.mq + ', 合計=' + count.total + ', 演算=' + count.calc + ', 参照=' + count.ref);
         }
 
         // 項目のフラグを更新
@@ -11720,6 +12045,36 @@
             if (!CUSTOMER_CODE_MAP[code]) return;
             CUSTOMER_CODE_MAP[code][flagName] = value;
             console.log('[updateItemFlag] ' + code + '.' + flagName + ' = ' + value);
+            // カテゴリサマリーの値の種別を更新
+            renderCategorySummary();
+        }
+
+        // 出力先フラグを更新（排他制御付き：参照のみ vs 費用/MQ）
+        function updateOutputFlag(code, flagName, value, categoryName) {
+            if (!CUSTOMER_CODE_MAP[code]) return;
+            var item = CUSTOMER_CODE_MAP[code];
+
+            if (flagName === 'isReferenceOnly' && value === true) {
+                // 参照のみをON → 費用出力・MQ出力をOFF
+                item.isReferenceOnly = true;
+                item.isCostInput = false;
+                item.isBudgetInput = false;
+                console.log('[updateOutputFlag] ' + code + ' → 参照のみ');
+            } else if ((flagName === 'isCostInput' || flagName === 'isBudgetInput') && value === true) {
+                // 費用出力またはMQ出力をON → 参照のみをOFF
+                item[flagName] = true;
+                item.isReferenceOnly = false;
+                console.log('[updateOutputFlag] ' + code + '.' + flagName + ' = true, 参照のみ = false');
+            } else {
+                // その他（OFFにする場合）
+                item[flagName] = value;
+                console.log('[updateOutputFlag] ' + code + '.' + flagName + ' = ' + value);
+            }
+
+            // カテゴリサマリーの値の種別を更新
+            renderCategorySummary();
+            // 項目リストを再描画
+            renderCategoryItemsList(categoryName);
         }
 
         // 項目の費用区分を更新
@@ -11736,6 +12091,44 @@
             console.log('[updateCategoryCostType] ' + categoryName + '.costType = ' + costType);
             // カテゴリ一覧を再描画
             renderCategorySummary();
+        }
+
+        // カテゴリの出力先を更新（MQ計算/費用予算/両方）
+        function updateCategoryOutput(categoryName, output) {
+            if (!BUDGET_CATEGORY_MAP[categoryName]) return;
+            BUDGET_CATEGORY_MAP[categoryName].output = output;
+            console.log('[updateCategoryOutput] ' + categoryName + '.output = ' + output);
+
+            // カテゴリ内の全項目のフラグも連動更新
+            var keys = Object.keys(CUSTOMER_CODE_MAP);
+            for (var i = 0; i < keys.length; i++) {
+                var code = keys[i];
+                var item = CUSTOMER_CODE_MAP[code];
+                if (item && (item.budgetCategory === categoryName || item.category === categoryName)) {
+                    // 出力先に基づいてフラグを設定
+                    if (output === 'mq') {
+                        item.isBudgetInput = true;
+                        item.isCostInput = false;
+                    } else if (output === 'cost') {
+                        item.isBudgetInput = false;
+                        item.isCostInput = true;
+                    } else if (output === 'both') {
+                        item.isBudgetInput = true;
+                        item.isCostInput = true;
+                    }
+                }
+            }
+
+            // カテゴリ一覧を再描画
+            renderCategorySummary();
+            // 項目モーダルが開いていれば再描画
+            var modal = document.getElementById('categoryItemsModal');
+            if (modal && modal.style.display === 'block') {
+                var currentCategory = document.getElementById('categoryItemsModalCategory').value;
+                if (currentCategory === categoryName) {
+                    renderCategoryItemsList(categoryName);
+                }
+            }
         }
 
         // カテゴリサマリービューを描画（B案）
@@ -11763,13 +12156,26 @@
                     return BUDGET_CATEGORY_MAP[a].displayOrder - BUDGET_CATEGORY_MAP[b].displayOrder;
                 });
 
+                // 各カテゴリの項目フラグを集計（固定/変動の自動判定用）
+                var categoryValueTypes = {};
+                for (var code in CUSTOMER_CODE_MAP) {
+                    var item = CUSTOMER_CODE_MAP[code];
+                    if (!item) continue;
+                    var cat = item.budgetCategory || item.category || '未分類';
+                    if (!categoryValueTypes[cat]) {
+                        categoryValueTypes[cat] = { hasCost: false, hasMQ: false };
+                    }
+                    if (item.isCostInput) categoryValueTypes[cat].hasCost = true;
+                    if (item.isBudgetInput) categoryValueTypes[cat].hasMQ = true;
+                }
+
                 var html = '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
                 html += '<thead><tr style="background:#ffe0b2;">';
                 html += '<th style="padding:10px;text-align:center;width:60px;">順序</th>';
                 html += '<th style="padding:10px;text-align:left;">カテゴリ名</th>';
                 html += '<th style="padding:10px;text-align:center;width:80px;">項目数</th>';
                 html += '<th style="padding:10px;text-align:center;width:80px;">出力先</th>';
-                html += '<th style="padding:10px;text-align:center;width:90px;">費用区分</th>';
+                html += '<th style="padding:10px;text-align:center;width:90px;">値の種別</th>';
                 html += '<th style="padding:10px;text-align:center;width:100px;">操作</th>';
                 html += '</tr></thead><tbody>';
 
@@ -11779,9 +12185,6 @@
                     var itemCount = categoryCounts[categoryName] || 0;
                     var isFirst = idx === 0;
                     var isLast = idx === categories.length - 1;
-                    var outputLabel = catInfo && catInfo.output === 'mq' ? 'MQ計算' : (catInfo && catInfo.output === 'both' ? '両方' : '費用予算');
-                    var costType = catInfo ? catInfo.costType || 'none' : 'none';
-                    var showCostTypeSelect = catInfo && (catInfo.output === 'cost' || catInfo.output === 'both');
 
                     html += '<tr style="background:' + catColor + '20;border-bottom:1px solid #e0e0e0;">';
 
@@ -11802,20 +12205,29 @@
                     html += '<span style="background:' + catColor + ';color:#fff;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:bold;">' + itemCount + '</span>';
                     html += '</td>';
 
-                    // 出力先
+                    // 出力先（テキスト表示）
+                    var outputLabel = catInfo && catInfo.output === 'mq' ? 'MQ計算' : (catInfo && catInfo.output === 'both' ? '両方' : '費用予算');
                     html += '<td style="padding:10px;text-align:center;font-size:10px;color:#666;">' + outputLabel + '</td>';
 
-                    // 費用区分（費用設定カテゴリのみプルダウン表示）
-                    html += '<td style="padding:10px;text-align:center;">';
-                    if (showCostTypeSelect) {
-                        html += '<select onchange="updateCategoryCostType(\'' + categoryName + '\', this.value)" style="font-size:10px;padding:3px 6px;border-radius:3px;border:1px solid #ccc;">';
-                        html += '<option value="variable"' + (costType === 'variable' ? ' selected' : '') + '>変動費</option>';
-                        html += '<option value="fixed"' + (costType === 'fixed' ? ' selected' : '') + '>固定費</option>';
-                        html += '<option value="both"' + (costType === 'both' ? ' selected' : '') + '>両方</option>';
-                        html += '</select>';
+                    // 値の種別（項目のフラグから自動計算）
+                    var valType = categoryValueTypes[categoryName] || { hasCost: false, hasMQ: false };
+                    var valueTypeLabel = '';
+                    var valueTypeColor = '#666';
+                    if (valType.hasCost && valType.hasMQ) {
+                        valueTypeLabel = '両方';
+                        valueTypeColor = '#ff9800';
+                    } else if (valType.hasMQ) {
+                        valueTypeLabel = '変動';
+                        valueTypeColor = '#00838f';
+                    } else if (valType.hasCost) {
+                        valueTypeLabel = '固定';
+                        valueTypeColor = '#7b1fa2';
                     } else {
-                        html += '<span style="color:#aaa;font-size:10px;">-</span>';
+                        valueTypeLabel = '未設定';
+                        valueTypeColor = '#aaa';
                     }
+                    html += '<td style="padding:10px;text-align:center;">';
+                    html += '<span style="background:' + valueTypeColor + '20;color:' + valueTypeColor + ';padding:3px 8px;border-radius:4px;font-size:10px;font-weight:bold;">' + valueTypeLabel + '</span>';
                     html += '</td>';
 
                     // 操作ボタン
@@ -11829,6 +12241,29 @@
                 });
 
                 html += '</tbody></table>';
+
+                // 値の種別の定義説明
+                html += '<div style="background:#f5f5f5;border-radius:6px;padding:12px;margin-top:15px;font-size:11px;">';
+                html += '<div style="font-weight:bold;color:#333;margin-bottom:8px;">📋 値の種別（項目のフラグから自動判定）</div>';
+                html += '<div style="display:flex;gap:15px;flex-wrap:wrap;">';
+                html += '<div style="flex:1;min-width:200px;background:#fff;padding:10px;border-radius:4px;border-left:3px solid #7b1fa2;">';
+                html += '<strong style="color:#7b1fa2;">固定</strong><br>';
+                html += '<span style="color:#666;">費用出力のみ：顧客予算をそのまま費用予算設定に使用</span>';
+                html += '</div>';
+                html += '<div style="flex:1;min-width:200px;background:#fff;padding:10px;border-radius:4px;border-left:3px solid #00838f;">';
+                html += '<strong style="color:#00838f;">変動</strong><br>';
+                html += '<span style="color:#666;">MQ出力のみ：MQパラメータや計算の元値として使用</span>';
+                html += '</div>';
+                html += '<div style="flex:1;min-width:200px;background:#fff;padding:10px;border-radius:4px;border-left:3px solid #ff9800;">';
+                html += '<strong style="color:#ff9800;">両方</strong><br>';
+                html += '<span style="color:#666;">費用出力とMQ出力の両方を持つ項目が存在</span>';
+                html += '</div>';
+                html += '</div>';
+                html += '<div style="margin-top:10px;padding:8px;background:#e3f2fd;border-radius:4px;color:#1565c0;font-size:10px;">';
+                html += '※ 値の種別は、項目一覧で設定した「費用出力」「MQ出力」フラグから自動で判定されます。';
+                html += '</div>';
+                html += '</div>';
+
                 html += '<div style="padding:10px;text-align:right;color:#666;font-size:11px;">合計: ' + categories.length + 'カテゴリ / ' + totalItems + '項目</div>';
                 container.innerHTML = html;
             } catch (e) {
@@ -11916,11 +12351,12 @@
             html += '<th style="padding:6px;text-align:center;width:70px;">コード</th>';
             html += '<th style="padding:6px;text-align:left;">予算項目名</th>';
             html += '<th style="padding:6px;text-align:center;width:50px;">v17No</th>';
-            // フラグ列ヘッダー
-            html += '<th style="padding:6px;text-align:center;width:50px;" title="費用予算設定に入力">費用</th>';
-            html += '<th style="padding:6px;text-align:center;width:50px;" title="MQ計算に必要な予算値">予算</th>';
-            html += '<th style="padding:6px;text-align:center;width:50px;" title="合計・小計値">合計</th>';
-            html += '<th style="padding:6px;text-align:center;width:50px;" title="自動演算値">演算</th>';
+            // フラグ列ヘッダー（出力先を明示）
+            html += '<th style="padding:6px;text-align:center;width:55px;background:#e3f2fd;" title="費用予算設定に出力する項目"><span style="color:#1565c0;">費用出力</span></th>';
+            html += '<th style="padding:6px;text-align:center;width:55px;background:#e8f5e9;" title="MQ計算（売上シミュレーション）に出力する項目"><span style="color:#2e7d32;">MQ出力</span></th>';
+            html += '<th style="padding:6px;text-align:center;width:55px;background:#eceff1;" title="参照のみ（どちらにも出力しない）"><span style="color:#546e7a;">参照のみ</span></th>';
+            html += '<th style="padding:6px;text-align:center;width:45px;background:#fff3e0;" title="合計・小計値（個別項目の合計）"><span style="color:#e65100;">合計</span></th>';
+            html += '<th style="padding:6px;text-align:center;width:45px;background:#fce4ec;" title="演算値（合計値同士の演算結果）"><span style="color:#c2185b;">演算</span></th>';
             // 費用区分（費用設定カテゴリのみ）
             if (showCostType) {
                 html += '<th style="padding:6px;text-align:center;width:80px;">費用区分</th>';
@@ -11950,14 +12386,19 @@
                 // v17No
                 html += '<td style="padding:6px;text-align:center;">' + (item.v15No || '-') + '</td>';
 
-                // フラグチェックボックス - 費用入力値
+                // フラグチェックボックス - 費用出力
                 html += '<td style="padding:6px;text-align:center;">';
-                html += '<input type="checkbox" ' + (flags.isCostInput ? 'checked' : '') + ' onchange="updateItemFlag(\'' + item.code + '\', \'isCostInput\', this.checked); renderCategoryItemsList(\'' + categoryName + '\');" style="cursor:pointer;">';
+                html += '<input type="checkbox" ' + (flags.isCostInput ? 'checked' : '') + ' onchange="updateOutputFlag(\'' + item.code + '\', \'isCostInput\', this.checked, \'' + categoryName + '\');" style="cursor:pointer;">';
                 html += '</td>';
 
-                // フラグチェックボックス - 予算入力値
+                // フラグチェックボックス - MQ出力
                 html += '<td style="padding:6px;text-align:center;">';
-                html += '<input type="checkbox" ' + (flags.isBudgetInput ? 'checked' : '') + ' onchange="updateItemFlag(\'' + item.code + '\', \'isBudgetInput\', this.checked); renderCategoryItemsList(\'' + categoryName + '\');" style="cursor:pointer;">';
+                html += '<input type="checkbox" ' + (flags.isBudgetInput ? 'checked' : '') + ' onchange="updateOutputFlag(\'' + item.code + '\', \'isBudgetInput\', this.checked, \'' + categoryName + '\');" style="cursor:pointer;">';
+                html += '</td>';
+
+                // フラグチェックボックス - 参照のみ（排他制御あり）
+                html += '<td style="padding:6px;text-align:center;">';
+                html += '<input type="checkbox" ' + (flags.isReferenceOnly ? 'checked' : '') + ' onchange="updateOutputFlag(\'' + item.code + '\', \'isReferenceOnly\', this.checked, \'' + categoryName + '\');" style="cursor:pointer;">';
                 html += '</td>';
 
                 // フラグチェックボックス - 合計値
@@ -11970,13 +12411,10 @@
                 html += '<input type="checkbox" ' + (flags.isCalculated ? 'checked' : '') + ' onchange="updateItemFlag(\'' + item.code + '\', \'isCalculated\', this.checked); renderCategoryItemsList(\'' + categoryName + '\');" style="cursor:pointer;">';
                 html += '</td>';
 
-                // 費用区分プルダウン（費用設定カテゴリのみ）
+                // 費用区分（顧客予算は全て固定費）
                 if (showCostType) {
                     html += '<td style="padding:6px;text-align:center;">';
-                    html += '<select onchange="updateItemCostType(\'' + item.code + '\', this.value); renderCategoryItemsList(\'' + categoryName + '\');" style="font-size:10px;padding:2px;border-radius:3px;border:1px solid #ccc;">';
-                    html += '<option value="variable"' + (flags.costType === 'variable' ? ' selected' : '') + '>変動費</option>';
-                    html += '<option value="fixed"' + (flags.costType === 'fixed' ? ' selected' : '') + '>固定費</option>';
-                    html += '</select>';
+                    html += '<span style="font-size:10px;padding:2px 6px;background:#e3f2fd;color:#1565c0;border-radius:3px;">固定費</span>';
                     html += '</td>';
                 }
 
@@ -12479,7 +12917,8 @@
                                 if (monthData) {
                                     var val = monthData.total || 0;
                                     html += '<span style="background:#fff;padding:2px 6px;border-radius:3px;border:1px solid #90caf9;">';
-                                    html += FISCAL_ORDER[mi] + ':' + val.toLocaleString() + '円';
+                                    // ★ 修正: miが0-11のループインデックスの場合はそのまま使用
+                                    html += (mi + 1) + '月:' + val.toLocaleString() + '円';
                                     html += '</span>';
                                 }
                             }
@@ -13277,15 +13716,15 @@
         // 画面設定別仕分けルール（v17準拠）
         var SCREEN_MAPPING_RULES = {
             '設定>費用予算設定': {
-                categories: ['人件費', 'その他変動費', '固定費'],
-                v17Range: [16, 59],  // No.16-25(固定人件費), No.27-51(その他変動費), No.55-59(固定費)
+                categories: ['人件費', '水道光熱費', '販促費', '店舗運営費', '管理費', '教育・採用費', 'IT・外注費', '固定費'],
+                v17Range: [16, 59],  // No.16-25(固定人件費), No.27-51(経費), No.55-59(固定費)
                 excludeItems: [19, 26],  // PA人件費(19)は月次予算で率入力、人件費合計(26)は集計項目。ヘルプ人件費(20)は独立項目として入力
                 description: '固定費用予算（年間デフォルト設定、金額or％入力、設定タイプ選択）',
                 inputType: '金額or％',
                 hasMonthlyOverride: true  // 単月費用予算で月別上書き可
             },
             '設定>費用予算設定>単月費用予算': {
-                categories: ['人件費', 'その他変動費', '固定費'],
+                categories: ['人件費', '水道光熱費', '販促費', '店舗運営費', '管理費', '教育・採用費', 'IT・外注費', '固定費'],
                 condition: 'hasMonthlyVariation',
                 description: '月別差異がある固定費用（年間デフォルト値を単月で変更）'
             },
@@ -13333,11 +13772,13 @@
                 return '設定>月次予算設定';
             }
 
-            // 5. 費用予算設定（固定人件費・その他変動費・固定費）
+            // 5. 費用予算設定（固定人件費・経費・固定費）
             if (category === '人件費' && ![19, 20, 26].includes(v17No)) {
                 return '設定>費用予算設定';
             }
-            if (category === 'その他変動費' || category === '固定費') {
+            // 経費カテゴリ（水道光熱費、販促費、店舗運営費、管理費、教育・採用費、IT・外注費）
+            var expenseCategories = ['水道光熱費', '販促費', '店舗運営費', '管理費', '教育・採用費', 'IT・外注費', '固定費'];
+            if (expenseCategories.includes(category)) {
                 return '設定>費用予算設定';
             }
 
@@ -14299,11 +14740,28 @@
                     preprocessLog = [];
                     addLog('CSVファイル: ' + file.name, 'info');
                     parseCustomerCSV(e.target.result);
+
+                    // ★ フラグ自動判定（screen属性に基づく）
+                    initializeItemFlags();
+                    addLog('', '');
+                    addLog('=== フラグ自動判定完了 ===', 'success');
+
+                    // ★ 店舗別マスタ設定を自動保存
+                    if (storeName) {
+                        saveStoreMasterSettings(storeName, true);
+                        addLog('店舗マスタ保存: ' + storeName, 'success');
+                    }
+
                     document.getElementById('preprocessLog').innerHTML = preprocessLog.join('\n');
                     renderMappingTable();
                     renderUnmatchedItems();
                     renderMonthColsGrid();
+                    renderStoreMasterSelector();  // 店舗セレクターを更新
                     showStatus('success', 'インポート完了: ' + storeName + '（' + matchedItems.length + '項目マッチ）');
+
+                    // ★★★ 再発防止: インポート後のデータ検証サマリー ★★★
+                    verifyImportedData();
+
                     runSimulation();
                 } catch (err) {
                     addLog('エラー: ' + err.message, 'error');
@@ -14313,6 +14771,51 @@
                 }
             };
             reader.readAsText(file, 'UTF-8');
+        }
+
+        // ★★★ 再発防止: インポート後のデータ検証関数 ★★★
+        function verifyImportedData() {
+            console.log('═══════════════════════════════════════════════════════');
+            console.log('【インポートデータ検証サマリー】');
+            console.log('═══════════════════════════════════════════════════════');
+
+            // 主要項目の検証
+            var keyItems = [
+                { v17No: 1, name: '店舗売上高' },
+                { v17No: 2, name: 'ドリンク売上' },
+                { v17No: 4, name: '売上高合計（税抜）' },
+                { v17No: 63, name: '営業利益' }
+            ];
+
+            // 会計年度の最初の3ヶ月を表示
+            var monthsToShow = Math.min(3, fiscalSortedMonths.length);
+
+            keyItems.forEach(function(item) {
+                var data = annualData[item.v17No];
+                if (!data) {
+                    console.log('No.' + item.v17No + ' ' + item.name + ': データなし');
+                    return;
+                }
+
+                var values = [];
+                for (var i = 0; i < monthsToShow; i++) {
+                    var pos = fiscalSortedMonths[i].position;
+                    var label = fiscalSortedMonths[i].label;
+                    var val = data[pos] || 0;
+                    values.push(label + '=' + val + '千円');
+                }
+                console.log('No.' + item.v17No + ' ' + item.name + ': ' + values.join(', '));
+            });
+
+            // データフロー説明
+            console.log('───────────────────────────────────────────────────────');
+            console.log('【データフロー確認】');
+            console.log('  CSV値（千円） → annualData[v17No][position] → 表示時×1000 → 円表示');
+            console.log('  position = fiscalSortedMonths[i].position（配列内位置）');
+            console.log('  activeMonths = カレンダー月インデックス（0=1月, 3=4月, ...）');
+            console.log('═══════════════════════════════════════════════════════');
+
+            addLog('✓ データ検証完了 - コンソールでサマリーを確認してください', 'success');
         }
 
         function parseCustomerCSV(csv) {
@@ -14418,7 +14921,9 @@
                 for (var k = 0; k < budgetResults.length; k++) {
                     if (budgetResults[k].month === m) {
                         budgetColumnPositions.push(budgetResults[k]);
-                        activeMonths.push(budgetColumnPositions.length - 1);
+                        // カレンダー月インデックス（0-11: 0=1月, 3=4月, etc.）を格納
+                        var calendarMonthIndex = parseInt(m.replace('月', '')) - 1;
+                        activeMonths.push(calendarMonthIndex);
                         monthLabels.push(m);
                         break;
                     }
@@ -14428,6 +14933,35 @@
             addLog('', '');
             addLog('会計年度順: ' + monthLabels.join(' → '), 'month');
             addLog('予算列位置: ' + budgetColumnPositions.map(function(p) { return p.month + ':列' + p.budgetCol; }).join(', '), 'data');
+
+            // ★★★ 再発防止: activeMonthsのデータ整合性チェック ★★★
+            // activeMonthsはカレンダー月インデックス（0-11）を格納すること
+            // 配列インデックス（0, 1, 2...）を格納してはいけない
+            var integrityErrors = [];
+            for (var vi = 0; vi < activeMonths.length; vi++) {
+                var calIdx = activeMonths[vi];
+                var expectedLabel = (calIdx + 1) + '月';
+                var actualLabel = monthLabels[vi];
+
+                // 範囲チェック（0-11）
+                if (calIdx < 0 || calIdx > 11) {
+                    integrityErrors.push('位置' + vi + ': カレンダー月インデックス' + calIdx + 'が範囲外（0-11）');
+                }
+
+                // ラベルとの整合性チェック
+                if (expectedLabel !== actualLabel) {
+                    integrityErrors.push('位置' + vi + ': activeMonths=' + calIdx + '(' + expectedLabel + ') ≠ monthLabels=' + actualLabel);
+                }
+            }
+
+            if (integrityErrors.length > 0) {
+                console.error('【致命的エラー】activeMonthsデータ整合性エラー:', integrityErrors);
+                addLog('❌ 致命的エラー: 月データ整合性エラー - ' + integrityErrors.join(', '), 'error');
+                alert('月データの整合性エラーが検出されました。コンソールを確認してください。');
+            } else {
+                console.log('✓ activeMonthsデータ整合性OK: カレンダー月インデックス=', activeMonths, 'ラベル=', monthLabels);
+                addLog('✓ 月データ整合性チェック: OK', 'success');
+            }
 
             // ★ 列番号の連続性チェック（大きなギャップがある場合は警告）
             var sortedCols = budgetColumnPositions.map(function(p) { return p.budgetCol; }).sort(function(a, b) { return a - b; });
@@ -14528,6 +15062,7 @@
 
             var codeMatchCount = 0;
             var nameMatchCount = 0;
+            var skipMatchCount = 0;  // skip=trueの自動演算項目数
             var conflictCount = 0;  // コードベースと名前ベースの競合数
 
             // デバッグ用：監視対象のv17No（欠落が報告されている項目）
@@ -14674,6 +15209,13 @@
                 var category = finalMatch.category;
                 var matchedName = finalMatch.name || itemName;
 
+                // ★ skipフラグがある場合は値をインポートせずスキップ（自動演算項目）
+                if (finalMatch.skip === true) {
+                    addLog('  行' + lineIdx + ': 「' + matchedName + '」→ v17No.' + v17No + ' 自動演算項目のためスキップ（' + (finalMatch.reason || 'skip=true') + '）', 'data');
+                    skipMatchCount = (skipMatchCount || 0) + 1;
+                    continue;
+                }
+
                 // ★ CSVカテゴリとのダブルチェック（予算テンプレート形式対応）
                 var csvCategory = (cols[0] || '').trim();  // CSV A列: 予算カテゴリ
                 if (csvCategory && BUDGET_CATEGORY_MAP[csvCategory]) {
@@ -14705,6 +15247,7 @@
                 var hasValue = false;
                 var firstValue = 0;
 
+                // ★ 顧客予算CSVは千円単位のためそのまま格納（内部データも千円単位）
                 for (var mi = 0; mi < budgetColumnPositions.length; mi++) {
                     var budgetCol = budgetColumnPositions[mi].budgetCol;
                     var rawValue = cols[budgetCol] || '';
@@ -14772,17 +15315,79 @@
                     }
                 }
 
-                addLog('★ [' + displayIndex + '] 行' + lineIdx + ': 「' + matchedName + '」' + positionLabel + ' ' + matchLabel + ' → v17No.' + v17No + ' (' + category + ') 初月値=' + firstValue, 'success');
+                // ★ 全月の値を表示（デバッグ用）
+                var allMonthValues = [];
+                for (var dmi = 0; dmi < Math.min(3, budgetColumnPositions.length); dmi++) {
+                    allMonthValues.push(rowData[dmi]);
+                }
+                addLog('★ [' + displayIndex + '] 行' + lineIdx + ': 「' + matchedName + '」' + positionLabel + ' ' + matchLabel + ' → v17No.' + v17No + ' (' + category + ') 値=[' + allMonthValues.join(', ') + '...]', 'success');
 
                 // ★ annualDataに格納（重複チェック通過後のみ）
+                // 注意: 加算ではなく上書き（同一v17Noの重複はすでにスキップ済み）
                 for (var ami = 0; ami < budgetColumnPositions.length; ami++) {
                     annualData[v17No] = annualData[v17No] || {};
-                    annualData[v17No][ami] = (annualData[v17No][ami] || 0) + rowData[ami];
+                    // ★ 既存値がある場合は警告（本来は発生しないはず）
+                    if (annualData[v17No][ami] !== undefined && annualData[v17No][ami] !== 0) {
+                        console.warn('【重複警告】v17No.' + v17No + ' 月' + ami + ': 既存値=' + annualData[v17No][ami] + ', 新値=' + rowData[ami]);
+                        addLog('⚠️ 【重複警告】v17No.' + v17No + ' 月' + ami + ': 既存値=' + annualData[v17No][ami] + ' に新値=' + rowData[ami] + ' が上書きされます', 'warn');
+                    }
+                    annualData[v17No][ami] = rowData[ami];  // 上書き（加算ではなく）
                 }
 
                 // budgetCategoryとsortOrderを取得（CSVカテゴリまたはマッピング定義から）
                 var itemBudgetCategory = csvCategory || (CUSTOMER_CODE_MAP[accountCode] ? CUSTOMER_CODE_MAP[accountCode].budgetCategory : category);
                 var itemSortOrder = CUSTOMER_CODE_MAP[accountCode] ? (CUSTOMER_CODE_MAP[accountCode].sortOrder || 0) : 0;
+
+                // ★ 入力スタイルとフラグ情報を取得（マッピング設定から）
+                // accountCodeでマッチしない場合、v15Noでマッピングを検索
+                var codeMapEntry = CUSTOMER_CODE_MAP[accountCode];
+                if (!codeMapEntry && v17No) {
+                    // v15Noで逆引き検索
+                    for (var mapCode in CUSTOMER_CODE_MAP) {
+                        if (CUSTOMER_CODE_MAP[mapCode].v15No === v17No) {
+                            codeMapEntry = CUSTOMER_CODE_MAP[mapCode];
+                            break;
+                        }
+                    }
+                }
+                codeMapEntry = codeMapEntry || {};
+                var itemInputStyle = codeMapEntry.inputStyle || 'A.そのまま入力';
+                var itemScreen = codeMapEntry.screen || '';
+
+                // ★★★ V17マッピング準拠: screen属性から直接フラグを計算 ★★★
+                // （initializeItemFlagsと同じロジック）
+                var catInfo = BUDGET_CATEGORY_MAP[itemBudgetCategory] || {};
+                var itemIsCostInput = false;
+                var itemIsBudgetInput = false;
+                var itemIsReferenceOnly = false;
+
+                // screen属性から出力先を判定
+                // ★ '自動'の場合は出力フラグなし（システムが自動計算するため）
+                if (itemScreen === '参照のみ') {
+                    itemIsReferenceOnly = true;
+                } else if (itemScreen === '自動') {
+                    // 自動演算項目：出力フラグなし、合計/演算フラグのみ設定
+                } else if (itemScreen.indexOf('費用予算設定') >= 0) {
+                    itemIsCostInput = true;
+                } else if (itemScreen.indexOf('月次予算設定') >= 0 || itemScreen.indexOf('売上構成比設定') >= 0) {
+                    itemIsBudgetInput = true;
+                }
+
+                // 合計/演算フラグ判定
+                var hasTotalInName = matchedName.indexOf('合計') >= 0 || matchedName.indexOf('小計') >= 0;
+                var isCalculatedItem = CALCULATED_ITEMS.indexOf(matchedName) >= 0;
+                var isProfitName = matchedName.indexOf('利益') >= 0;
+                var isAutoCalc = itemInputStyle === 'C.自動演算';
+                var itemIsTotal = false;
+                var itemIsCalculated = false;
+                // ★ 演算フラグは「自動演算」のinputStyleを持つ場合のみ設定
+                // 店舗営業利益(No.61)は「A.そのまま入力」なので演算ではなくMQ出力
+                if (isAutoCalc && (isCalculatedItem || isProfitName)) {
+                    itemIsCalculated = true;
+                } else if (hasTotalInName && isAutoCalc) {
+                    itemIsTotal = true;
+                }
+                var itemCostType = catInfo.costType || 'none';
 
                 var newItem = {
                     displayIndex: displayIndex,  // 連番インデックス
@@ -14795,6 +15400,15 @@
                     category: category,
                     budgetCategory: itemBudgetCategory,  // ★ 予算カテゴリ（表示順制御用）
                     sortOrder: itemSortOrder,            // ★ カテゴリ内表示順
+                    inputStyle: itemInputStyle,          // ★ 入力スタイル
+                    screen: itemScreen,                  // ★ 出力先画面
+                    // ★ フラグ情報（V17 screen属性から直接計算）
+                    isCostInput: itemIsCostInput,            // 費用入力値フラグ
+                    isBudgetInput: itemIsBudgetInput,        // 予算入力値フラグ（MQ計算用）
+                    isReferenceOnly: itemIsReferenceOnly,    // 参照のみフラグ
+                    isTotal: itemIsTotal,                    // 合計値フラグ
+                    isCalculated: itemIsCalculated,          // 演算値フラグ
+                    costType: itemCostType,                  // 費用区分（固定費/変動費）
                     matchType: matchType,
                     sampleValue: firstValue,
                     hasValue: hasValue,
@@ -14838,7 +15452,10 @@
             addLog('総データ行数: ' + (lines.length - 4) + '行', 'info');
             addLog('マッチ成功: ' + matchedItems.length + '行', 'success');
             addLog('  ├ コードマッチ (B列): ' + codeMatchCount + '行', 'success');
-            addLog('  └ 項目名マッチ (C/D/E列): ' + nameMatchCount + '行', 'success');
+            addLog('  ├ 項目名マッチ (C/D/E列): ' + nameMatchCount + '行', 'success');
+            if (skipMatchCount > 0) {
+                addLog('  └ 自動演算スキップ: ' + skipMatchCount + '行', 'data');
+            }
             if (conflictCount > 0) {
                 addLog('⚠️ 競合検出（名前ベース採用）: ' + conflictCount + '件', 'warn');
             }
@@ -14953,8 +15570,9 @@
             // 方法1（優先）: NAME_BASED_MAP経由でCSVから直接インポート
             // 方法2（フォールバック）: CALC_RULES経由で計算（店舗営業利益 - 販売管理費合計）
             // ※ コード9640は不正確な値のため削除済み
-            var hasNo63FromCSV = annualData[63] && activeMonths.some(function(m) {
-                return annualData[63][m] !== undefined && annualData[63][m] !== null && annualData[63][m] !== 0;
+            // ★ 修正: 配列インデックス(idx)を使用してデータアクセス
+            var hasNo63FromCSV = annualData[63] && activeMonths.some(function(m, idx) {
+                return annualData[63][idx] !== undefined && annualData[63][idx] !== null && annualData[63][idx] !== 0;
             });
 
             if (hasNo63FromCSV) {
@@ -15083,10 +15701,14 @@
             return 0;
         }
 
+        // ★ ヘルパー関数使用版（インデックス混同防止）
         function judgeSettings() {
             judgments = {};
             [10, 15, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50].forEach(function(itemNo) {
-                var values = activeMonths.map(function(mi) { return annualData[itemNo] ? (annualData[itemNo][mi] || 0) : 0; });
+                // getAnnualValueで明確に配列インデックス(arrayIdx)を使用
+                var values = activeMonths.map(function(calMonth, arrayIdx) {
+                    return getAnnualValue(itemNo, arrayIdx);
+                });
                 var allSame = values.every(function(v) { return Math.abs(v - values[0]) < 0.01; });
                 judgments[itemNo] = { isAnnual: allSame };
             });
@@ -15264,7 +15886,8 @@
             headerHtml += '<th style="min-width:120px;padding:6px;color:#fff;font-weight:bold;">項目</th>';
             for (var i = 0; i < activeMonths.length; i++) {
                 var mi = activeMonths[i];
-                headerHtml += '<th style="min-width:70px;color:#fff;font-weight:bold;">' + FISCAL_ORDER[mi] + '</th>';
+                // ★ 修正: miはカレンダー月インデックス（0=1月, 3=4月）
+                headerHtml += '<th style="min-width:70px;color:#fff;font-weight:bold;">' + (mi + 1) + '月</th>';
             }
             headerHtml += '<th style="min-width:80px;background:#1b5e20;color:#fff;font-weight:bold;">合計/平均</th>';
             headerHtml += '</tr></thead>';
@@ -15358,10 +15981,11 @@
         }
 
         // 顧客予算から自動パラメータを取得
+        // ★ ヘルパー関数使用版（インデックス混同防止）
         function getMQAutoParams() {
             var result = {
-                monthlyG: {}, // 月別目標利益（No.63営業利益）- オブジェクト形式
-                monthlyF: {}, // 月別固定費 - オブジェクト形式
+                monthlyG: {}, // 月別目標利益（No.63営業利益）- カレンダー月をキー
+                monthlyF: {}, // 月別固定費 - カレンダー月をキー
                 fdRate: 0,
                 paRate: 0,
                 totalG: 0,
@@ -15377,41 +16001,53 @@
             var totalVariableCost = 0;
             var totalSales = 0;
 
-            for (var i = 0; i < activeMonths.length; i++) {
-                var m = activeMonths[i];
-                var get = function(no) { return annualData[no] ? (annualData[no][m] || 0) : 0; };
-                var getCalc = function(name) { return calcResults[m] ? (calcResults[m][name] || 0) : 0; };
-
+            // ★ forEachMonthで明確にarrayIdx/calMonthを分離
+            forEachMonth(function(arrayIdx, calMonth, label) {
                 // No.63 = 営業利益
-                var g = annualData[63] ? (annualData[63][m] || 0) : 0;
-                result.monthlyG[m] = g;
+                var g = getAnnualValue(63, arrayIdx);
+                result.monthlyG[calMonth] = g;  // カレンダー月をキーに格納
                 result.totalG += g;
 
                 // 固定費 = 地代家賃 + 固定人件費 + その他販管費
-                var fixedCost = getCalc('地代家賃合計') + getCalc('固定人件費合計') + get(55) + getCalc('資材費合計') +
-                    get(27) + get(28) + get(29) + get(30) + get(31) + get(32) + get(33) + get(34) + get(35) + get(36) +
-                    get(37) + get(38) + get(39) + get(40) + get(41) + get(42) + get(43) + get(44) + get(45) + get(46) +
-                    get(47) + get(48) + get(49) + get(50) + get(51);
-                result.monthlyF[m] = fixedCost;
+                var fixedCost = getCalcValue('地代家賃合計', arrayIdx) +
+                    getCalcValue('固定人件費合計', arrayIdx) +
+                    getAnnualValue(55, arrayIdx) +
+                    getCalcValue('資材費合計', arrayIdx) +
+                    getAnnualValue(27, arrayIdx) + getAnnualValue(28, arrayIdx) +
+                    getAnnualValue(29, arrayIdx) + getAnnualValue(30, arrayIdx) +
+                    getAnnualValue(31, arrayIdx) + getAnnualValue(32, arrayIdx) +
+                    getAnnualValue(33, arrayIdx) + getAnnualValue(34, arrayIdx) +
+                    getAnnualValue(35, arrayIdx) + getAnnualValue(36, arrayIdx) +
+                    getAnnualValue(37, arrayIdx) + getAnnualValue(38, arrayIdx) +
+                    getAnnualValue(39, arrayIdx) + getAnnualValue(40, arrayIdx) +
+                    getAnnualValue(41, arrayIdx) + getAnnualValue(42, arrayIdx) +
+                    getAnnualValue(43, arrayIdx) + getAnnualValue(44, arrayIdx) +
+                    getAnnualValue(45, arrayIdx) + getAnnualValue(46, arrayIdx) +
+                    getAnnualValue(47, arrayIdx) + getAnnualValue(48, arrayIdx) +
+                    getAnnualValue(49, arrayIdx) + getAnnualValue(50, arrayIdx) +
+                    getAnnualValue(51, arrayIdx);
+                result.monthlyF[calMonth] = fixedCost;  // カレンダー月をキーに格納
                 totalFixedCost += fixedCost;
 
-                // 変動費 = 食材仕入 + ドリンク仕入 + PA人件費
-                var variableCost = get(6) + get(10) + get(19);
+                // 変動費 = 食材原価(No.8) + ドリンク原価(No.12) + PA人件費(No.19)
+                var variableCost = getAnnualValue(8, arrayIdx) +
+                    getAnnualValue(12, arrayIdx) +
+                    getAnnualValue(19, arrayIdx);
                 totalVariableCost += variableCost;
-                totalSales += get(4);
-            }
+                totalSales += getAnnualValue(4, arrayIdx);
+            });
 
             result.avgF = Math.round(totalFixedCost / monthCount);
 
             // FD%とPA%を計算
+            // FD% = (食材原価 + ドリンク原価) ÷ 売上高合計
+            // PA% = 雑給 ÷ 売上高合計
             if (totalSales > 0) {
                 var fdCost = 0, paCost = 0;
-                for (var i = 0; i < activeMonths.length; i++) {
-                    var m = activeMonths[i];
-                    var get = function(no) { return annualData[no] ? (annualData[no][m] || 0) : 0; };
-                    fdCost += get(6) + get(10); // 食材 + ドリンク
-                    paCost += get(19); // PA人件費
-                }
+                forEachMonth(function(arrayIdx, calMonth, label) {
+                    fdCost += getAnnualValue(8, arrayIdx) + getAnnualValue(12, arrayIdx);
+                    paCost += getAnnualValue(19, arrayIdx);
+                });
                 result.fdRate = Math.round((fdCost / totalSales) * 1000) / 10;
                 result.paRate = Math.round((paCost / totalSales) * 1000) / 10;
             }
@@ -15436,7 +16072,8 @@
             headerHtml += '<th style="min-width:100px;padding:6px;color:#fff;font-weight:bold;">パラメータ</th>';
             for (var i = 0; i < activeMonths.length; i++) {
                 var mi = activeMonths[i];
-                var label = FISCAL_ORDER[mi] || (mi + 1) + '月';
+                // ★ 修正: miはカレンダー月インデックス（0=1月, 3=4月）なので直接ラベル生成
+                var label = (mi + 1) + '月';
                 headerHtml += '<th style="min-width:65px;color:#fff;font-weight:bold;">' + label + '</th>';
             }
             headerHtml += '<th style="min-width:70px;background:#bf360c;color:#fff;font-weight:bold;">平均</th>';
@@ -15517,7 +16154,8 @@
             headerHtml += '<th style="min-width:130px;padding:6px;color:#fff;font-weight:bold;">項目</th>';
             for (var i = 0; i < activeMonths.length; i++) {
                 var mi = activeMonths[i];
-                var label = FISCAL_ORDER[mi] || (mi + 1) + '月';
+                // ★ 修正: miはカレンダー月インデックス（0=1月, 3=4月）
+                var label = (mi + 1) + '月';
                 headerHtml += '<th style="min-width:65px;color:#fff;font-weight:bold;">' + label + '</th>';
             }
             headerHtml += '<th style="min-width:70px;background:#1b5e20;color:#fff;font-weight:bold;">平均</th>';
@@ -15765,7 +16403,8 @@
                 totalFixedCost += fixedCost;
                 monthlyFixedCosts.push(fixedCost);
 
-                var variableCost = get(6) + get(10) + get(19);  // 食材仕入 + ドリンク仕入 + PA人件費
+                // ★ 修正: 仕入高(No.6,10)ではなく原価(No.8,12)を使用
+                var variableCost = get(8) + get(12) + get(19);  // 食材原価 + ドリンク原価 + PA人件費
                 totalVariableCost += variableCost;
                 totalSales += get(4);
             }
@@ -15793,41 +16432,72 @@
             updateMQInputSummary();
         }
 
+        // ★ ヘルパー関数使用版（インデックス混同防止）
         function generateRakumyInputs() {
             rakumyInputs = {};
 
             // ★★★ 月別ユーザー入力値を取得 ★★★
             var mqInputs = getMQInputs();
 
-            for (var m = 0; m < activeMonths.length; m++) {
-                var get = function(no) { return annualData[no] ? (annualData[no][m] || 0) : 0; };
-                var getCalc = function(name) { return calcResults[m][name] || 0; };
-
-                // ★ 月別MQ入力値を取得
-                var monthInput = mqInputs[m] || { targetProfit: 500, fdRate: 30, paRate: 10, targetUnitPrice: 4500 };
+            // forEachMonthで明確にarrayIdx/calMonthを分離
+            forEachMonth(function(arrayIdx, calMonth, label) {
+                // ★ 月別MQ入力値を取得（カレンダー月をキーに）
+                var monthInput = mqInputs[calMonth] || { targetProfit: 500, fdRate: 30, paRate: 10, targetUnitPrice: 4500 };
 
                 // ★ 顧客予算値（参考値として保存）
-                var budgetSales = get(4);           // 顧客予算の売上高合計（No.4）
-                var budgetProfit = get(63);         // 顧客予算の営業利益（No.63）
+                var budgetSales = getAnnualValue(4, arrayIdx);     // 顧客予算の売上高合計（No.4）
+                var budgetProfit = getAnnualValue(63, arrayIdx);   // 顧客予算の営業利益（No.63）
 
                 // ★ 固定費用合計（費用予算設定から自動参照 - 入力不要）
-                var fixedCostTotal = getCalc('地代家賃合計') + getCalc('固定人件費合計') + get(55) + getCalc('資材費合計') +
-                    get(27) + get(28) + get(29) + get(30) + get(31) + get(32) + get(33) + get(34) + get(35) + get(36) +
-                    get(37) + get(38) + get(39) + get(40) + get(41) + get(42) + get(43) + get(44) + get(45) + get(46) +
-                    get(47) + get(48) + get(49) + get(50) + get(51);
+                var fixedCostTotal = getCalcValue('地代家賃合計', arrayIdx) +
+                    getCalcValue('固定人件費合計', arrayIdx) +
+                    getAnnualValue(55, arrayIdx) +
+                    getCalcValue('資材費合計', arrayIdx) +
+                    getAnnualValue(27, arrayIdx) + getAnnualValue(28, arrayIdx) +
+                    getAnnualValue(29, arrayIdx) + getAnnualValue(30, arrayIdx) +
+                    getAnnualValue(31, arrayIdx) + getAnnualValue(32, arrayIdx) +
+                    getAnnualValue(33, arrayIdx) + getAnnualValue(34, arrayIdx) +
+                    getAnnualValue(35, arrayIdx) + getAnnualValue(36, arrayIdx) +
+                    getAnnualValue(37, arrayIdx) + getAnnualValue(38, arrayIdx) +
+                    getAnnualValue(39, arrayIdx) + getAnnualValue(40, arrayIdx) +
+                    getAnnualValue(41, arrayIdx) + getAnnualValue(42, arrayIdx) +
+                    getAnnualValue(43, arrayIdx) + getAnnualValue(44, arrayIdx) +
+                    getAnnualValue(45, arrayIdx) + getAnnualValue(46, arrayIdx) +
+                    getAnnualValue(47, arrayIdx) + getAnnualValue(48, arrayIdx) +
+                    getAnnualValue(49, arrayIdx) + getAnnualValue(50, arrayIdx) +
+                    getAnnualValue(51, arrayIdx);
 
-                rakumyInputs[m] = {
+                rakumyInputs[arrayIdx] = {
                     // 費用予算設定（固定費用）- v17Noに対応（参照用）
-                    rent: getCalc('地代家賃合計'),
-                    fixedLabor: getCalc('固定人件費合計'),
-                    depreciation: get(55),
-                    material: getCalc('資材費合計'),
-                    promotion: get(27), menuCopy: get(28), survey: get(29), sanitary: get(30), service: get(31),
-                    electricity: get(32), gas: get(33), water: get(34), consumables: get(35), maintenance: get(36),
-                    taxes: get(37), entertainment: get(38), travel: get(39), communication: get(40),
-                    creditFee: get(41), paymentFee: get(42), meeting: get(43), membership: get(44),
-                    education: get(45), training: get(46), research: get(47), recruitment: get(48),
-                    it: get(49), outsource: get(50), misc: get(51),
+                    rent: getCalcValue('地代家賃合計', arrayIdx),
+                    fixedLabor: getCalcValue('固定人件費合計', arrayIdx),
+                    depreciation: getAnnualValue(55, arrayIdx),
+                    material: getCalcValue('資材費合計', arrayIdx),
+                    promotion: getAnnualValue(27, arrayIdx),
+                    menuCopy: getAnnualValue(28, arrayIdx),
+                    survey: getAnnualValue(29, arrayIdx),
+                    sanitary: getAnnualValue(30, arrayIdx),
+                    service: getAnnualValue(31, arrayIdx),
+                    electricity: getAnnualValue(32, arrayIdx),
+                    gas: getAnnualValue(33, arrayIdx),
+                    water: getAnnualValue(34, arrayIdx),
+                    consumables: getAnnualValue(35, arrayIdx),
+                    maintenance: getAnnualValue(36, arrayIdx),
+                    taxes: getAnnualValue(37, arrayIdx),
+                    entertainment: getAnnualValue(38, arrayIdx),
+                    travel: getAnnualValue(39, arrayIdx),
+                    communication: getAnnualValue(40, arrayIdx),
+                    creditFee: getAnnualValue(41, arrayIdx),
+                    paymentFee: getAnnualValue(42, arrayIdx),
+                    meeting: getAnnualValue(43, arrayIdx),
+                    membership: getAnnualValue(44, arrayIdx),
+                    education: getAnnualValue(45, arrayIdx),
+                    training: getAnnualValue(46, arrayIdx),
+                    research: getAnnualValue(47, arrayIdx),
+                    recruitment: getAnnualValue(48, arrayIdx),
+                    it: getAnnualValue(49, arrayIdx),
+                    outsource: getAnnualValue(50, arrayIdx),
+                    misc: getAnnualValue(51, arrayIdx),
 
                     // ★★★ MQ入力パラメータ（月別ユーザー入力値を使用）★★★
                     fdRate: monthInput.fdRate,                    // 月別ユーザー入力
@@ -15839,28 +16509,47 @@
                     fixedCostTotal: fixedCostTotal,               // 費用予算から自動参照
 
                     // 売上構成比（参照用）
-                    lunchRatio: getCalc('ランチ売上比率'),
-                    dinnerRatio: getCalc('ディナー売上比率'),
-                    foodRatio: getCalc('フード売上比率'),
-                    drinkRatio: getCalc('ドリンク売上比率'),
-                    otherRatio: getCalc('その他売上比率'),
+                    lunchRatio: getCalcValue('ランチ売上比率', arrayIdx),
+                    dinnerRatio: getCalcValue('ディナー売上比率', arrayIdx),
+                    foodRatio: getCalcValue('フード売上比率', arrayIdx),
+                    drinkRatio: getCalcValue('ドリンク売上比率', arrayIdx),
+                    otherRatio: getCalcValue('その他売上比率', arrayIdx),
 
                     // 単月費用予算（固定費用）- 参照用
-                    m_fixedLabor: getCalc('固定人件費合計'),
-                    m_depreciation: get(55),
-                    m_material: getCalc('資材費合計'),
-                    m_promotion: get(27), m_menuCopy: get(28), m_survey: get(29), m_sanitary: get(30), m_service: get(31),
-                    m_electricity: get(32), m_gas: get(33), m_water: get(34), m_consumables: get(35), m_maintenance: get(36),
-                    m_taxes: get(37), m_entertainment: get(38), m_travel: get(39), m_communication: get(40),
-                    m_creditFee: get(41), m_paymentFee: get(42), m_meeting: get(43), m_membership: get(44),
-                    m_education: get(45), m_training: get(46), m_research: get(47), m_recruitment: get(48),
-                    m_it: get(49), m_outsource: get(50), m_misc: get(51),
+                    m_fixedLabor: getCalcValue('固定人件費合計', arrayIdx),
+                    m_depreciation: getAnnualValue(55, arrayIdx),
+                    m_material: getCalcValue('資材費合計', arrayIdx),
+                    m_promotion: getAnnualValue(27, arrayIdx),
+                    m_menuCopy: getAnnualValue(28, arrayIdx),
+                    m_survey: getAnnualValue(29, arrayIdx),
+                    m_sanitary: getAnnualValue(30, arrayIdx),
+                    m_service: getAnnualValue(31, arrayIdx),
+                    m_electricity: getAnnualValue(32, arrayIdx),
+                    m_gas: getAnnualValue(33, arrayIdx),
+                    m_water: getAnnualValue(34, arrayIdx),
+                    m_consumables: getAnnualValue(35, arrayIdx),
+                    m_maintenance: getAnnualValue(36, arrayIdx),
+                    m_taxes: getAnnualValue(37, arrayIdx),
+                    m_entertainment: getAnnualValue(38, arrayIdx),
+                    m_travel: getAnnualValue(39, arrayIdx),
+                    m_communication: getAnnualValue(40, arrayIdx),
+                    m_creditFee: getAnnualValue(41, arrayIdx),
+                    m_paymentFee: getAnnualValue(42, arrayIdx),
+                    m_meeting: getAnnualValue(43, arrayIdx),
+                    m_membership: getAnnualValue(44, arrayIdx),
+                    m_education: getAnnualValue(45, arrayIdx),
+                    m_training: getAnnualValue(46, arrayIdx),
+                    m_research: getAnnualValue(47, arrayIdx),
+                    m_recruitment: getAnnualValue(48, arrayIdx),
+                    m_it: getAnnualValue(49, arrayIdx),
+                    m_outsource: getAnnualValue(50, arrayIdx),
+                    m_misc: getAnnualValue(51, arrayIdx),
 
                     // 参考値（顧客予算値）
                     budgetSales: budgetSales,
                     budgetProfit: budgetProfit
                 };
-            }
+            });
 
             // 費用設定確認欄を更新
             updateMQRefDisplay();
@@ -16270,6 +16959,21 @@
                 console.log('  存在:', present.join(', ') || 'なし');
                 console.log('  欠落:', missing.join(', ') || 'なし');
 
+                // ★ フラグ統計を集計（予算項目マッピング設定と連動確認）
+                var flagStats = { costInput: 0, budgetInput: 0, total: 0, calculated: 0 };
+                matchedItems.forEach(function(item) {
+                    if (item.isCostInput) flagStats.costInput++;
+                    if (item.isBudgetInput) flagStats.budgetInput++;
+                    if (item.isTotal) flagStats.total++;
+                    if (item.isCalculated) flagStats.calculated++;
+                });
+                console.log('=== フラグ統計（予算項目マッピング設定連動）===');
+                console.log('  費用出力（費用予算設定）: ' + flagStats.costInput + '件');
+                console.log('  MQ出力（売上シミュレーション）: ' + flagStats.budgetInput + '件');
+                console.log('  合計値: ' + flagStats.total + '件');
+                console.log('  演算値: ' + flagStats.calculated + '件');
+                console.log('  ※顧客予算は全て固定費');
+
                 // 各アイテムの詳細
                 matchedItems.forEach(function(item, idx) {
                     if (watchList.indexOf(item.v15No) >= 0) {
@@ -16293,11 +16997,43 @@
                     return (a.v15No || 0) - (b.v15No || 0);
                 });
 
+                // ★ フラグ統計サマリー行を追加（V17マッピング連動）
+                var fs = { cost: 0, budget: 0, ref: 0, total: 0, calc: 0 };
+                sortedItems.forEach(function(item) {
+                    if (item.isCostInput) fs.cost++;
+                    if (item.isBudgetInput) fs.budget++;
+                    if (item.isReferenceOnly) fs.ref++;
+                    if (item.isTotal) fs.total++;
+                    if (item.isCalculated) fs.calc++;
+                });
+                html += '<tr style="background:#f5f5f5;font-size:11px;">';
+                html += '<td colspan="' + (numMonths + 3) + '" style="padding:8px;">';
+                html += '<strong>📊 フラグ統計（V17マッピング連動）:</strong> ';
+                html += '<span style="background:#e3f2fd;color:#1565c0;padding:2px 6px;border-radius:3px;margin:0 4px;">費用出力 ' + fs.cost + '</span>';
+                html += '<span style="background:#e8f5e9;color:#2e7d32;padding:2px 6px;border-radius:3px;margin:0 4px;">MQ出力 ' + fs.budget + '</span>';
+                html += '<span style="background:#ffebee;color:#c62828;padding:2px 6px;border-radius:3px;margin:0 4px;">参照のみ ' + fs.ref + '</span>';
+                html += '<span style="background:#fff3e0;color:#e65100;padding:2px 6px;border-radius:3px;margin:0 4px;">合計 ' + fs.total + '</span>';
+                html += '<span style="background:#fce4ec;color:#c2185b;padding:2px 6px;border-radius:3px;margin:0 4px;">演算 ' + fs.calc + '</span>';
+                html += '<span style="background:#f3e5f5;color:#7b1fa2;padding:2px 6px;border-radius:3px;margin:0 4px;font-size:10px;">※顧客予算は全て固定費</span>';
+                html += '</td></tr>';
+
                 sortedItems.forEach(function(item, idx) {
                     // v17No（v15No）で表示
                     var displayNo = item.v15No || (idx + 1);
                     var itemName = item.name || '不明';
                     var v17No = item.v15No;
+
+                    // ★ データ検証: 主要項目（No.1-5, No.63）の値をログ出力
+                    if ([1, 2, 3, 4, 5, 63].indexOf(v17No) >= 0) {
+                        var verifyLog = '【データ検証 No.' + v17No + ' ' + itemName + '】';
+                        for (var vmi = 0; vmi < Math.min(3, fiscalSortedMonths.length); vmi++) {
+                            var vpos = fiscalSortedMonths[vmi].position;
+                            var vlabel = fiscalSortedMonths[vmi].label;
+                            var vval = annualData[v17No] ? (annualData[v17No][vpos] || 0) : 0;
+                            verifyLog += vlabel + '=' + vval + '千円(' + (vval * 1000).toLocaleString() + '円), ';
+                        }
+                        console.log(verifyLog);
+                    }
 
                     // ★ annualDataから値を取得（会計年度順）
                     // 合計を先に計算（0値の行を非表示にするため）
@@ -16311,7 +17047,30 @@
                     // 合計が0の行はスキップ（非表示）
                     if (total === 0) return;
 
-                    html += '<tr><td>[' + displayNo + '] ' + itemName + '</td>';
+                    // ★ フラグバッジを生成（V17マッピング連動）
+                    var flagBadges = '';
+                    var rowStyle = '';
+                    if (item.isCostInput) {
+                        flagBadges += '<span style="background:#e3f2fd;color:#1565c0;font-size:9px;padding:1px 4px;border-radius:3px;margin-left:3px;">費用出力</span>';
+                    }
+                    if (item.isBudgetInput) {
+                        flagBadges += '<span style="background:#e8f5e9;color:#2e7d32;font-size:9px;padding:1px 4px;border-radius:3px;margin-left:3px;">MQ出力</span>';
+                    }
+                    if (item.isReferenceOnly) {
+                        flagBadges += '<span style="background:#ffebee;color:#c62828;font-size:9px;padding:1px 4px;border-radius:3px;margin-left:3px;">参照のみ</span>';
+                        rowStyle = 'background:#fafafa;';
+                    }
+                    if (item.isTotal) {
+                        flagBadges += '<span style="background:#fff3e0;color:#e65100;font-size:9px;padding:1px 4px;border-radius:3px;margin-left:3px;">合計</span>';
+                        rowStyle = 'background:#fffde7;';
+                    }
+                    if (item.isCalculated) {
+                        flagBadges += '<span style="background:#fce4ec;color:#c2185b;font-size:9px;padding:1px 4px;border-radius:3px;margin-left:3px;">演算</span>';
+                        rowStyle = 'background:#fce4ec;';
+                    }
+                    // ※顧客予算は全て固定費のため費用区分バッジは表示しない
+
+                    html += '<tr style="' + rowStyle + '"><td>[' + displayNo + '] ' + itemName + flagBadges + '</td>';
                     for (var i = 0; i < fiscalSortedMonths.length; i++) {
                         var pos = fiscalSortedMonths[i].position;
                         // ★ annualDataから値を取得（会計年度順）- 円単位表示
@@ -17220,8 +17979,15 @@
             showStatus('info', 'CSVファイルを選択してください');
             initHistory();
             updateExportHistoryCount();
-            // カテゴリ表示順設定の読み込み
-            loadCategorySettings();
+            // カテゴリ表示順設定の読み込み（表示順のみ、フラグはV17マッピング優先）
+            var settingsLoaded = loadCategorySettings();
+            // ★★★ V17マッピング強制適用：フラグは常にscreen属性から再計算 ★★★
+            // LocalStorageにフラグが保存されていても、V17マッピング定義を優先
+            initializeItemFlags();
+            console.log('[init] V17マッピングに基づきフラグを強制適用しました (settingsLoaded=' + settingsLoaded + ')');
+            // 正しいフラグで自動保存（サイレントモード）
+            saveCategorySettings(true);
+            console.log('[init] フラグ設定を自動保存しました');
             // 店番設定の読み込み
             loadStoreSettings();
             // 客単価設定の読み込み（店舗データを先に読み込む）
@@ -17236,6 +18002,8 @@
             renderMappingCategoryFilter();
             // インポート列マッピング初期化
             initColumnMapping();
+            // 店舗別マスタ選択の初期化
+            renderStoreMasterSelector();
         });
     </script>
 </body>

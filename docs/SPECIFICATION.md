@@ -1036,6 +1036,84 @@ FISCAL_ORDER = generateFiscalOrder();
 
 **重要**: CSVから月列を検出しても、表示順序と取り込み順序は常に会計年度マスタ設定に従う。CSVの月列の順序によって自動検出された開始月は使用しない。
 
+### インデックス混同防止ヘルパー関数（2026-01-04）
+
+| 変更項目 | 変更内容 |
+|---------|---------|
+| **問題背景** | annualData/calcResultsは配列インデックス(0,1,2...)でデータ格納、activeMonthsはカレンダー月(3=4月,4=5月...)を保持。この混同によりMQ計算結果に大きな乖離が発生 |
+| **getAnnualValue関数** | annualData[v17No][arrayIdx]への安全なアクセス。未定義時は0を返却 |
+| **getCalcValue関数** | calcResults[arrayIdx][fieldName]への安全なアクセス。未定義時は0を返却 |
+| **getCalMonthFromIndex関数** | 配列インデックスからカレンダー月を取得（arrayIdx→calMonth変換） |
+| **getIndexFromCalMonth関数** | カレンダー月から配列インデックスを取得（calMonth→arrayIdx変換） |
+| **getMQInputValue関数** | mqInputs[calMonth][fieldName]への安全なアクセス。デフォルト値サポート |
+| **forEachMonth関数** | 標準ループパターン。callback(arrayIdx, calMonth, label)形式で呼び出し、インデックス混同を防止 |
+| **リファクタリング対象** | getMQAutoParams(), getSimMQAutoParams(), renderSimMQComparisonResult(), judgeSettings(), generateRakumyInputs() |
+| **命名規則** | arrayIdx（配列インデックス）、calMonth（カレンダー月）の明確な区別 |
+
+#### ヘルパー関数詳細
+
+```javascript
+// ★★★ インデックス混同防止ヘルパー関数 ★★★
+
+// annualDataへの安全なアクセス
+// @param v17No: v17項目番号
+// @param arrayIdx: 配列インデックス（0,1,2...）※カレンダー月ではない
+function getAnnualValue(v17No, arrayIdx, dataSource) {
+    var data = dataSource || annualData;
+    if (!data[v17No]) return 0;
+    var val = data[v17No][arrayIdx];
+    return (val !== undefined && val !== null) ? val : 0;
+}
+
+// calcResultsへの安全なアクセス
+// @param fieldName: フィールド名（'FD仕入費合計'等）
+// @param arrayIdx: 配列インデックス（0,1,2...）
+function getCalcValue(fieldName, arrayIdx, dataSource) {
+    var data = dataSource || calcResults;
+    if (!data[arrayIdx]) return 0;
+    var val = data[arrayIdx][fieldName];
+    return (val !== undefined && val !== null) ? val : 0;
+}
+
+// 配列インデックス→カレンダー月変換
+// @param arrayIdx: 配列インデックス（0,1,2...）
+// @return: カレンダー月（3=4月, 4=5月, ...）
+function getCalMonthFromIndex(arrayIdx, monthsArray) {
+    var months = monthsArray || activeMonths;
+    return months[arrayIdx];
+}
+
+// カレンダー月→配列インデックス変換
+// @param calMonth: カレンダー月（3=4月, 4=5月, ...）
+// @return: 配列インデックス（0,1,2...）、見つからない場合は-1
+function getIndexFromCalMonth(calMonth, monthsArray) {
+    var months = monthsArray || activeMonths;
+    return months.indexOf(calMonth);
+}
+
+// 標準ループパターン（インデックス混同防止）
+// @param callback: function(arrayIdx, calMonth, label)
+function forEachMonth(callback, monthsArray) {
+    var months = monthsArray || activeMonths;
+    for (var arrayIdx = 0; arrayIdx < months.length; arrayIdx++) {
+        var calMonth = months[arrayIdx];
+        var label = (calMonth + 1) + '月';
+        callback(arrayIdx, calMonth, label);
+    }
+}
+```
+
+#### データアクセスパターン
+
+| データ構造 | キー種別 | アクセス例 |
+|-----------|---------|-----------|
+| annualData | 配列インデックス | `annualData[v17No][arrayIdx]` |
+| calcResults | 配列インデックス | `calcResults[arrayIdx][fieldName]` |
+| rakumyInputs | 配列インデックス | `rakumyInputs[arrayIdx]` |
+| mqOutputs | 配列インデックス | `mqOutputs[arrayIdx]` |
+| mqInputs | カレンダー月 | `mqInputs[calMonth]` |
+| result.monthlyG/F | カレンダー月 | `result.monthlyG[calMonth]` |
+
 ### v5.8（前バージョン）
 
 - 顧客CSV対応版・変換ロジック強化

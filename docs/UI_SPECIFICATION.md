@@ -1805,3 +1805,77 @@ var FISCAL_YEAR_SETTINGS_KEY = 'rakumy_fiscal_year_settings';
 | リセットボタン | #9e9e9e（グレー） |
 | 店舗選択セクション背景 | #f3e5f5 |
 | 店舗選択セクションボーダー | #ce93d8 |
+
+---
+
+## 24. インデックス混同防止ヘルパー関数（2026-01-04追加）
+
+### 24.1 概要
+
+MQ計算およびデータアクセスにおける配列インデックスとカレンダー月の混同を防止するためのヘルパー関数群を追加。
+
+### 24.2 問題背景
+
+| データ構造 | キー種別 | 説明 |
+|-----------|---------|------|
+| annualData[v17No][i] | 配列インデックス | 0, 1, 2, ... |
+| calcResults[i] | 配列インデックス | 0, 1, 2, ... |
+| activeMonths[i] | カレンダー月 | 3=4月, 4=5月, ... |
+| mqInputs[calMonth] | カレンダー月 | 3=4月, 4=5月, ... |
+
+この違いを混同すると、例えば4月のデータを取得しようとして `annualData[no][3]` とアクセスすると、実際には4番目（=7月）のデータを取得してしまう問題が発生。
+
+### 24.3 ヘルパー関数一覧
+
+| 関数名 | 引数 | 戻り値 | 説明 |
+|--------|------|--------|------|
+| getAnnualValue | (v17No, arrayIdx, dataSource?) | number | annualDataへの安全なアクセス |
+| getCalcValue | (fieldName, arrayIdx, dataSource?) | number | calcResultsへの安全なアクセス |
+| getCalMonthFromIndex | (arrayIdx, monthsArray?) | number | 配列インデックス→カレンダー月変換 |
+| getIndexFromCalMonth | (calMonth, monthsArray?) | number | カレンダー月→配列インデックス変換 |
+| getMQInputValue | (calMonth, fieldName, defaultValue?, dataSource?) | any | mqInputsへの安全なアクセス |
+| forEachMonth | (callback, monthsArray?) | void | 標準ループパターン |
+
+### 24.4 forEachMonthコールバック仕様
+
+```javascript
+forEachMonth(function(arrayIdx, calMonth, label) {
+    // arrayIdx: 配列インデックス（0, 1, 2, ...）
+    // calMonth: カレンダー月（3=4月, 4=5月, ...）
+    // label: 月ラベル（'4月', '5月', ...）
+
+    // 正しいアクセスパターン
+    var budgetSales = getAnnualValue(4, arrayIdx);  // ✅
+    var mqInput = getMQInputValue(calMonth, 'targetProfit');  // ✅
+
+    // 誤ったアクセスパターン（これを防止）
+    // var wrong = annualData[4][calMonth];  // ❌
+});
+```
+
+### 24.5 リファクタリング対象関数
+
+| 関数名 | 変更内容 |
+|--------|---------|
+| getMQAutoParams() | forEachMonth + getAnnualValue/getCalcValue使用 |
+| getSimMQAutoParams() | forEachMonth + getAnnualValue/getCalcValue使用 |
+| renderSimMQComparisonResult() | forEachMonth + getAnnualValue使用 |
+| judgeSettings() | forEachMonth使用 |
+| generateRakumyInputs() | forEachMonth + getAnnualValue/getCalcValue/getMQInputValue使用 |
+
+### 24.6 命名規則
+
+| 変数名 | 意味 | 使用例 |
+|--------|------|--------|
+| arrayIdx | 配列インデックス（0, 1, 2, ...） | `annualData[no][arrayIdx]` |
+| calMonth | カレンダー月（0=1月, 3=4月, ...） | `mqInputs[calMonth]` |
+| i | 配列インデックス（旧式、非推奨） | `for(var i=0; ...)` |
+| m | 曖昧（非推奨） | - |
+
+### 24.7 デバッグ時の確認ポイント
+
+MQ計算結果に大きな乖離がある場合、以下を確認：
+
+1. ループ内で `annualData[no][activeMonths[i]]` のようなアクセスがないか
+2. `mqInputs` と `annualData` で同じインデックス変数を使用していないか
+3. 結果格納時と参照時でキー種別が一致しているか
