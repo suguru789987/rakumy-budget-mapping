@@ -2491,6 +2491,9 @@
             if (tabName === 'settings') {
                 if (typeof updateCurrentStoreList === 'function') updateCurrentStoreList();
                 if (typeof updateCurrentMappingList === 'function') updateCurrentMappingList();
+                // 項目マッピング一覧を描画
+                if (typeof renderMappingCategoryFilter === 'function') renderMappingCategoryFilter();
+                if (typeof renderItemMappingList === 'function') renderItemMappingList();
             }
         }
 
@@ -7339,27 +7342,29 @@
 
         // 項目マッピング一覧を描画（統合版：カテゴリ・項目に↑↓ボタン付き）
         function renderItemMappingList() {
-            var container = document.getElementById('itemMappingList');
-            if (!container) return;
+            try {
+                var container = document.getElementById('itemMappingList');
+                if (!container) return;
 
-            var filterCategory = document.getElementById('mappingCategoryFilter').value;
+                var filterElem = document.getElementById('mappingCategoryFilter');
+                var filterCategory = filterElem ? filterElem.value : '';
 
-            // CUSTOMER_CODE_MAPから項目を取得
-            var items = [];
-            for (var code in CUSTOMER_CODE_MAP) {
-                var item = CUSTOMER_CODE_MAP[code];
-                if (filterCategory && item.budgetCategory !== filterCategory) continue;
-                items.push({
-                    code: code,
-                    name: item.name,
-                    category: item.category,
-                    budgetCategory: item.budgetCategory || item.category,
-                    v15No: item.v15No,
-                    sortOrder: item.sortOrder || 0,
-                    inputStyle: item.inputStyle || '',
-                    screen: item.screen || ''
-                });
-            }
+                // CUSTOMER_CODE_MAPから項目を取得
+                var items = [];
+                for (var code in CUSTOMER_CODE_MAP) {
+                    var item = CUSTOMER_CODE_MAP[code];
+                    if (filterCategory && item.budgetCategory !== filterCategory) continue;
+                    items.push({
+                        code: code,
+                        name: item.name,
+                        category: item.category,
+                        budgetCategory: item.budgetCategory || item.category,
+                        v15No: item.v15No,
+                        sortOrder: item.sortOrder || 0,
+                        inputStyle: item.inputStyle || '',
+                        screen: item.screen || ''
+                    });
+                }
 
             // カテゴリ順 → sortOrder順でソート
             items.sort(function(a, b) {
@@ -7385,10 +7390,15 @@
             });
 
             // 件数表示
-            document.getElementById('mappingItemCount').textContent = '（' + items.length + '件）';
+            console.log('[renderItemMappingList] items.length:', items.length);
+            var countElem = document.getElementById('mappingItemCount');
+            if (countElem) {
+                countElem.textContent = '（' + items.length + '件）';
+            }
 
             if (items.length === 0) {
                 container.innerHTML = '<div style="padding:20px;text-align:center;color:#666;">該当する項目がありません</div>';
+                console.log('[renderItemMappingList] 項目が0件のため終了');
                 return;
             }
 
@@ -7447,6 +7457,9 @@
 
             html += '</tbody></table>';
             container.innerHTML = html;
+            } catch (e) {
+                console.error('[renderItemMappingList] エラー:', e);
+            }
         }
 
         // カテゴリを上に移動
@@ -12175,10 +12188,10 @@
             showStatus('info', 'CSVファイルを選択してください');
             initHistory();
             updateExportHistoryCount();
-            // カテゴリ表示順設定の読み込み・初期描画
+            // カテゴリ表示順設定の読み込み
             loadCategorySettings();
+            // 項目マッピング一覧は設定タブ表示時に描画されるため、ここでは初期化のみ
             renderMappingCategoryFilter();
-            renderItemMappingList();
         });
     </script>
 </body>
