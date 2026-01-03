@@ -882,6 +882,48 @@ var currentCustomColumns = [
 var currentColumnGroups = { enabled: false, type: 'none' }; // none, quarter, half
 ```
 
+### 会計年度設定機能（2026-01-03）
+
+| 変更項目 | 変更内容 |
+|---------|---------|
+| **会計年度設定UI** | 設定インポートタブ最上部に「会計年度設定」セクションを追加 |
+| **開始月設定** | 1月〜12月の会計年度開始月選択（デフォルト: 4月） |
+| **対象年度設定** | 現在年度±5年の範囲から対象年度を選択 |
+| **表記スタイル** | 月のみ / 年月 / スラッシュの3形式から選択 |
+| **FISCAL_ORDER動的生成** | 設定に基づいてFISCAL_ORDERを動的に生成 |
+| **テンプレート対応** | 予算テンプレート・月別客単価テンプレートが会計年度設定を反映 |
+| **年度をまたぐ表示** | 4月開始の場合: 2025年4月〜2026年3月などの年またぎ対応 |
+| **LocalStorage保存** | 会計年度設定の保存/読み込み（rakumy_fiscal_year_settings） |
+
+#### データ構造
+
+```javascript
+var fiscalYearSettings = {
+    startMonth: 4,           // 会計年度開始月（1-12）
+    year: 2026,              // 対象年度
+    style: 'short'           // 表記スタイル: short, full, slash
+};
+
+// 表記スタイル例
+// short: '4月', '5月', ..., '3月'
+// full:  '2026年4月', '2026年5月', ..., '2027年3月'
+// slash: '2026/4', '2026/5', ..., '2027/3'
+```
+
+#### 関連関数
+
+| 関数名 | 説明 |
+|--------|------|
+| generateFiscalOrder() | 設定に基づきFISCAL_ORDERを生成 |
+| getFiscalYearInfo() | 年度範囲情報を取得（label, range） |
+| getFiscalMonthInfo(monthIndex) | 月インデックスから年・月を取得 |
+| updateFiscalYearSettings() | UI変更時の設定反映 |
+| saveFiscalYearSettings() | LocalStorageに保存 |
+| loadFiscalYearSettings() | LocalStorageから読み込み |
+| resetFiscalYearSettings() | 初期設定（4月開始）に戻す |
+| initFiscalYearSelector() | 年度セレクター初期化 |
+| renderFiscalYearPreview() | プレビュー表示 |
+
 ### v5.8（前バージョン）
 
 - 顧客CSV対応版・変換ロジック強化
