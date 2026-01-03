@@ -1224,6 +1224,18 @@ function forEachMonth(callback, monthsArray) {
 | mqInputs | カレンダー月 | `mqInputs[calMonth]` |
 | result.monthlyG/F | カレンダー月 | `result.monthlyG[calMonth]` |
 
+### テンプレート編集機能強化（2026-01-04）
+
+| 変更項目 | 変更内容 |
+|---------|---------|
+| **カテゴリ列ドロップダウン** | renderRowEditorContent()でカテゴリ列を検出し、ドロップダウン選択に変更 |
+| **検出条件** | `headerName.indexOf('カテゴリ') !== -1` |
+| **選択肢ソース** | BUDGET_CATEGORY_MAP（displayOrder順に11カテゴリ） |
+| **新規作成ボタン** | 🆕 新規作成ボタン追加（#e91e63 ピンク） |
+| **createNewTemplate()** | 基本列構成（15列）で空テンプレートを即座に作成 |
+| **基本列構成** | 予算カテゴリ, 科目コード, 予算項目名, 1月〜12月 |
+| **確認ダイアログ** | 不要（履歴保存で編集内容は保持されるため） |
+
 ### モーダルz-index階層修正（2026-01-04）
 
 | 変更項目 | 変更内容 |
