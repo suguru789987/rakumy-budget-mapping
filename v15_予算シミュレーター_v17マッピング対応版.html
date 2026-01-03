@@ -544,6 +544,7 @@
                 <button class="subtab active" onclick="switchImportSubtab('budget')">📥 予算インポート</button>
                 <button class="subtab" onclick="switchImportSubtab('settings')">⚙️ 設定インポート</button>
                 <button class="subtab" onclick="switchImportSubtab('master')">🔧 マスタ設定</button>
+                <button class="subtab" onclick="switchImportSubtab('history')">📋 取込履歴</button>
             </div>
 
             <!-- ===== 予算インポートサブタブ ===== -->
@@ -943,6 +944,66 @@
                     </div>
                 </div>
             </div><!-- /import-subtab-master -->
+
+            <!-- ===== 取込履歴サブタブ ===== -->
+            <div id="import-subtab-history" class="import-subtab-content">
+                <div class="import-section" style="border-left:4px solid #9c27b0;">
+                    <h2 style="color:#7b1fa2;font-size:18px;margin-bottom:20px;">📋 取り込み予算履歴</h2>
+
+                    <div style="margin-bottom:15px;padding:12px;background:#f3e5f5;border-radius:8px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                            <div style="font-size:12px;color:#7b1fa2;">
+                                <strong>履歴について</strong><br>
+                                インポートした予算データは自動的に履歴に保存されます。<br>
+                                履歴から読み込んで編集・確認・再エクスポートが可能です。
+                            </div>
+                            <div style="display:flex;gap:8px;">
+                                <button onclick="clearAllBudgetHistory()" class="btn" style="padding:8px 15px;font-size:11px;background:#f44336;color:#fff;border:none;border-radius:4px;">
+                                    🗑️ 全履歴削除
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 履歴フィルター -->
+                    <div style="margin-bottom:15px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+                        <label style="font-size:12px;font-weight:bold;color:#333;">絞り込み:</label>
+                        <select id="historyStoreFilter" onchange="renderBudgetHistoryList()" style="padding:8px 12px;border:2px solid #9c27b0;border-radius:4px;font-size:12px;min-width:180px;">
+                            <option value="">全ての店舗</option>
+                        </select>
+                        <span id="historyCount" style="font-size:11px;color:#666;margin-left:auto;">履歴: 0件</span>
+                    </div>
+
+                    <!-- 履歴一覧テーブル -->
+                    <div style="overflow-x:auto;">
+                        <table class="data-table" style="width:100%;font-size:12px;" id="budgetHistoryTable">
+                            <thead>
+                                <tr style="background:#9c27b0;color:#fff;">
+                                    <th style="padding:10px;text-align:left;min-width:150px;">店舗名</th>
+                                    <th style="padding:10px;text-align:center;min-width:140px;">取込日時</th>
+                                    <th style="padding:10px;text-align:center;min-width:80px;">対象月数</th>
+                                    <th style="padding:10px;text-align:center;min-width:100px;">項目数</th>
+                                    <th style="padding:10px;text-align:center;min-width:200px;">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="budgetHistoryBody">
+                                <tr>
+                                    <td colspan="5" style="text-align:center;padding:40px;color:#999;">
+                                        履歴がありません。<br>
+                                        予算CSVをインポートすると自動的に履歴に保存されます。
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 履歴詳細モーダル用 -->
+                    <div style="margin-top:20px;padding:15px;background:#fff3e0;border-radius:8px;border:1px solid #ffcc80;display:none;" id="historyDetailPreview">
+                        <h4 style="color:#e65100;margin:0 0 10px 0;font-size:14px;">📊 選択中の履歴詳細</h4>
+                        <div id="historyDetailContent" style="font-size:11px;color:#333;"></div>
+                    </div>
+                </div>
+            </div><!-- /import-subtab-history -->
 
             <!-- 項目マッピング編集モーダル -->
             <div id="itemMappingEditModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1001;overflow-y:auto;">
@@ -2729,6 +2790,13 @@
                 // マスタ設定タブ初期化（一覧は各編集ボタンで表示）
                 console.log('マスタ設定タブが選択されました');
             }
+
+            // 取込履歴タブ表示時の処理
+            if (tabName === 'history') {
+                updateBudgetHistoryCount();
+                updateHistoryStoreFilter();
+                renderBudgetHistoryList();
+            }
         }
 
         // ドラッグ＆ドロップ処理
@@ -3493,6 +3561,252 @@
             showStatus('info', '全ての出力データ履歴を削除しました');
         }
 
+        // ===== 取り込み予算履歴管理 =====
+        var BUDGET_HISTORY_KEY = 'rakumy_budget_history';
+
+        // 取り込み予算履歴を読み込み
+        function loadBudgetHistory() {
+            try {
+                var data = localStorage.getItem(BUDGET_HISTORY_KEY);
+                return data ? JSON.parse(data) : [];
+            } catch (e) {
+                console.error('Budget history load failed:', e);
+                return [];
+            }
+        }
+
+        // 取り込み予算履歴を保存
+        function saveBudgetHistory(history) {
+            try {
+                localStorage.setItem(BUDGET_HISTORY_KEY, JSON.stringify(history));
+            } catch (e) {
+                console.error('Budget history save failed:', e);
+            }
+        }
+
+        // 取り込み予算を履歴に追加
+        function addToBudgetHistory(storeName, storeData) {
+            var now = new Date();
+            var y = now.getFullYear();
+            var m = ('0' + (now.getMonth() + 1)).slice(-2);
+            var d = ('0' + now.getDate()).slice(-2);
+            var h = ('0' + now.getHours()).slice(-2);
+            var min = ('0' + now.getMinutes()).slice(-2);
+            var sec = ('0' + now.getSeconds()).slice(-2);
+            var dateTimeDisplay = y + '-' + m + '-' + d + ' ' + h + ':' + min + ':' + sec;
+
+            var history = loadBudgetHistory();
+
+            var entry = {
+                id: Date.now().toString() + '_' + storeName.replace(/\s/g, '_'),
+                storeName: storeName,
+                dateTime: dateTimeDisplay,
+                monthCount: (storeData.activeMonths || []).length,
+                itemCount: (storeData.matchedItems || []).length,
+                data: JSON.parse(JSON.stringify(storeData)),
+                savedAt: now.toISOString()
+            };
+
+            history.unshift(entry);
+            if (history.length > 50) history = history.slice(0, 50); // 最大50件
+
+            saveBudgetHistory(history);
+            updateBudgetHistoryCount();
+            updateHistoryStoreFilter();
+        }
+
+        // 履歴件数を更新
+        function updateBudgetHistoryCount() {
+            var history = loadBudgetHistory();
+            var countSpan = document.getElementById('historyCount');
+            if (countSpan) {
+                countSpan.textContent = '履歴: ' + history.length + '件';
+            }
+        }
+
+        // 店舗フィルターを更新
+        function updateHistoryStoreFilter() {
+            var history = loadBudgetHistory();
+            var select = document.getElementById('historyStoreFilter');
+            if (!select) return;
+
+            var stores = {};
+            history.forEach(function(entry) {
+                stores[entry.storeName] = true;
+            });
+
+            var html = '<option value="">全ての店舗</option>';
+            Object.keys(stores).sort().forEach(function(name) {
+                html += '<option value="' + name + '">' + name + '</option>';
+            });
+            select.innerHTML = html;
+        }
+
+        // 取り込み予算履歴一覧を描画
+        function renderBudgetHistoryList() {
+            var tbody = document.getElementById('budgetHistoryBody');
+            if (!tbody) return;
+
+            var history = loadBudgetHistory();
+            var filter = document.getElementById('historyStoreFilter');
+            var filterValue = filter ? filter.value : '';
+
+            // フィルター適用
+            var filtered = filterValue
+                ? history.filter(function(e) { return e.storeName === filterValue; })
+                : history;
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px;color:#999;">' +
+                    (filterValue ? '選択した店舗の履歴がありません。' : '履歴がありません。<br>予算CSVをインポートすると自動的に履歴に保存されます。') +
+                    '</td></tr>';
+                return;
+            }
+
+            var html = '';
+            filtered.forEach(function(entry, index) {
+                html += '<tr style="border-bottom:1px solid #e0e0e0;">';
+                html += '  <td style="padding:10px;font-weight:bold;color:#333;">' + entry.storeName + '</td>';
+                html += '  <td style="padding:10px;text-align:center;color:#666;font-size:11px;">' + entry.dateTime + '</td>';
+                html += '  <td style="padding:10px;text-align:center;">' + entry.monthCount + 'ヶ月</td>';
+                html += '  <td style="padding:10px;text-align:center;">' + entry.itemCount + '項目</td>';
+                html += '  <td style="padding:10px;text-align:center;">';
+                html += '    <div style="display:flex;gap:5px;justify-content:center;flex-wrap:wrap;">';
+                html += '      <button onclick="loadBudgetFromHistory(\'' + entry.id + '\')" class="btn" style="padding:5px 10px;font-size:10px;background:#4caf50;color:#fff;border:none;border-radius:3px;" title="この履歴を読み込んで予算設定画面で表示・編集">📂 読込</button>';
+                html += '      <button onclick="showHistoryDetail(\'' + entry.id + '\')" class="btn" style="padding:5px 10px;font-size:10px;background:#2196f3;color:#fff;border:none;border-radius:3px;" title="履歴の詳細を確認">👁️ 詳細</button>';
+                html += '      <button onclick="deleteBudgetHistory(\'' + entry.id + '\')" class="btn" style="padding:5px 10px;font-size:10px;background:#f44336;color:#fff;border:none;border-radius:3px;" title="この履歴を削除">🗑️</button>';
+                html += '    </div>';
+                html += '  </td>';
+                html += '</tr>';
+            });
+            tbody.innerHTML = html;
+        }
+
+        // 履歴から予算データを読み込む（メイン機能）
+        function loadBudgetFromHistory(historyId) {
+            var history = loadBudgetHistory();
+            var entry = history.find(function(e) { return e.id === historyId; });
+            if (!entry) {
+                showStatus('error', '履歴が見つかりません');
+                return;
+            }
+
+            if (!confirm('「' + entry.storeName + '」（' + entry.dateTime + '）の予算データを読み込みますか？\n\n読み込むと予算設定画面で編集・確認できます。')) {
+                return;
+            }
+
+            var storeData = entry.data;
+
+            // グローバル変数に復元
+            storeName = entry.storeName;
+            currentStoreName = entry.storeName;
+            annualData = storeData.annualData || {};
+            calcResults = storeData.calcResults || {};
+            rakumyInputs = storeData.rakumyInputs || {};
+            mqOutputs = storeData.mqOutputs || {};
+            judgments = storeData.judgments || {};
+            matchedItems = storeData.matchedItems || [];
+            unmatchedItems = storeData.unmatchedItems || [];
+            activeMonths = storeData.activeMonths || [];
+            monthLabels = storeData.monthLabels || [];
+            budgetColumnPositions = storeData.budgetColumnPositions || {};
+            monthDetectionResults = storeData.monthDetectionResults || {};
+
+            // allStoresDataにも保存
+            allStoresData[entry.storeName] = JSON.parse(JSON.stringify(storeData));
+
+            // 各種画面を更新
+            renderAllStoresSummary();
+            renderInputTable();
+            renderRakumyInputTable();
+            renderAllTables();
+
+            // MQ計算を実行
+            executeCalcRules();
+            generateRakumyInputs();
+            runMQSimulation();
+            saveCurrentStoreData();
+
+            // 予算設定画面に遷移
+            showMainPage('budget');
+
+            showStatus('success', '「' + entry.storeName + '」の予算データを読み込みました。予算設定画面で編集できます。');
+        }
+
+        // 履歴詳細を表示
+        function showHistoryDetail(historyId) {
+            var history = loadBudgetHistory();
+            var entry = history.find(function(e) { return e.id === historyId; });
+            if (!entry) return;
+
+            var preview = document.getElementById('historyDetailPreview');
+            var content = document.getElementById('historyDetailContent');
+            if (!preview || !content) return;
+
+            var storeData = entry.data;
+            var html = '<table style="width:100%;font-size:11px;border-collapse:collapse;">';
+            html += '<tr><td style="padding:5px;border-bottom:1px solid #ddd;font-weight:bold;width:120px;">店舗名</td><td style="padding:5px;border-bottom:1px solid #ddd;">' + entry.storeName + '</td></tr>';
+            html += '<tr><td style="padding:5px;border-bottom:1px solid #ddd;font-weight:bold;">取込日時</td><td style="padding:5px;border-bottom:1px solid #ddd;">' + entry.dateTime + '</td></tr>';
+            html += '<tr><td style="padding:5px;border-bottom:1px solid #ddd;font-weight:bold;">対象月</td><td style="padding:5px;border-bottom:1px solid #ddd;">' + (storeData.monthLabels || []).join(', ') + '</td></tr>';
+            html += '<tr><td style="padding:5px;border-bottom:1px solid #ddd;font-weight:bold;">マッチ項目</td><td style="padding:5px;border-bottom:1px solid #ddd;">' + (storeData.matchedItems || []).length + '項目</td></tr>';
+            html += '<tr><td style="padding:5px;border-bottom:1px solid #ddd;font-weight:bold;">未マッチ項目</td><td style="padding:5px;border-bottom:1px solid #ddd;">' + (storeData.unmatchedItems || []).length + '項目</td></tr>';
+
+            // 主要指標のサマリー
+            if (storeData.mqOutputs && Object.keys(storeData.mqOutputs).length > 0) {
+                var totalSales = 0, totalProfit = 0;
+                for (var m in storeData.mqOutputs) {
+                    if (storeData.mqOutputs[m]) {
+                        totalSales += storeData.mqOutputs[m].sales || 0;
+                        totalProfit += storeData.mqOutputs[m].operatingProfit || 0;
+                    }
+                }
+                html += '<tr><td style="padding:5px;border-bottom:1px solid #ddd;font-weight:bold;">年間売上</td><td style="padding:5px;border-bottom:1px solid #ddd;">' + Math.round(totalSales).toLocaleString() + '円</td></tr>';
+                html += '<tr><td style="padding:5px;font-weight:bold;">年間営業利益</td><td style="padding:5px;">' + Math.round(totalProfit).toLocaleString() + '円</td></tr>';
+            }
+            html += '</table>';
+
+            content.innerHTML = html;
+            preview.style.display = 'block';
+        }
+
+        // 履歴を削除
+        function deleteBudgetHistory(historyId) {
+            var history = loadBudgetHistory();
+            var entry = history.find(function(e) { return e.id === historyId; });
+            if (!entry) return;
+
+            if (!confirm('「' + entry.storeName + '」（' + entry.dateTime + '）の履歴を削除しますか？')) {
+                return;
+            }
+
+            history = history.filter(function(e) { return e.id !== historyId; });
+            saveBudgetHistory(history);
+            renderBudgetHistoryList();
+            updateBudgetHistoryCount();
+            updateHistoryStoreFilter();
+
+            // 詳細プレビューを非表示
+            var preview = document.getElementById('historyDetailPreview');
+            if (preview) preview.style.display = 'none';
+
+            showStatus('info', '履歴を削除しました');
+        }
+
+        // 全履歴を削除
+        function clearAllBudgetHistory() {
+            if (!confirm('全ての取り込み予算履歴を削除しますか？\nこの操作は取り消せません。')) return;
+
+            saveBudgetHistory([]);
+            renderBudgetHistoryList();
+            updateBudgetHistoryCount();
+            updateHistoryStoreFilter();
+
+            var preview = document.getElementById('historyDetailPreview');
+            if (preview) preview.style.display = 'none';
+
+            showStatus('info', '全ての取り込み予算履歴を削除しました');
+        }
+
         // ★ インポート完了時に全店舗のエクスポートデータを自動生成
         function generateExportDataForAllStores() {
             var storeNames = Object.keys(allStoresData);
@@ -3792,6 +4106,10 @@
 
                         // 店舗データを保存
                         saveCurrentStoreData();
+
+                        // ★ 取り込み予算履歴に自動保存
+                        addToBudgetHistory(storeName, allStoresData[storeName]);
+
                         importCount++;
 
                         addLog('店舗「' + storeName + '」のインポート＆シミュレーション完了', 'success');
