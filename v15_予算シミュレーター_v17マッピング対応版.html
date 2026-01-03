@@ -1411,8 +1411,8 @@
                     </div>
                 </div>
 
-                <!-- ===== 目標客単価編集モーダル ===== -->
-                <div id="unitPriceEditModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1001;justify-content:center;align-items:center;overflow-y:auto;">
+                <!-- ===== 予算試算用 目標客単価編集モーダル ===== -->
+                <div id="simUnitPriceEditModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1001;justify-content:center;align-items:center;overflow-y:auto;">
                     <div style="background:#fff;border-radius:12px;padding:25px;max-width:700px;width:95%;margin:20px auto;box-shadow:0 10px 40px rgba(0,0,0,0.3);">
                         <h3 style="color:#ff9800;margin:0 0 15px 0;font-size:16px;">📝 月別目標客単価編集</h3>
                         <p style="color:#666;font-size:11px;margin:0 0 15px 0;">
@@ -5057,7 +5057,7 @@
                 console.log('storeName:', storeName);
                 // 客単価テーブルをモーダル内に再描画してデフォルト値をセット
                 initSimUnitPrices(storeName);
-                var modal = document.getElementById('unitPriceEditModal');
+                var modal = document.getElementById('simUnitPriceEditModal');
                 if (modal) {
                     modal.style.display = 'flex';
                 }
@@ -5073,7 +5073,7 @@
         }
 
         function hideSimUnitPriceEditModal() {
-            var modal = document.getElementById('unitPriceEditModal');
+            var modal = document.getElementById('simUnitPriceEditModal');
             if (modal) modal.style.display = 'none';
         }
 
