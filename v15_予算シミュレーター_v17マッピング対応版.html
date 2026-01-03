@@ -872,7 +872,7 @@
                 <div class="import-section" style="border-left:4px solid #673ab7;margin-bottom:20px;">
                     <h2 style="color:#512da8;font-size:18px;margin-bottom:20px;">📅 会計年度マスタ設定</h2>
                     <p style="color:#666;font-size:11px;margin-bottom:15px;">
-                        テンプレートや全画面の月表示で使用する会計年度を設定します。予算CSV取り込み時に自動検出された月情報がデフォルトとして反映されます。
+                        <strong>予算CSVインポート前に会計年度を設定してください。</strong>ここで設定した開始月に基づいて、CSVから該当する月のデータを取り込みます。
                         <br>店舗ごとに異なる会計年度を設定することも可能です。
                     </p>
 
@@ -894,13 +894,6 @@
                                 <button class="btn" style="background:#9c27b0;color:#fff;padding:10px 15px;font-size:11px;" onclick="showBulkFiscalSettingModal()">
                                     📋 複数店舗一括設定
                                 </button>
-                            </div>
-                        </div>
-                        <!-- 店舗別設定一覧 -->
-                        <div id="storeFiscalSettingsList" style="margin-top:15px;display:none;">
-                            <div style="font-size:11px;color:#7b1fa2;margin-bottom:8px;font-weight:bold;">📊 店舗別会計年度設定一覧:</div>
-                            <div id="storeFiscalSettingsTable" style="max-height:200px;overflow-y:auto;font-size:11px;">
-                                <!-- JavaScriptで動的に生成 -->
                             </div>
                         </div>
                     </div>
@@ -979,6 +972,10 @@
                         </button>
                         <button class="btn" style="background:#9e9e9e;color:#fff;padding:10px 20px;font-size:12px;" onclick="resetFiscalYearSettings()">
                             🔄 初期設定に戻す
+                        </button>
+                        <span style="width:20px;"></span>
+                        <button class="btn" style="background:#673ab7;color:#fff;padding:10px 20px;font-size:12px;" onclick="showAllSettingsModal()">
+                            📅 設定一覧
                         </button>
                     </div>
                 </div>
@@ -2234,6 +2231,148 @@
             return { year: monthYear, month: monthNum };
         }
 
+        // ★★★ 会計年度連動ヘルパー関数群 ★★★
+
+        // カレンダー月インデックス(0-11)を会計年度インデックス(0-11)に変換
+        // 例: 4月開始の場合、4月(3)→0, 5月(4)→1, ..., 3月(2)→11
+        function calendarToFiscalIndex(calendarIndex) {
+            var startMonth = fiscalYearSettings.startMonth;
+            var startIndex = startMonth - 1; // 0-based
+            var fiscalIndex = (calendarIndex - startIndex + 12) % 12;
+            return fiscalIndex;
+        }
+
+        // 会計年度インデックス(0-11)をカレンダー月インデックス(0-11)に変換
+        function fiscalToCalendarIndex(fiscalIndex) {
+            var startMonth = fiscalYearSettings.startMonth;
+            var startIndex = startMonth - 1;
+            var calendarIndex = (fiscalIndex + startIndex) % 12;
+            return calendarIndex;
+        }
+
+        // activeMonthsを会計年度順にソート
+        function sortActiveMonthsByFiscal(activeMonthsArray) {
+            if (!activeMonthsArray || activeMonthsArray.length === 0) return [];
+            return activeMonthsArray.slice().sort(function(a, b) {
+                return calendarToFiscalIndex(a) - calendarToFiscalIndex(b);
+            });
+        }
+
+        // 会計年度の12ヶ月分のカレンダーインデックス配列を取得
+        function getFiscalYearCalendarIndices() {
+            var indices = [];
+            for (var i = 0; i < 12; i++) {
+                indices.push(fiscalToCalendarIndex(i));
+            }
+            return indices;
+        }
+
+        // 月ラベルを取得（カレンダーインデックスから）
+        function getMonthLabel(calendarIndex) {
+            var fiscalIndex = calendarToFiscalIndex(calendarIndex);
+            return FISCAL_ORDER[fiscalIndex] || (calendarIndex + 1) + '月';
+        }
+
+        // ★★★ 会計年度順表示のためのデータ構造 ★★★
+        // activeMonthsを会計年度順にソートした結果を格納
+        var fiscalSortedMonths = [];  // [{position, calendarMonth, fiscalIndex, label}, ...]
+
+        // activeMonthsから会計年度順の表示情報を生成
+        function buildFiscalSortedMonths() {
+            if (!activeMonths || activeMonths.length === 0) {
+                fiscalSortedMonths = [];
+                return;
+            }
+
+            // 各月の情報を収集
+            var monthInfos = [];
+            for (var i = 0; i < activeMonths.length; i++) {
+                var calMonth = activeMonths[i]; // カレンダー月インデックス (0-11)
+                var fiscalIdx = calendarToFiscalIndex(calMonth);
+                monthInfos.push({
+                    position: i,              // データ配列内の位置
+                    calendarMonth: calMonth,  // カレンダー月 (0-11)
+                    fiscalIndex: fiscalIdx,   // 会計年度内の位置 (0-11)
+                    label: FISCAL_ORDER[fiscalIdx] || (calMonth + 1) + '月'
+                });
+            }
+
+            // 会計年度順にソート
+            monthInfos.sort(function(a, b) {
+                return a.fiscalIndex - b.fiscalIndex;
+            });
+
+            fiscalSortedMonths = monthInfos;
+            console.log('★ fiscalSortedMonths 構築完了:', fiscalSortedMonths.length + '件');
+        }
+
+        // 会計年度順のヘッダーを生成
+        function createFiscalMonthHeaders() {
+            if (!fiscalSortedMonths || fiscalSortedMonths.length === 0) {
+                return '<tr><th>項目</th><th>データなし</th></tr>';
+            }
+            var html = '<tr><th>項目</th>';
+            for (var i = 0; i < fiscalSortedMonths.length; i++) {
+                html += '<th class="month-header">' + fiscalSortedMonths[i].label + '</th>';
+            }
+            html += '<th class="total-col">合計</th><th class="avg-col">平均</th></tr>';
+            return html;
+        }
+
+        // 会計年度順でデータを取得するヘルパー
+        function getFiscalMonthlyData(getValue) {
+            var result = [];
+            for (var i = 0; i < fiscalSortedMonths.length; i++) {
+                var pos = fiscalSortedMonths[i].position;
+                try {
+                    result.push(getValue(pos));
+                } catch (e) {
+                    result.push(0);
+                }
+            }
+            return result;
+        }
+
+        // 全画面の月表示を会計年度設定に連動して更新
+        function refreshAllTablesForFiscalYear() {
+            console.log('★ 会計年度設定変更による全画面更新開始');
+
+            // FISCAL_ORDERを再生成
+            FISCAL_ORDER = generateFiscalOrder();
+
+            // 会計年度順のソート情報を再構築
+            buildFiscalSortedMonths();
+
+            // 各種テーブルを再描画
+            try {
+                // 入力前演算結果
+                if (typeof renderPreCalcTable === 'function') renderPreCalcTable();
+                // 演算結果テーブル（MQ計算）
+                if (typeof renderCalcTable === 'function') renderCalcTable();
+                // ラクミー設定値（MQパラメータ）- 3テーブル
+                if (typeof renderRakumyTables === 'function') renderRakumyTables();
+                // MQ出力テーブル
+                if (typeof renderOutputTable === 'function') renderOutputTable();
+                // 予算一覧
+                if (typeof renderBudgetListTable === 'function') renderBudgetListTable();
+                // 予算入力テーブル
+                if (typeof renderInputTable === 'function') renderInputTable();
+                // 客単価テーブル
+                if (typeof renderSimUnitPriceTable === 'function') renderSimUnitPriceTable();
+                // MQパラメータテーブル
+                if (typeof renderSimAutoParamsTable === 'function') renderSimAutoParamsTable();
+                // 費用予算設定
+                if (typeof renderBudgetSettingsTable === 'function') renderBudgetSettingsTable();
+                // マッピングテーブル
+                if (typeof renderMappingTableHTML === 'function') renderMappingTableHTML();
+            } catch (e) {
+                console.warn('テーブル再描画中にエラー:', e);
+            }
+
+            console.log('★ 会計年度設定による全画面更新完了');
+            showStatus('success', '会計年度設定を全画面に反映しました（' + getFiscalYearInfo().range + '）');
+        }
+
         // 会計年度設定をUIに反映
         function updateFiscalYearSettings() {
             var startMonthSelect = document.getElementById('fiscalYearStartMonth');
@@ -2293,7 +2432,8 @@
         function saveFiscalYearSettings() {
             try {
                 localStorage.setItem(FISCAL_YEAR_SETTINGS_KEY, JSON.stringify(fiscalYearSettings));
-                showStatus('success', '会計年度設定を保存しました（' + getFiscalYearInfo().label + ': ' + getFiscalYearInfo().range + '）');
+                // 全画面に会計年度設定を反映
+                refreshAllTablesForFiscalYear();
             } catch (e) {
                 showStatus('error', '会計年度設定の保存に失敗しました: ' + e.message);
             }
@@ -2492,7 +2632,6 @@
 
             // プレビュー更新
             renderFiscalYearPreview();
-            renderStoreFiscalSettingsList();
         }
 
         // 設定をUIに反映
@@ -2514,7 +2653,6 @@
                 style: style,
                 useDefault: false
             };
-            renderStoreFiscalSettingsList();
             populateFiscalStoreSelect();
         }
 
@@ -2552,7 +2690,6 @@
 
             // UIを更新
             populateFiscalStoreSelect();
-            renderStoreFiscalSettingsList();
         }
 
         // 店舗別設定を読み込み
@@ -2568,50 +2705,6 @@
             }
         }
 
-        // 店舗別設定一覧を描画
-        function renderStoreFiscalSettingsList() {
-            var container = document.getElementById('storeFiscalSettingsTable');
-            var listWrapper = document.getElementById('storeFiscalSettingsList');
-            if (!container || !listWrapper) return;
-
-            var storeNames = Object.keys(storeFiscalSettings).filter(function(name) {
-                return !storeFiscalSettings[name].useDefault;
-            });
-
-            if (storeNames.length === 0) {
-                listWrapper.style.display = 'none';
-                return;
-            }
-
-            listWrapper.style.display = 'block';
-
-            var html = '<table style="width:100%;border-collapse:collapse;background:#fff;">';
-            html += '<thead><tr style="background:#9c27b0;color:#fff;">';
-            html += '<th style="padding:6px;text-align:left;font-size:10px;">店舗</th>';
-            html += '<th style="padding:6px;text-align:center;font-size:10px;">開始月</th>';
-            html += '<th style="padding:6px;text-align:center;font-size:10px;">年度</th>';
-            html += '<th style="padding:6px;text-align:center;font-size:10px;">操作</th>';
-            html += '</tr></thead><tbody>';
-
-            storeNames.forEach(function(name, idx) {
-                var setting = storeFiscalSettings[name];
-                var storeCode = DEFAULT_UNIT_PRICES[name] ? (DEFAULT_UNIT_PRICES[name].storeCode || '') : '';
-                var bgColor = idx % 2 === 0 ? '#fff' : '#f3e5f5';
-
-                html += '<tr style="background:' + bgColor + ';border-bottom:1px solid #e1bee7;">';
-                html += '<td style="padding:6px;font-size:10px;"><span style="color:#4caf50;font-weight:bold;">' + storeCode + '</span> ' + escapeHtml(name) + '</td>';
-                html += '<td style="padding:6px;text-align:center;font-size:10px;font-weight:bold;color:#7b1fa2;">' + setting.startMonth + '月</td>';
-                html += '<td style="padding:6px;text-align:center;font-size:10px;">' + setting.year + '年度</td>';
-                html += '<td style="padding:6px;text-align:center;">';
-                html += '<button style="background:#ef5350;color:#fff;border:none;padding:3px 8px;border-radius:3px;font-size:9px;cursor:pointer;" onclick="removeStoreFiscalSetting(\'' + escapeHtml(name).replace(/'/g, "\\'") + '\')">削除</button>';
-                html += '</td>';
-                html += '</tr>';
-            });
-
-            html += '</tbody></table>';
-            container.innerHTML = html;
-        }
-
         // 店舗別設定を削除（デフォルトに戻す）
         function removeStoreFiscalSetting(storeName) {
             if (storeFiscalSettings[storeName]) {
@@ -2623,7 +2716,6 @@
                     showStatus('error', '設定の削除に失敗しました');
                 }
                 populateFiscalStoreSelect();
-                renderStoreFiscalSettingsList();
             }
         }
 
@@ -2761,7 +2853,6 @@
 
             closeBulkFiscalSettingModal();
             populateFiscalStoreSelect();
-            renderStoreFiscalSettingsList();
         }
 
         // 特定店舗の会計年度設定を取得（なければデフォルト）
@@ -2770,6 +2861,89 @@
                 return storeFiscalSettings[storeName];
             }
             return fiscalYearSettings;
+        }
+
+        // ★★★ 設定一覧モーダル ★★★
+        function showAllSettingsModal() {
+            // 既存のモーダルがあれば削除
+            var existingModal = document.getElementById('allSettingsModal');
+            if (existingModal) existingModal.remove();
+
+            var html = '<div id="allSettingsModal" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:1100;overflow-y:auto;">';
+            html += '<div style="background:#fff;border-radius:12px;margin:30px auto;max-width:95%;width:900px;box-shadow:0 4px 30px rgba(0,0,0,0.4);">';
+
+            // ヘッダー
+            html += '<div style="background:linear-gradient(135deg, #673ab7 0%, #512da8 100%);color:#fff;padding:20px;border-radius:12px 12px 0 0;display:flex;justify-content:space-between;align-items:center;">';
+            html += '<div><h3 style="margin:0;font-size:18px;">📅 会計年度設定一覧</h3>';
+            html += '<div style="font-size:11px;opacity:0.9;margin-top:5px;">会計年度と店舗別設定を確認できます</div></div>';
+            html += '<button onclick="closeAllSettingsModal()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;padding:8px 15px;border-radius:4px;cursor:pointer;">✕</button>';
+            html += '</div>';
+
+            // コンテンツ
+            html += '<div style="padding:20px;max-height:70vh;overflow-y:auto;">';
+
+            // 1. 会計年度設定セクション
+            html += '<div style="margin-bottom:25px;">';
+            html += '<h4 style="color:#673ab7;border-bottom:2px solid #673ab7;padding-bottom:8px;margin-bottom:15px;">📅 会計年度設定</h4>';
+            html += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+            html += '<thead><tr style="background:#ede7f6;">';
+            html += '<th style="padding:10px;text-align:left;border:1px solid #d1c4e9;">項目</th>';
+            html += '<th style="padding:10px;text-align:left;border:1px solid #d1c4e9;">設定値</th>';
+            html += '</tr></thead><tbody>';
+            html += '<tr><td style="padding:8px;border:1px solid #e0e0e0;">会計年度開始月（デフォルト）</td><td style="padding:8px;border:1px solid #e0e0e0;"><strong>' + fiscalYearSettings.startMonth + '月</strong></td></tr>';
+            html += '<tr><td style="padding:8px;border:1px solid #e0e0e0;">対象年度（デフォルト）</td><td style="padding:8px;border:1px solid #e0e0e0;"><strong>' + fiscalYearSettings.year + '年度</strong></td></tr>';
+            html += '<tr><td style="padding:8px;border:1px solid #e0e0e0;">年度表記スタイル</td><td style="padding:8px;border:1px solid #e0e0e0;">' + (fiscalYearSettings.style === 'short' ? '月のみ' : fiscalYearSettings.style === 'full' ? '年月' : 'スラッシュ') + '</td></tr>';
+            html += '</tbody></table>';
+            html += '</div>';
+
+            // 2. 店舗別会計年度設定
+            var storeSettingsList = Object.keys(storeFiscalSettings);
+            if (storeSettingsList.length > 0) {
+                html += '<div style="margin-bottom:25px;">';
+                html += '<h4 style="color:#9c27b0;border-bottom:2px solid #9c27b0;padding-bottom:8px;margin-bottom:15px;">🏪 店舗別会計年度設定（' + storeSettingsList.length + '件）</h4>';
+                html += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+                html += '<thead><tr style="background:#f3e5f5;">';
+                html += '<th style="padding:10px;text-align:left;border:1px solid #e1bee7;">店舗名</th>';
+                html += '<th style="padding:10px;text-align:center;border:1px solid #e1bee7;">開始月</th>';
+                html += '<th style="padding:10px;text-align:center;border:1px solid #e1bee7;">年度</th>';
+                html += '<th style="padding:10px;text-align:center;border:1px solid #e1bee7;">スタイル</th>';
+                html += '</tr></thead><tbody>';
+                storeSettingsList.forEach(function(name) {
+                    var s = storeFiscalSettings[name];
+                    var storeCode = (DEFAULT_UNIT_PRICES[name] || {}).storeCode || '';
+                    var styleLabel = s.style === 'short' ? '月のみ' : s.style === 'full' ? '年月' : 'スラッシュ';
+                    html += '<tr>';
+                    html += '<td style="padding:8px;border:1px solid #e0e0e0;"><span style="color:#4caf50;font-weight:bold;margin-right:5px;">' + storeCode + '</span>' + escapeHtml(name) + '</td>';
+                    html += '<td style="padding:8px;border:1px solid #e0e0e0;text-align:center;"><strong>' + s.startMonth + '月</strong></td>';
+                    html += '<td style="padding:8px;border:1px solid #e0e0e0;text-align:center;"><strong>' + s.year + '年度</strong></td>';
+                    html += '<td style="padding:8px;border:1px solid #e0e0e0;text-align:center;">' + styleLabel + '</td>';
+                    html += '</tr>';
+                });
+                html += '</tbody></table>';
+                html += '</div>';
+            } else {
+                // 店舗別設定がない場合
+                html += '<div style="margin-bottom:25px;">';
+                html += '<h4 style="color:#9c27b0;border-bottom:2px solid #9c27b0;padding-bottom:8px;margin-bottom:15px;">🏪 店舗別会計年度設定</h4>';
+                html += '<p style="color:#666;font-size:12px;">店舗別の個別設定はありません。すべての店舗でデフォルト設定が使用されます。</p>';
+                html += '</div>';
+            }
+
+            html += '</div>'; // コンテンツ終了
+
+            // フッターボタン
+            html += '<div style="padding:15px 20px;border-top:1px solid #e0e0e0;display:flex;justify-content:flex-end;">';
+            html += '<button onclick="closeAllSettingsModal()" style="background:#673ab7;color:#fff;border:none;padding:10px 25px;border-radius:6px;cursor:pointer;font-weight:bold;">閉じる</button>';
+            html += '</div>';
+
+            html += '</div></div>';
+
+            document.body.insertAdjacentHTML('beforeend', html);
+        }
+
+        function closeAllSettingsModal() {
+            var modal = document.getElementById('allSettingsModal');
+            if (modal) modal.remove();
         }
 
         // グローバル変数
@@ -5568,37 +5742,44 @@
             updateSimRefDisplay();
         }
 
-        // ★ 予算試算用月別客単価テーブル動的生成
+        // ★ 予算試算用月別客単価テーブル動的生成（会計年度順対応）
         function renderSimUnitPriceTable() {
             var table = document.getElementById('simUnitPriceTable');
             if (!table) return;
 
             // 取り込まれた月を取得
             var stActiveMonths = [];
-            var monthLabels = [];
             if (simulationData && simulationData.activeMonths) {
                 stActiveMonths = simulationData.activeMonths;
-                monthLabels = simulationData.monthLabels || [];
             }
 
             // 月数表示を更新
             var countEl = document.getElementById('simMonthCountDisplay');
             if (countEl) countEl.textContent = stActiveMonths.length;
+            var countEl2 = document.getElementById('simMonthCountDisplay2');
+            if (countEl2) countEl2.textContent = stActiveMonths.length;
 
             if (stActiveMonths.length === 0) {
                 table.innerHTML = '<tr><td style="padding:20px;text-align:center;color:#999;">データがありません</td></tr>';
                 return;
             }
 
-            // 月名マッピング（会計年度設定に連動）
+            // 会計年度順にソート
+            var sortedMonths = stActiveMonths.slice().map(function(mi) {
+                return {
+                    calMonth: mi,
+                    fiscalIdx: calendarToFiscalIndex(mi),
+                    label: FISCAL_ORDER[calendarToFiscalIndex(mi)] || (mi + 1) + '月'
+                };
+            }).sort(function(a, b) {
+                return a.fiscalIdx - b.fiscalIdx;
+            });
 
             // ヘッダー行
             var headerHtml = '<thead><tr style="background:#2e7d32;">';
             headerHtml += '<th style="min-width:130px;padding:6px;color:#fff;font-weight:bold;">項目</th>';
-            for (var i = 0; i < stActiveMonths.length; i++) {
-                var mi = stActiveMonths[i];
-                var label = monthLabels[i] || FISCAL_ORDER[mi] || (mi + 1) + '月';
-                headerHtml += '<th style="min-width:65px;color:#fff;font-weight:bold;">' + label + '</th>';
+            for (var i = 0; i < sortedMonths.length; i++) {
+                headerHtml += '<th style="min-width:65px;color:#fff;font-weight:bold;">' + sortedMonths[i].label + '</th>';
             }
             headerHtml += '<th style="min-width:70px;background:#1b5e20;color:#fff;font-weight:bold;">平均</th>';
             headerHtml += '</tr></thead>';
@@ -5608,24 +5789,24 @@
 
             // 総合
             bodyHtml += '<tr style="background:#e8f5e9;"><td style="font-weight:bold;color:#2e7d32;">目標客単価（総合）</td>';
-            for (var i = 0; i < stActiveMonths.length; i++) {
-                var mi = stActiveMonths[i];
+            for (var i = 0; i < sortedMonths.length; i++) {
+                var mi = sortedMonths[i].calMonth;
                 bodyHtml += '<td><input type="number" id="simP_total_' + mi + '" step="100" style="width:55px;padding:3px;text-align:right;border:1px solid #4caf50;border-radius:3px;" onchange="updateSimUnitPriceAverage(\'total\')"></td>';
             }
             bodyHtml += '<td id="simP_total_avg" style="font-weight:bold;text-align:right;background:#c8e6c9;">¥--</td></tr>';
 
             // ランチ
             bodyHtml += '<tr><td style="font-weight:bold;color:#1565c0;">目標客単価（ランチ）</td>';
-            for (var i = 0; i < stActiveMonths.length; i++) {
-                var mi = stActiveMonths[i];
+            for (var i = 0; i < sortedMonths.length; i++) {
+                var mi = sortedMonths[i].calMonth;
                 bodyHtml += '<td><input type="number" id="simP_lunch_' + mi + '" step="100" style="width:55px;padding:3px;text-align:right;border:1px solid #2196f3;border-radius:3px;" onchange="updateSimUnitPriceAverage(\'lunch\')"></td>';
             }
             bodyHtml += '<td id="simP_lunch_avg" style="font-weight:bold;text-align:right;background:#e3f2fd;">¥--</td></tr>';
 
             // ディナー
             bodyHtml += '<tr style="background:#fff3e0;"><td style="font-weight:bold;color:#e65100;">目標客単価（ディナー）</td>';
-            for (var i = 0; i < stActiveMonths.length; i++) {
-                var mi = stActiveMonths[i];
+            for (var i = 0; i < sortedMonths.length; i++) {
+                var mi = sortedMonths[i].calMonth;
                 bodyHtml += '<td><input type="number" id="simP_dinner_' + mi + '" step="100" style="width:55px;padding:3px;text-align:right;border:1px solid #ff9800;border-radius:3px;" onchange="updateSimUnitPriceAverage(\'dinner\')"></td>';
             }
             bodyHtml += '<td id="simP_dinner_avg" style="font-weight:bold;text-align:right;background:#ffe0b2;">¥--</td></tr>';
@@ -5718,16 +5899,14 @@
             showStatus('info', 'デフォルト値にリセットしました（' + storeName + '）');
         }
 
-        // ★ 予算試算用自動パラメータテーブル動的生成
+        // ★ 予算試算用自動パラメータテーブル動的生成（会計年度順対応）
         function renderSimAutoParamsTable() {
             var table = document.getElementById('simAutoParamsTable');
             if (!table) return;
 
             var stActiveMonths = [];
-            var monthLabels = [];
             if (simulationData && simulationData.activeMonths) {
                 stActiveMonths = simulationData.activeMonths;
-                monthLabels = simulationData.monthLabels || [];
             }
 
             if (stActiveMonths.length === 0) {
@@ -5735,15 +5914,24 @@
                 return;
             }
 
+            // 会計年度順にソート
+            var sortedMonths = stActiveMonths.slice().map(function(mi) {
+                return {
+                    calMonth: mi,
+                    fiscalIdx: calendarToFiscalIndex(mi),
+                    label: FISCAL_ORDER[calendarToFiscalIndex(mi)] || (mi + 1) + '月'
+                };
+            }).sort(function(a, b) {
+                return a.fiscalIdx - b.fiscalIdx;
+            });
+
             var params = getSimMQAutoParams();
 
             // ヘッダー行
             var headerHtml = '<thead><tr style="background:#e65100;">';
             headerHtml += '<th style="min-width:100px;padding:6px;color:#fff;font-weight:bold;">パラメータ</th>';
-            for (var i = 0; i < stActiveMonths.length; i++) {
-                var mi = stActiveMonths[i];
-                var label = monthLabels[i] || FISCAL_ORDER[mi] || (mi + 1) + '月';
-                headerHtml += '<th style="min-width:65px;color:#fff;font-weight:bold;">' + label + '</th>';
+            for (var i = 0; i < sortedMonths.length; i++) {
+                headerHtml += '<th style="min-width:65px;color:#fff;font-weight:bold;">' + sortedMonths[i].label + '</th>';
             }
             headerHtml += '<th style="min-width:70px;background:#bf360c;color:#fff;font-weight:bold;">平均</th>';
             headerHtml += '</tr></thead>';
@@ -5754,37 +5942,37 @@
             // G（目標利益）- 月別
             bodyHtml += '<tr style="background:#fff3e0;"><td style="font-weight:bold;color:#e65100;">【G】目標利益(円)</td>';
             var totalG = 0;
-            for (var i = 0; i < stActiveMonths.length; i++) {
-                var mi = stActiveMonths[i];
+            for (var i = 0; i < sortedMonths.length; i++) {
+                var mi = sortedMonths[i].calMonth;
                 var g = params.monthlyG[mi] || 0;
                 totalG += g;
                 bodyHtml += '<td style="text-align:right;">' + fmtYen(g) + '</td>';
             }
-            var avgG = Math.round(totalG / stActiveMonths.length);
+            var avgG = Math.round(totalG / sortedMonths.length);
             bodyHtml += '<td style="font-weight:bold;text-align:right;background:#ffe0b2;">' + fmtYen(avgG) + '</td></tr>';
 
             // F（固定費）- 月別
             bodyHtml += '<tr><td style="font-weight:bold;color:#e65100;">【F】固定費(円)</td>';
             var totalF = 0;
-            for (var i = 0; i < stActiveMonths.length; i++) {
-                var mi = stActiveMonths[i];
+            for (var i = 0; i < sortedMonths.length; i++) {
+                var mi = sortedMonths[i].calMonth;
                 var f = params.monthlyF[mi] || 0;
                 totalF += f;
                 bodyHtml += '<td style="text-align:right;">' + fmtYen(f) + '</td>';
             }
-            var avgF = Math.round(totalF / stActiveMonths.length);
+            var avgF = Math.round(totalF / sortedMonths.length);
             bodyHtml += '<td style="font-weight:bold;text-align:right;background:#ffe0b2;">' + fmtYen(avgF) + '</td></tr>';
 
             // FD%（全期間共通）
             bodyHtml += '<tr style="background:#fff3e0;"><td style="font-weight:bold;color:#e65100;">【FD%】FD率</td>';
-            for (var i = 0; i < stActiveMonths.length; i++) {
+            for (var i = 0; i < sortedMonths.length; i++) {
                 bodyHtml += '<td style="text-align:right;color:#888;">' + params.fdRate.toFixed(1) + '%</td>';
             }
             bodyHtml += '<td style="font-weight:bold;text-align:right;background:#ffe0b2;">' + params.fdRate.toFixed(1) + '%</td></tr>';
 
             // PA%（全期間共通）
             bodyHtml += '<tr><td style="font-weight:bold;color:#e65100;">【PA%】PA率</td>';
-            for (var i = 0; i < stActiveMonths.length; i++) {
+            for (var i = 0; i < sortedMonths.length; i++) {
                 bodyHtml += '<td style="text-align:right;color:#888;">' + params.paRate.toFixed(1) + '%</td>';
             }
             bodyHtml += '<td style="font-weight:bold;text-align:right;background:#ffe0b2;">' + params.paRate.toFixed(1) + '%</td></tr>';
@@ -8017,13 +8205,22 @@
             return results;
         }
 
-        // 月列検出結果の表示
+        // 月列検出結果の表示（会計年度順）
         function renderMonthColsGrid() {
             document.getElementById('columnDetection').style.display = 'block';
             var grid = document.getElementById('monthColsGrid');
 
+            // ★ 会計年度順にソート
+            var sortedResults = monthDetectionResults.slice().sort(function(a, b) {
+                var orderA = FISCAL_ORDER.indexOf(a.month);
+                var orderB = FISCAL_ORDER.indexOf(b.month);
+                if (orderA === -1) orderA = 999;
+                if (orderB === -1) orderB = 999;
+                return orderA - orderB;
+            });
+
             var html = '';
-            monthDetectionResults.forEach(function(r) {
+            sortedResults.forEach(function(r) {
                 html += '<div class="month-col-card ' + r.status + '">';
                 html += '<div class="month-name">' + r.month + '</div>';
                 html += '<div class="col-info">列' + r.budgetCol + '</div>';
@@ -8033,14 +8230,14 @@
 
             grid.innerHTML = html;
 
-            // サンプル値の表示
+            // サンプル値の表示（会計年度順）
             if (csvLines.length > 5) {
                 var sampleHtml = '<h4>売上高合計(999)のサンプル値</h4><table class="mapping-table sample-table"><tr><th>月</th>';
-                monthDetectionResults.forEach(function(r) {
+                sortedResults.forEach(function(r) {
                     sampleHtml += '<th>' + r.month + '</th>';
                 });
                 sampleHtml += '</tr><tr><td>列位置</td>';
-                monthDetectionResults.forEach(function(r) {
+                sortedResults.forEach(function(r) {
                     sampleHtml += '<td>列' + r.budgetCol + '</td>';
                 });
                 sampleHtml += '</tr><tr><td>値</td>';
@@ -8057,13 +8254,13 @@
                 }
 
                 if (sampleRow) {
-                    monthDetectionResults.forEach(function(r) {
+                    sortedResults.forEach(function(r) {
                         var val = sampleRow[r.budgetCol] || '';
                         var parsed = parseCustomNumber(val);
                         sampleHtml += '<td>' + fmt(parsed) + '</td>';
                     });
                 } else {
-                    monthDetectionResults.forEach(function() {
+                    sortedResults.forEach(function() {
                         sampleHtml += '<td>-</td>';
                     });
                 }
@@ -13917,9 +14114,18 @@
 
             if (budgetResults.length === 0) throw new Error('月の「予算」列が検出できません');
 
-            // ★ 会計年度の自動検出
-            var headerRow = lines.length >= 3 ? parseCSVLine(lines[2]) : null; // 月名行（3行目）
-            autoDetectFiscalYearFromCSV(budgetResults, headerRow);
+            // ★★★ 仕様変更: 会計年度マスタ設定の値を使用（CSVからの自動検出を無効化）★★★
+            // 以前: autoDetectFiscalYearFromCSV() でCSVから自動検出
+            // 現在: ユーザーが事前に設定した会計年度マスタ設定（fiscalYearSettings）を使用
+            addLog('', '');
+            addLog('=== 会計年度設定（マスタ設定を適用）===', 'info');
+            addLog('開始月: ' + fiscalYearSettings.startMonth + '月', 'success');
+            addLog('年度: ' + fiscalYearSettings.year + '年度', 'success');
+            addLog('表示形式: ' + fiscalYearSettings.style, 'info');
+
+            // FISCAL_ORDERを会計年度マスタ設定から再生成
+            FISCAL_ORDER = generateFiscalOrder();
+            addLog('会計年度順: ' + FISCAL_ORDER.join(' → '), 'month');
 
             // ★ 重複検出チェック - 同じ月が複数回検出されていないか
             addLog('', '');
@@ -15796,6 +16002,15 @@
         }
 
         function createMonthHeaders() {
+            // 会計年度順のソート情報を構築
+            buildFiscalSortedMonths();
+
+            // 会計年度順のヘッダーを使用
+            if (fiscalSortedMonths && fiscalSortedMonths.length > 0) {
+                return createFiscalMonthHeaders();
+            }
+
+            // フォールバック（データがない場合）
             var html = '<tr><th>項目</th>';
             for (var i = 0; i < monthLabels.length; i++) {
                 html += '<th class="month-header">' + monthLabels[i] + '</th>';
@@ -15806,7 +16021,9 @@
 
         function renderInputTable() {
             var table = document.getElementById('inputTable');
-            var html = createMonthHeaders();
+            // 会計年度順のソート情報を再構築
+            buildFiscalSortedMonths();
+            var html = createFiscalMonthHeaders();
 
             // デバッグ：matchedItemsの内容を確認（コンソールとUI両方に出力）
             console.log('=== renderInputTable デバッグ ===');
@@ -15841,8 +16058,9 @@
             }
             console.log('=== デバッグ終了 ===');
 
-            // ★ matchedItemsをv17No順で表示
-            if (matchedItems && matchedItems.length > 0) {
+            // ★ matchedItemsをv17No順で表示（会計年度順）
+            var numMonths = fiscalSortedMonths.length || activeMonths.length;
+            if (matchedItems && matchedItems.length > 0 && fiscalSortedMonths.length > 0) {
                 // v15No(v17No)でソートして表示
                 var sortedItems = matchedItems.slice().sort(function(a, b) {
                     return (a.v15No || 0) - (b.v15No || 0);
@@ -15854,11 +16072,12 @@
                     var itemName = item.name || '不明';
                     var v17No = item.v15No;
 
-                    // ★ annualDataから値を取得（全テーブルで統一されたデータソース）
+                    // ★ annualDataから値を取得（会計年度順）
                     // 合計を先に計算（0値の行を非表示にするため）
                     var total = 0;
-                    for (var m = 0; m < activeMonths.length; m++) {
-                        var val = annualData[v17No] ? (annualData[v17No][m] || 0) : 0;
+                    for (var i = 0; i < fiscalSortedMonths.length; i++) {
+                        var pos = fiscalSortedMonths[i].position;
+                        var val = annualData[v17No] ? (annualData[v17No][pos] || 0) : 0;
                         total += val;
                     }
 
@@ -15866,16 +16085,17 @@
                     if (total === 0) return;
 
                     html += '<tr><td>[' + displayNo + '] ' + itemName + '</td>';
-                    for (var m = 0; m < activeMonths.length; m++) {
-                        // ★ annualDataから値を取得（matchedItems.rowDataではなく）- 円単位表示
-                        var val = annualData[v17No] ? (annualData[v17No][m] || 0) : 0;
+                    for (var i = 0; i < fiscalSortedMonths.length; i++) {
+                        var pos = fiscalSortedMonths[i].position;
+                        // ★ annualDataから値を取得（会計年度順）- 円単位表示
+                        var val = annualData[v17No] ? (annualData[v17No][pos] || 0) : 0;
                         var cellClass = val === 0 ? 'input-cell zero-value' : 'input-cell';
                         html += '<td class="' + cellClass + '">' + fmtYen(val) + '</td>';
                     }
-                    html += '<td class="total-col">' + fmtYen(total) + '</td><td class="avg-col">' + fmtYen(Math.round(total / activeMonths.length)) + '</td></tr>';
+                    html += '<td class="total-col">' + fmtYen(total) + '</td><td class="avg-col">' + fmtYen(Math.round(total / fiscalSortedMonths.length)) + '</td></tr>';
                 });
             } else {
-                html += '<tr><td colspan="' + (activeMonths.length + 3) + '" style="text-align:center;color:#999;padding:20px;">CSVをインポートしてください</td></tr>';
+                html += '<tr><td colspan="' + (numMonths + 3) + '" style="text-align:center;color:#999;padding:20px;">CSVをインポートしてください</td></tr>';
             }
 
             table.innerHTML = html;
@@ -15883,18 +16103,24 @@
 
         function renderCalcTable() {
             var table = document.getElementById('calcTable');
-            var html = createMonthHeaders();
+            // 会計年度順のソート情報を再構築
+            buildFiscalSortedMonths();
+            var html = createFiscalMonthHeaders();
+            var numMonths = fiscalSortedMonths.length;
+
             for (var name in CALC_RULES) {
                 var isRate = CALC_RULES[name].type === 'rate';
                 html += '<tr><td>' + name + '</td>';
                 var total = 0;
-                for (var m = 0; m < activeMonths.length; m++) {
-                    var val = calcResults[m][name] || 0;
+                // 会計年度順でデータを表示
+                for (var i = 0; i < numMonths; i++) {
+                    var pos = fiscalSortedMonths[i].position;
+                    var val = calcResults[pos] ? (calcResults[pos][name] || 0) : 0;
                     total += val;
                     // 率以外は円単位表示
                     html += '<td class="calc-cell">' + (isRate ? fmtRate(val) + '%' : fmtYen(val)) + '</td>';
                 }
-                html += isRate ? '<td class="total-col">-</td><td class="avg-col">' + fmtRate(total / activeMonths.length) + '%</td></tr>' : '<td class="total-col">' + fmtYen(total) + '</td><td class="avg-col">' + fmtYen(total / activeMonths.length) + '</td></tr>';
+                html += isRate ? '<td class="total-col">-</td><td class="avg-col">' + fmtRate(total / numMonths) + '%</td></tr>' : '<td class="total-col">' + fmtYen(total) + '</td><td class="avg-col">' + fmtYen(total / numMonths) + '</td></tr>';
             }
             table.innerHTML = html;
         }
@@ -15904,9 +16130,13 @@
             var budgetTable = document.getElementById('rakumyBudgetTable');
             var monthlyTable = document.getElementById('rakumyMonthlyTable');
 
-            var costHtml = createMonthHeaders();
-            var budgetHtml = createMonthHeaders();
-            var monthlyHtml = createMonthHeaders();
+            // 会計年度順のソート情報を再構築
+            buildFiscalSortedMonths();
+            var numMonths = fiscalSortedMonths.length;
+
+            var costHtml = createFiscalMonthHeaders();
+            var budgetHtml = createFiscalMonthHeaders();
+            var monthlyHtml = createFiscalMonthHeaders();
             var monthlyCount = 0; // 単月費用予算に表示する項目数
 
             // タイプバッジ生成
@@ -15923,11 +16153,12 @@
 
             // ========== 新ロジック: デフォルト値決定 + 差異月特定 ==========
             // 月別値を分析し、デフォルト値（最頻値）と差異月を特定
+            // ※会計年度順ではなくデータ位置で分析（表示時のみ会計年度順）
             function analyzeMonthlyValues(key) {
                 var values = [];
                 var valueCount = {};
 
-                // 全月の値を収集
+                // 全月の値を収集（データ位置順）
                 for (var m = 0; m < activeMonths.length; m++) {
                     var val = rakumyInputs[m] ? (rakumyInputs[m][key] || 0) : 0;
                     // 小数点以下を丸めて比較（0.01の誤差を吸収）
@@ -15946,22 +16177,22 @@
                     }
                 }
 
-                // デフォルト値と異なる月を特定
-                var diffMonths = [];
+                // デフォルト値と異なる月を特定（データ位置で管理）
+                var diffPositions = [];
                 var diffValues = {};
                 for (var m = 0; m < values.length; m++) {
                     if (Math.abs(values[m] - defaultValue) > 0.01) {
-                        diffMonths.push(m);
+                        diffPositions.push(m);
                         diffValues[m] = values[m];
                     }
                 }
 
                 return {
                     defaultValue: defaultValue,      // 最頻値（年間デフォルト）
-                    diffMonths: diffMonths,          // 差異がある月のインデックス
-                    diffValues: diffValues,          // 差異月の値 { monthIndex: value }
-                    hasDiff: diffMonths.length > 0,  // 差異があるかどうか
-                    allSame: diffMonths.length === 0 // 全月同一かどうか
+                    diffPositions: diffPositions,    // 差異があるデータ位置
+                    diffValues: diffValues,          // 差異月の値 { dataPosition: value }
+                    hasDiff: diffPositions.length > 0,  // 差異があるかどうか
+                    allSame: diffPositions.length === 0 // 全月同一かどうか
                 };
             }
 
@@ -15985,16 +16216,18 @@
 
                     // デフォルト値を年間デフォルトとして表示
                     var badgeText = analysis.hasDiff
-                        ? '<span class="annual-badge">年間デフォルト</span><span class="monthly-badge" style="margin-left:4px;">+単月調整' + analysis.diffMonths.length + '件</span>'
+                        ? '<span class="annual-badge">年間デフォルト</span><span class="monthly-badge" style="margin-left:4px;">+単月調整' + analysis.diffPositions.length + '件</span>'
                         : '<span class="annual-badge">年間固定</span>';
 
                     rowHtml = '<tr><td>' + item.name + ' ' + typeBadge + ' ' + badgeText + descText + '</td>';
 
-                    for (var m = 0; m < activeMonths.length; m++) {
-                        var isDiffMonth = analysis.diffMonths.indexOf(m) >= 0;
+                    // 会計年度順で表示
+                    for (var i = 0; i < numMonths; i++) {
+                        var pos = fiscalSortedMonths[i].position;
+                        var isDiffMonth = analysis.diffPositions.indexOf(pos) >= 0;
                         if (isDiffMonth) {
                             // 差異月: 単月費用予算で上書きされることを示す（円単位表示）
-                            var diffVal = analysis.diffValues[m];
+                            var diffVal = analysis.diffValues[pos];
                             rowHtml += '<td class="rakumy-cell" style="background:#fff3e0;color:#e65100;font-weight:bold;" title="単月費用予算で上書き: ' + fmtYen(diffVal) + '">' + fmtYen(analysis.defaultValue) + '→<span style="font-size:10px;">' + fmtYen(diffVal) + '</span></td>';
                         } else {
                             // デフォルト値適用月（円単位表示）
@@ -16003,22 +16236,24 @@
                     }
 
                     // 合計・平均はデフォルト値ベース（実際のラクミー設定値）- 円単位表示
-                    var total = analysis.defaultValue * activeMonths.length;
+                    var total = analysis.defaultValue * numMonths;
                     rowHtml += '<td class="total-col">' + fmtYen(total) + '</td><td class="avg-col">' + fmtYen(analysis.defaultValue) + '</td></tr>';
                     costHtml += rowHtml;
                 } else if (item.category === 'budget') {
                     var rowHtml = '<tr><td>' + item.name + ' ' + typeBadge + descText + '</td>';
                     var total = 0;
-                    for (var m = 0; m < activeMonths.length; m++) {
-                        var val = rakumyInputs[m][key] || 0;
+                    // 会計年度順で表示
+                    for (var i = 0; i < numMonths; i++) {
+                        var pos = fiscalSortedMonths[i].position;
+                        var val = rakumyInputs[pos] ? (rakumyInputs[pos][key] || 0) : 0;
                         total += val;
                         // 率以外は円単位表示
                         rowHtml += '<td class="rakumy-cell">' + (isRate ? fmtRate(val) + '%' : fmtYen(val)) + '</td>';
                     }
                     if (isRate) {
-                        rowHtml += '<td class="total-col">-</td><td class="avg-col">' + fmtRate(total / activeMonths.length) + '%</td></tr>';
+                        rowHtml += '<td class="total-col">-</td><td class="avg-col">' + fmtRate(total / numMonths) + '%</td></tr>';
                     } else {
-                        rowHtml += '<td class="total-col">' + fmtYen(total) + '</td><td class="avg-col">' + fmtYen(total / activeMonths.length) + '</td></tr>';
+                        rowHtml += '<td class="total-col">' + fmtYen(total) + '</td><td class="avg-col">' + fmtYen(total / numMonths) + '</td></tr>';
                     }
                     budgetHtml += rowHtml;
                 } else if (item.category === 'monthly') {
@@ -16027,14 +16262,16 @@
                     var analysis = analyzeMonthlyValues(baseKey);
 
                     if (analysis.hasDiff) {
-                        var rowHtml = '<tr><td>' + item.name + ' ' + typeBadge + ' <span style="color:#e65100;font-size:10px;">(' + analysis.diffMonths.length + '月分上書き)</span>' + descText + '</td>';
+                        var rowHtml = '<tr><td>' + item.name + ' ' + typeBadge + ' <span style="color:#e65100;font-size:10px;">(' + analysis.diffPositions.length + '月分上書き)</span>' + descText + '</td>';
                         var diffTotal = 0;
 
-                        for (var m = 0; m < activeMonths.length; m++) {
-                            var isDiffMonth = analysis.diffMonths.indexOf(m) >= 0;
+                        // 会計年度順で表示
+                        for (var i = 0; i < numMonths; i++) {
+                            var pos = fiscalSortedMonths[i].position;
+                            var isDiffMonth = analysis.diffPositions.indexOf(pos) >= 0;
                             if (isDiffMonth) {
                                 // 差異月: 実際の値を表示（上書き設定値）- 円単位表示
-                                var val = rakumyInputs[m][key] || 0;
+                                var val = rakumyInputs[pos] ? (rakumyInputs[pos][key] || 0) : 0;
                                 diffTotal += val;
                                 rowHtml += '<td class="rakumy-cell" style="background:#fff3e0;color:#e65100;font-weight:bold;">' + fmtYen(val) + '</td>';
                             } else {
@@ -16045,7 +16282,7 @@
 
                         // 合計は差異月の合計のみ（円単位表示）
                         rowHtml += '<td class="total-col" style="color:#e65100;">' + fmtYen(diffTotal) + '</td>';
-                        rowHtml += '<td class="avg-col" style="color:#888;">(' + analysis.diffMonths.length + '月)</td></tr>';
+                        rowHtml += '<td class="avg-col" style="color:#888;">(' + analysis.diffPositions.length + '月)</td></tr>';
                         monthlyHtml += rowHtml;
                         monthlyCount++;
                     }
@@ -16054,18 +16291,20 @@
 
             // 単月費用予算が0件の場合のメッセージ
             if (monthlyCount === 0) {
-                monthlyHtml += '<tr><td colspan="' + (activeMonths.length + 3) + '" style="text-align:center;color:#888;padding:20px;">全項目が年間で同一値のため、単月調整は不要です。<br>費用予算設定の年間デフォルト値が全月に適用されます。</td></tr>';
+                monthlyHtml += '<tr><td colspan="' + (numMonths + 3) + '" style="text-align:center;color:#888;padding:20px;">全項目が年間で同一値のため、単月調整は不要です。<br>費用予算設定の年間デフォルト値が全月に適用されます。</td></tr>';
             }
 
             // 参考値：顧客予算売上（MQ出力との比較用）- 円単位表示
             budgetHtml += '<tr style="background:#fff3e0;"><td>【参考】顧客予算売上 <span class="type-output">出力</span></td>';
             var refTotal = 0;
-            for (var m = 0; m < activeMonths.length; m++) {
-                var val = rakumyInputs[m].budgetSales || 0;
+            // 会計年度順で表示
+            for (var i = 0; i < numMonths; i++) {
+                var pos = fiscalSortedMonths[i].position;
+                var val = rakumyInputs[pos] ? (rakumyInputs[pos].budgetSales || 0) : 0;
                 refTotal += val;
                 budgetHtml += '<td class="rakumy-cell">' + fmtYen(val) + '</td>';
             }
-            budgetHtml += '<td class="total-col">' + fmtYen(refTotal) + '</td><td class="avg-col">' + fmtYen(refTotal / activeMonths.length) + '</td></tr>';
+            budgetHtml += '<td class="total-col">' + fmtYen(refTotal) + '</td><td class="avg-col">' + fmtYen(refTotal / numMonths) + '</td></tr>';
 
             costTable.innerHTML = costHtml;
             budgetTable.innerHTML = budgetHtml;
@@ -16080,75 +16319,85 @@
 
         function renderOutputTable() {
             var table = document.getElementById('outputTable');
-            var html = createMonthHeaders();
+            // 会計年度順のソート情報を再構築
+            buildFiscalSortedMonths();
+            var numMonths = fiscalSortedMonths.length;
+            var html = createFiscalMonthHeaders();
 
             // ★★★ MQ逆算パイプライン ★★★
             // === STEP 0: MQ入力パラメータ（費用予算設定から参照） ===
-            html += '<tr style="background:#4caf50;color:white;"><td colspan="' + (activeMonths.length + 3) + '" style="font-weight:bold;text-align:center;padding:12px;font-size:14px;">【STEP 0】MQ入力パラメータ（費用予算設定から参照）</td></tr>';
+            html += '<tr style="background:#4caf50;color:white;"><td colspan="' + (numMonths + 3) + '" style="font-weight:bold;text-align:center;padding:12px;font-size:14px;">【STEP 0】MQ入力パラメータ（費用予算設定から参照）</td></tr>';
 
             // 固定費用予算（F）- 円単位表示
             html += '<tr style="background:#e8f5e9;"><td style="padding-left:10px;"><strong>F</strong> 固定費用予算</td>';
             var fixedTotal = 0;
-            for (var m = 0; m < activeMonths.length; m++) {
-                var val = rakumyInputs[m] ? rakumyInputs[m].fixedCostTotal : 0;
+            for (var i = 0; i < numMonths; i++) {
+                var pos = fiscalSortedMonths[i].position;
+                var val = rakumyInputs[pos] ? rakumyInputs[pos].fixedCostTotal : 0;
                 fixedTotal += val;
                 html += '<td class="output-cell" style="background:#e8f5e9;">' + fmtYen(val) + '</td>';
             }
-            html += '<td class="total-col" style="background:#c8e6c9;">' + fmtYen(fixedTotal) + '</td><td class="avg-col" style="background:#c8e6c9;">' + fmtYen(fixedTotal / activeMonths.length) + '</td></tr>';
+            html += '<td class="total-col" style="background:#c8e6c9;">' + fmtYen(fixedTotal) + '</td><td class="avg-col" style="background:#c8e6c9;">' + fmtYen(fixedTotal / numMonths) + '</td></tr>';
 
             // 変動費率（VR）
             html += '<tr style="background:#e8f5e9;"><td style="padding-left:10px;"><strong>VR</strong> 変動費率（FD%+PA%）</td>';
-            for (var m = 0; m < activeMonths.length; m++) {
-                var fdRate = rakumyInputs[m] ? rakumyInputs[m].fdRate : 0;
-                var paRate = rakumyInputs[m] ? rakumyInputs[m].paRate : 0;
+            for (var i = 0; i < numMonths; i++) {
+                var pos = fiscalSortedMonths[i].position;
+                var fdRate = rakumyInputs[pos] ? rakumyInputs[pos].fdRate : 0;
+                var paRate = rakumyInputs[pos] ? rakumyInputs[pos].paRate : 0;
                 html += '<td class="output-cell" style="background:#e8f5e9;">' + fmtRate(fdRate + paRate) + '%</td>';
             }
             html += '<td class="total-col" style="background:#c8e6c9;">-</td><td class="avg-col" style="background:#c8e6c9;">-</td></tr>';
 
             // === STEP 1-3: MQ入力値（ユーザー入力/顧客予算から合成） ===
-            html += '<tr style="background:#2196f3;color:white;"><td colspan="' + (activeMonths.length + 3) + '" style="font-weight:bold;text-align:center;padding:12px;font-size:14px;">【STEP 1-3】MQ入力値</td></tr>';
+            html += '<tr style="background:#2196f3;color:white;"><td colspan="' + (numMonths + 3) + '" style="font-weight:bold;text-align:center;padding:12px;font-size:14px;">【STEP 1-3】MQ入力値</td></tr>';
 
             // 目標月次利益（G）- 円単位表示
             html += '<tr style="background:#e3f2fd;"><td style="padding-left:10px;"><strong>G</strong> 目標月次利益</td>';
             var profitTotal = 0;
-            for (var m = 0; m < activeMonths.length; m++) {
-                var val = rakumyInputs[m] ? rakumyInputs[m].targetProfit : 0;
+            for (var i = 0; i < numMonths; i++) {
+                var pos = fiscalSortedMonths[i].position;
+                var val = rakumyInputs[pos] ? rakumyInputs[pos].targetProfit : 0;
                 profitTotal += val;
                 html += '<td class="output-cell" style="background:#e3f2fd;">' + fmtYen(val) + '</td>';
             }
-            html += '<td class="total-col" style="background:#bbdefb;">' + fmtYen(profitTotal) + '</td><td class="avg-col" style="background:#bbdefb;">' + fmtYen(profitTotal / activeMonths.length) + '</td></tr>';
+            html += '<td class="total-col" style="background:#bbdefb;">' + fmtYen(profitTotal) + '</td><td class="avg-col" style="background:#bbdefb;">' + fmtYen(profitTotal / numMonths) + '</td></tr>';
 
             // FD仕入費率
             html += '<tr style="background:#e3f2fd;"><td style="padding-left:10px;"><strong>FD%</strong> FD仕入費率</td>';
-            for (var m = 0; m < activeMonths.length; m++) {
-                var val = rakumyInputs[m] ? rakumyInputs[m].fdRate : 0;
+            for (var i = 0; i < numMonths; i++) {
+                var pos = fiscalSortedMonths[i].position;
+                var val = rakumyInputs[pos] ? rakumyInputs[pos].fdRate : 0;
                 html += '<td class="output-cell" style="background:#e3f2fd;">' + fmtRate(val) + '%</td>';
             }
             html += '<td class="total-col" style="background:#bbdefb;">-</td><td class="avg-col" style="background:#bbdefb;">-</td></tr>';
 
             // PA人件費率
             html += '<tr style="background:#e3f2fd;"><td style="padding-left:10px;"><strong>PA%</strong> PA人件費率</td>';
-            for (var m = 0; m < activeMonths.length; m++) {
-                var val = rakumyInputs[m] ? rakumyInputs[m].paRate : 0;
+            for (var i = 0; i < numMonths; i++) {
+                var pos = fiscalSortedMonths[i].position;
+                var val = rakumyInputs[pos] ? rakumyInputs[pos].paRate : 0;
                 html += '<td class="output-cell" style="background:#e3f2fd;">' + fmtRate(val) + '%</td>';
             }
             html += '<td class="total-col" style="background:#bbdefb;">-</td><td class="avg-col" style="background:#bbdefb;">-</td></tr>';
 
             // 目標客単価（P）
             html += '<tr style="background:#e3f2fd;"><td style="padding-left:10px;"><strong>P</strong> 目標客単価（税抜）</td>';
-            for (var m = 0; m < activeMonths.length; m++) {
-                var val = rakumyInputs[m] ? rakumyInputs[m].targetUnitPrice : 0;
+            for (var i = 0; i < numMonths; i++) {
+                var pos = fiscalSortedMonths[i].position;
+                var val = rakumyInputs[pos] ? rakumyInputs[pos].targetUnitPrice : 0;
                 html += '<td class="output-cell" style="background:#e3f2fd;">' + fmt(val) + '円</td>';
             }
             html += '<td class="total-col" style="background:#bbdefb;">-</td><td class="avg-col" style="background:#bbdefb;">-</td></tr>';
 
             // === MQ逆算過程 ===
-            html += '<tr style="background:#ff9800;color:white;"><td colspan="' + (activeMonths.length + 3) + '" style="font-weight:bold;text-align:center;padding:12px;font-size:14px;">【MQ逆算】必要粗利 → 必要売上 → 目標客数</td></tr>';
+            html += '<tr style="background:#ff9800;color:white;"><td colspan="' + (numMonths + 3) + '" style="font-weight:bold;text-align:center;padding:12px;font-size:14px;">【MQ逆算】必要粗利 → 必要売上 → 目標客数</td></tr>';
 
             // 粗利率（MR = 100% - VR）
             html += '<tr style="background:#fff3e0;"><td style="padding-left:10px;"><strong>MR</strong> 粗利率（100%-VR）</td>';
-            for (var m = 0; m < activeMonths.length; m++) {
-                var vr = mqOutputs[m] ? mqOutputs[m].variableRate : 0;
+            for (var i = 0; i < numMonths; i++) {
+                var pos = fiscalSortedMonths[i].position;
+                var vr = mqOutputs[pos] ? mqOutputs[pos].variableRate : 0;
                 var mr = 100 - vr;
                 html += '<td class="output-cell" style="background:#fff3e0;">' + fmtRate(mr) + '%</td>';
             }
@@ -16156,9 +16405,10 @@
 
             // 粗利単価（M = P × MR）
             html += '<tr style="background:#fff3e0;"><td style="padding-left:10px;"><strong>M</strong> 粗利単価（P×MR）</td>';
-            for (var m = 0; m < activeMonths.length; m++) {
-                var p = rakumyInputs[m] ? rakumyInputs[m].targetUnitPrice : 0;
-                var vr = mqOutputs[m] ? mqOutputs[m].variableRate : 0;
+            for (var i = 0; i < numMonths; i++) {
+                var pos = fiscalSortedMonths[i].position;
+                var p = rakumyInputs[pos] ? rakumyInputs[pos].targetUnitPrice : 0;
+                var vr = mqOutputs[pos] ? mqOutputs[pos].variableRate : 0;
                 var mr = (100 - vr) / 100;
                 var margin = p * mr;
                 html += '<td class="output-cell" style="background:#fff3e0;">' + fmt(Math.round(margin)) + '円</td>';
@@ -16168,35 +16418,38 @@
             // 必要粗利（F + G）- 円単位表示
             html += '<tr style="background:#fff3e0;"><td style="padding-left:10px;"><strong>F+G</strong> 必要粗利（固定費+目標利益）</td>';
             var reqGrossTotal = 0;
-            for (var m = 0; m < activeMonths.length; m++) {
-                var val = mqOutputs[m] ? mqOutputs[m].requiredGrossProfit : 0;
+            for (var i = 0; i < numMonths; i++) {
+                var pos = fiscalSortedMonths[i].position;
+                var val = mqOutputs[pos] ? mqOutputs[pos].requiredGrossProfit : 0;
                 reqGrossTotal += val;
                 html += '<td class="output-cell" style="background:#fff3e0;font-weight:bold;">' + fmtYen(val) + '</td>';
             }
-            html += '<td class="total-col" style="background:#ffe0b2;font-weight:bold;">' + fmtYen(reqGrossTotal) + '</td><td class="avg-col" style="background:#ffe0b2;">' + fmtYen(reqGrossTotal / activeMonths.length) + '</td></tr>';
+            html += '<td class="total-col" style="background:#ffe0b2;font-weight:bold;">' + fmtYen(reqGrossTotal) + '</td><td class="avg-col" style="background:#ffe0b2;">' + fmtYen(reqGrossTotal / numMonths) + '</td></tr>';
 
             // 必要売上（(F+G) / MR）- 円単位表示
             html += '<tr style="background:#fff3e0;"><td style="padding-left:10px;"><strong>(F+G)/MR</strong> 必要売上</td>';
             var reqSalesTotal = 0;
-            for (var m = 0; m < activeMonths.length; m++) {
-                var val = mqOutputs[m] ? mqOutputs[m].requiredSales : 0;
+            for (var i = 0; i < numMonths; i++) {
+                var pos = fiscalSortedMonths[i].position;
+                var val = mqOutputs[pos] ? mqOutputs[pos].requiredSales : 0;
                 reqSalesTotal += val;
                 html += '<td class="output-cell" style="background:#fff3e0;font-weight:bold;">' + fmtYen(val) + '</td>';
             }
-            html += '<td class="total-col" style="background:#ffe0b2;font-weight:bold;">' + fmtYen(reqSalesTotal) + '</td><td class="avg-col" style="background:#ffe0b2;">' + fmtYen(reqSalesTotal / activeMonths.length) + '</td></tr>';
+            html += '<td class="total-col" style="background:#ffe0b2;font-weight:bold;">' + fmtYen(reqSalesTotal) + '</td><td class="avg-col" style="background:#ffe0b2;">' + fmtYen(reqSalesTotal / numMonths) + '</td></tr>';
 
             // 目標客数（Q = 必要売上×1000 / P）
             html += '<tr style="background:#ffcc80;"><td style="padding-left:10px;"><strong>Q</strong> 目標客数（必要売上×1000/P）</td>';
             var customerTotal = 0;
-            for (var m = 0; m < activeMonths.length; m++) {
-                var val = mqOutputs[m] ? mqOutputs[m].customers : 0;
+            for (var i = 0; i < numMonths; i++) {
+                var pos = fiscalSortedMonths[i].position;
+                var val = mqOutputs[pos] ? mqOutputs[pos].customers : 0;
                 customerTotal += val;
                 html += '<td class="output-cell" style="background:#ffcc80;font-weight:bold;color:#e65100;">' + fmt(val) + '人</td>';
             }
-            html += '<td class="total-col" style="background:#ffb74d;font-weight:bold;color:#e65100;">' + fmt(customerTotal) + '</td><td class="avg-col" style="background:#ffb74d;">' + fmt(customerTotal / activeMonths.length) + '</td></tr>';
+            html += '<td class="total-col" style="background:#ffb74d;font-weight:bold;color:#e65100;">' + fmt(customerTotal) + '</td><td class="avg-col" style="background:#ffb74d;">' + fmt(customerTotal / numMonths) + '</td></tr>';
 
             // === STEP 4: MQ出力結果 ===
-            html += '<tr style="background:#9c27b0;color:white;"><td colspan="' + (activeMonths.length + 3) + '" style="font-weight:bold;text-align:center;padding:12px;font-size:14px;">【STEP 4】MQ出力結果（ラクミー予算値）</td></tr>';
+            html += '<tr style="background:#9c27b0;color:white;"><td colspan="' + (numMonths + 3) + '" style="font-weight:bold;text-align:center;padding:12px;font-size:14px;">【STEP 4】MQ出力結果（ラクミー予算値）</td></tr>';
 
             var outputItems = [
                 { key: 'sales', name: '予算売上（P×Q）', highlight: true },
@@ -16209,48 +16462,52 @@
                 var totalBg = item.highlight ? '#e1bee7' : '#f5f5f5';
                 html += '<tr style="background:' + bgColor + ';"><td style="padding-left:10px;' + (item.highlight ? 'font-weight:bold;' : '') + '">' + item.name + '</td>';
                 var total = 0;
-                for (var m = 0; m < activeMonths.length; m++) {
-                    var val = mqOutputs[m][item.key] || 0;
+                for (var i = 0; i < numMonths; i++) {
+                    var pos = fiscalSortedMonths[i].position;
+                    var val = mqOutputs[pos] ? (mqOutputs[pos][item.key] || 0) : 0;
                     total += val;
                     var textColor = item.profit ? (val >= 0 ? '#2e7d32' : '#c62828') : '#333';
                     html += '<td class="output-cell" style="background:' + bgColor + ';color:' + textColor + ';' + (item.highlight ? 'font-weight:bold;' : '') + '">' + fmtYen(val) + '</td>';
                 }
                 var totalColor = item.profit ? (total >= 0 ? '#2e7d32' : '#c62828') : '#333';
-                html += '<td class="total-col" style="background:' + totalBg + ';color:' + totalColor + ';font-weight:bold;">' + fmtYen(total) + '</td><td class="avg-col" style="background:' + totalBg + ';">' + fmtYen(total / activeMonths.length) + '</td></tr>';
+                html += '<td class="total-col" style="background:' + totalBg + ';color:' + totalColor + ';font-weight:bold;">' + fmtYen(total) + '</td><td class="avg-col" style="background:' + totalBg + ';">' + fmtYen(total / numMonths) + '</td></tr>';
             });
 
             // === 顧客予算との比較セクション ===
-            html += '<tr style="background:#1565c0;color:white;"><td colspan="' + (activeMonths.length + 3) + '" style="font-weight:bold;text-align:center;padding:12px;font-size:14px;">━━━ 顧客予算との比較 ━━━</td></tr>';
+            html += '<tr style="background:#1565c0;color:white;"><td colspan="' + (numMonths + 3) + '" style="font-weight:bold;text-align:center;padding:12px;font-size:14px;">━━━ 顧客予算との比較 ━━━</td></tr>';
 
             // ===== 売上比較グループ =====
-            html += '<tr style="background:#263238;color:white;"><td colspan="' + (activeMonths.length + 3) + '" style="font-weight:bold;padding:8px;">【売上】対比</td></tr>';
+            html += '<tr style="background:#263238;color:white;"><td colspan="' + (numMonths + 3) + '" style="font-weight:bold;padding:8px;">【売上】対比</td></tr>';
 
-            // MQ計算売上
+            // MQ計算売上（会計年度順）
             html += '<tr style="background:#e3f2fd;border-left:4px solid #1565c0;"><td style="padding-left:20px;font-weight:bold;">MQ計算値（売上）</td>';
             var mqSalesTotal = 0;
-            for (var m = 0; m < activeMonths.length; m++) {
-                var val = mqOutputs[m].sales || 0;
+            for (var i = 0; i < numMonths; i++) {
+                var pos = fiscalSortedMonths[i].position;
+                var val = mqOutputs[pos] ? (mqOutputs[pos].sales || 0) : 0;
                 mqSalesTotal += val;
                 html += '<td class="output-cell" style="background:#e3f2fd;font-weight:bold;color:#1565c0;">' + fmtYen(val) + '</td>';
             }
-            html += '<td class="total-col" style="background:#bbdefb;font-weight:bold;color:#1565c0;">' + fmtYen(mqSalesTotal) + '</td><td class="avg-col" style="background:#bbdefb;">' + fmtYen(mqSalesTotal / activeMonths.length) + '</td></tr>';
+            html += '<td class="total-col" style="background:#bbdefb;font-weight:bold;color:#1565c0;">' + fmtYen(mqSalesTotal) + '</td><td class="avg-col" style="background:#bbdefb;">' + fmtYen(mqSalesTotal / numMonths) + '</td></tr>';
 
-            // 顧客予算売上（Item 4 = 売上高合計（税抜））
+            // 顧客予算売上（Item 4 = 売上高合計（税抜））- 会計年度順
             html += '<tr style="background:#fff8e1;border-left:4px solid #f57c00;"><td style="padding-left:20px;font-weight:bold;">顧客予算（売上）</td>';
             var budgetSalesTotal = 0;
-            for (var m = 0; m < activeMonths.length; m++) {
-                var val = annualData[4] ? (annualData[4][m] || 0) : 0;
+            for (var i = 0; i < numMonths; i++) {
+                var pos = fiscalSortedMonths[i].position;
+                var val = annualData[4] ? (annualData[4][pos] || 0) : 0;
                 budgetSalesTotal += val;
                 html += '<td class="output-cell" style="background:#fff8e1;font-weight:bold;color:#e65100;">' + fmtYen(val) + '</td>';
             }
-            html += '<td class="total-col" style="background:#ffecb3;font-weight:bold;color:#e65100;">' + fmtYen(budgetSalesTotal) + '</td><td class="avg-col" style="background:#ffecb3;">' + fmtYen(budgetSalesTotal / activeMonths.length) + '</td></tr>';
+            html += '<td class="total-col" style="background:#ffecb3;font-weight:bold;color:#e65100;">' + fmtYen(budgetSalesTotal) + '</td><td class="avg-col" style="background:#ffecb3;">' + fmtYen(budgetSalesTotal / numMonths) + '</td></tr>';
 
-            // 売上差異
+            // 売上差異（会計年度順）
             html += '<tr style="background:#eceff1;border-left:4px solid #607d8b;"><td style="padding-left:20px;">差異（MQ - 予算）</td>';
             var salesDiffTotal = 0;
-            for (var m = 0; m < activeMonths.length; m++) {
-                var mqSales = mqOutputs[m].sales || 0;
-                var budgetSales = annualData[4] ? (annualData[4][m] || 0) : 0;  // No.4 売上高合計（税抜）
+            for (var i = 0; i < numMonths; i++) {
+                var pos = fiscalSortedMonths[i].position;
+                var mqSales = mqOutputs[pos] ? (mqOutputs[pos].sales || 0) : 0;
+                var budgetSales = annualData[4] ? (annualData[4][pos] || 0) : 0;  // No.4 売上高合計（税抜）
                 var diff = mqSales - budgetSales;
                 salesDiffTotal += diff;
                 var color = diff >= 0 ? '#2e7d32' : '#c62828';
@@ -16262,34 +16519,37 @@
             html += '<td class="total-col" style="color:' + diffColor + ';background:' + diffBg + ';font-weight:bold;">' + (salesDiffTotal >= 0 ? '+' : '') + fmtYen(salesDiffTotal) + '</td><td class="avg-col" style="background:#eceff1;">-</td></tr>';
 
             // ===== 営業利益比較グループ =====
-            html += '<tr style="background:#263238;color:white;"><td colspan="' + (activeMonths.length + 3) + '" style="font-weight:bold;padding:8px;">【営業利益】対比</td></tr>';
+            html += '<tr style="background:#263238;color:white;"><td colspan="' + (numMonths + 3) + '" style="font-weight:bold;padding:8px;">【営業利益】対比</td></tr>';
 
-            // MQ計算営業利益
+            // MQ計算営業利益（会計年度順）
             html += '<tr style="background:#e3f2fd;border-left:4px solid #1565c0;"><td style="padding-left:20px;font-weight:bold;">MQ計算値（営業利益）</td>';
             var mqProfitTotal = 0;
-            for (var m = 0; m < activeMonths.length; m++) {
-                var val = mqOutputs[m].operatingProfit || 0;
+            for (var i = 0; i < numMonths; i++) {
+                var pos = fiscalSortedMonths[i].position;
+                var val = mqOutputs[pos] ? (mqOutputs[pos].operatingProfit || 0) : 0;
                 mqProfitTotal += val;
                 html += '<td class="output-cell" style="background:#e3f2fd;font-weight:bold;color:#1565c0;">' + fmtYen(val) + '</td>';
             }
-            html += '<td class="total-col" style="background:#bbdefb;font-weight:bold;color:#1565c0;">' + fmtYen(mqProfitTotal) + '</td><td class="avg-col" style="background:#bbdefb;">' + fmtYen(mqProfitTotal / activeMonths.length) + '</td></tr>';
+            html += '<td class="total-col" style="background:#bbdefb;font-weight:bold;color:#1565c0;">' + fmtYen(mqProfitTotal) + '</td><td class="avg-col" style="background:#bbdefb;">' + fmtYen(mqProfitTotal / numMonths) + '</td></tr>';
 
-            // 顧客予算営業利益（Item 63 = 営業利益）
+            // 顧客予算営業利益（Item 63 = 営業利益）- 会計年度順
             html += '<tr style="background:#fff8e1;border-left:4px solid #f57c00;"><td style="padding-left:20px;font-weight:bold;">顧客予算（営業利益）</td>';
             var budgetProfitTotal = 0;
-            for (var m = 0; m < activeMonths.length; m++) {
-                var val = annualData[63] ? (annualData[63][m] || 0) : 0;
+            for (var i = 0; i < numMonths; i++) {
+                var pos = fiscalSortedMonths[i].position;
+                var val = annualData[63] ? (annualData[63][pos] || 0) : 0;
                 budgetProfitTotal += val;
                 html += '<td class="output-cell" style="background:#fff8e1;font-weight:bold;color:#e65100;">' + fmtYen(val) + '</td>';
             }
-            html += '<td class="total-col" style="background:#ffecb3;font-weight:bold;color:#e65100;">' + fmtYen(budgetProfitTotal) + '</td><td class="avg-col" style="background:#ffecb3;">' + fmtYen(budgetProfitTotal / activeMonths.length) + '</td></tr>';
+            html += '<td class="total-col" style="background:#ffecb3;font-weight:bold;color:#e65100;">' + fmtYen(budgetProfitTotal) + '</td><td class="avg-col" style="background:#ffecb3;">' + fmtYen(budgetProfitTotal / numMonths) + '</td></tr>';
 
-            // 営業利益差異
+            // 営業利益差異（会計年度順）
             html += '<tr style="background:#eceff1;border-left:4px solid #607d8b;"><td style="padding-left:20px;">差異（MQ - 予算）</td>';
             var profitDiffTotal = 0;
-            for (var m = 0; m < activeMonths.length; m++) {
-                var mqProfit = mqOutputs[m].operatingProfit || 0;
-                var budgetProfit = annualData[63] ? (annualData[63][m] || 0) : 0;
+            for (var i = 0; i < numMonths; i++) {
+                var pos = fiscalSortedMonths[i].position;
+                var mqProfit = mqOutputs[pos] ? (mqOutputs[pos].operatingProfit || 0) : 0;
+                var budgetProfit = annualData[63] ? (annualData[63][pos] || 0) : 0;
                 var diff = mqProfit - budgetProfit;
                 profitDiffTotal += diff;
                 var color = diff >= 0 ? '#2e7d32' : '#c62828';
@@ -16315,7 +16575,12 @@
             console.log('rakumyInputs:', rakumyInputs);
             console.log('activeMonths.length:', activeMonths ? activeMonths.length : 'undefined');
 
-            var html = createMonthHeaders();
+            // 会計年度順のソート情報を再構築
+            buildFiscalSortedMonths();
+
+            // 会計年度順のヘッダーを使用
+            var html = createFiscalMonthHeaders();
+            var numMonths = fiscalSortedMonths.length;
 
             // ヘルパー関数（金額は円単位表示）
             function addRow(name, values, isRate, style) {
@@ -16335,17 +16600,18 @@
             }
 
             function addSectionHeader(title, bgColor) {
-                html += '<tr style="background:' + bgColor + ';color:#fff;"><td colspan="' + (activeMonths.length + 3) + '" style="font-weight:bold;padding:8px;">' + title + '</td></tr>';
+                html += '<tr style="background:' + bgColor + ';color:#fff;"><td colspan="' + (numMonths + 3) + '" style="font-weight:bold;padding:8px;">' + title + '</td></tr>';
             }
 
-            // 月別データ取得関数
+            // 月別データ取得関数（会計年度順）
             function getMonthlyData(getValue) {
                 var result = [];
-                for (var m = 0; m < activeMonths.length; m++) {
+                for (var i = 0; i < fiscalSortedMonths.length; i++) {
+                    var pos = fiscalSortedMonths[i].position;
                     try {
-                        result.push(getValue(m));
+                        result.push(getValue(pos));
                     } catch (e) {
-                        console.error('getMonthlyData error at month ' + m + ':', e);
+                        console.error('getMonthlyData error at fiscal position ' + i + ' (data position ' + pos + '):', e);
                         result.push(0);
                     }
                 }
@@ -16739,7 +17005,6 @@
             loadStoreFiscalSettings();  // 店舗別会計年度設定の読み込み
             populateFiscalStoreSelect(); // 店舗選択プルダウン初期化
             renderFiscalYearPreview();
-            renderStoreFiscalSettingsList(); // 店舗別設定一覧表示
             // 項目マッピング一覧は設定タブ表示時に描画されるため、ここでは初期化のみ
             renderMappingCategoryFilter();
             // インポート列マッピング初期化
