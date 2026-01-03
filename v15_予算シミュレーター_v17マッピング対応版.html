@@ -543,6 +543,7 @@
             <div class="import-subtabs">
                 <button class="subtab active" onclick="switchImportSubtab('budget')">📥 予算インポート</button>
                 <button class="subtab" onclick="switchImportSubtab('settings')">⚙️ 設定インポート</button>
+                <button class="subtab" onclick="switchImportSubtab('master')">🔧 マスタ設定</button>
             </div>
 
             <!-- ===== 予算インポートサブタブ ===== -->
@@ -741,40 +742,6 @@
                         </div>
                     </div>
                     <div id="storeImportStatus" style="margin-top:10px;"></div>
-
-                    <!-- 店番編集セクション -->
-                    <div style="margin-top:20px;padding:15px;background:#f1f8e9;border-radius:8px;border:1px solid #c5e1a5;">
-                        <h3 style="color:#558b2f;font-size:14px;margin:0 0 10px 0;">🏪 店番マスタ設定</h3>
-                        <p style="color:#666;font-size:11px;margin-bottom:15px;">
-                            店番と店名の紐付けを編集できます。この設定は予算CSVインポート時の店舗マッチングに使用されます。
-                        </p>
-
-                        <!-- 操作ボタン群 -->
-                        <div style="margin-bottom:15px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-                            <button id="toggleStoreSummaryBtn" class="btn" style="background:#4caf50;color:#fff;padding:10px 20px;font-size:12px;" onclick="toggleStoreSummary()">
-                                📋 店番編集
-                            </button>
-                            <button class="btn" style="background:#8bc34a;color:#fff;padding:10px 20px;font-size:12px;" onclick="showAddStoreModal()">
-                                ➕ 新規店番追加
-                            </button>
-                            <button class="btn" style="background:#2196f3;color:#fff;padding:10px 20px;font-size:12px;" onclick="saveStoreSettings()">
-                                💾 店番設定を保存
-                            </button>
-                        </div>
-
-                        <!-- 店番一覧（初期非表示） -->
-                        <div id="storeSummaryList" style="display:none;background:#fff;border:1px solid #e0e0e0;border-radius:8px;">
-                            <!-- JavaScript で描画 -->
-                        </div>
-
-                        <div id="storeSummaryGuide" style="display:none;margin-top:15px;padding:10px;background:#e8f5e9;border-radius:8px;font-size:11px;color:#558b2f;border:1px solid #c5e1a5;">
-                            <strong>操作ガイド:</strong><br>
-                            ・<strong>↑↓ボタン</strong>: 店舗の表示順を変更<br>
-                            ・<strong>✏️ 編集</strong>: 店番・店名を編集<br>
-                            ・<strong>🗑️ 削除</strong>: 店舗を削除<br>
-                            ・設定はLocalStorageに保存され、次回起動時に自動的に復元されます。
-                        </div>
-                    </div>
                 </div>
 
                 <!-- 予算項目コードインポートセクション -->
@@ -852,58 +819,77 @@
                         1行目: 店番,店舗名,客単価タイプ,4月,5月,6月,7月,8月,9月,10月,11月,12月,1月,2月,3月<br>
                         2行目以降: 001,店舗名,総合,5000,5000,5000,... / 001,店舗名,ランチ,1000,... / 001,店舗名,ディナー,5000,...
                     </div>
+                </div>
+            </div><!-- /import-subtab-settings -->
 
-                    <!-- 客単価編集セクション -->
-                    <div style="margin-top:20px;padding:15px;background:#e1f5fe;border-radius:8px;border:1px solid #81d4fa;">
-                        <h3 style="color:#0277bd;font-size:14px;margin:0 0 10px 0;">💰 客単価マスタ設定</h3>
-                        <p style="color:#666;font-size:11px;margin-bottom:15px;">
-                            店舗別のデフォルト客単価を編集できます。この設定は予算インポート時の初期値として使用されます。
-                        </p>
+            <!-- ===== マスタ設定サブタブ ===== -->
+            <div id="import-subtab-master" class="import-subtab-content">
+                <!-- 店番マスタ設定セクション -->
+                <div class="import-section" style="border-left:4px solid #4caf50;margin-bottom:20px;">
+                    <h2 style="color:#2e7d32;font-size:18px;margin-bottom:20px;">🏪 店番マスタ設定</h2>
+                    <p style="color:#666;font-size:11px;margin-bottom:15px;">
+                        店番と店名の紐付けを編集できます。この設定は予算CSVインポート時の店舗マッチングに使用されます。
+                    </p>
 
-                        <!-- 操作ボタン群 -->
-                        <div style="margin-bottom:15px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-                            <button id="toggleUnitPriceSummaryBtn" class="btn" style="background:#2196f3;color:#fff;padding:10px 20px;font-size:12px;" onclick="toggleUnitPriceSummary()">
-                                📋 客単価編集
-                            </button>
-                            <button class="btn" style="background:#2196f3;color:#fff;padding:10px 20px;font-size:12px;" onclick="saveUnitPriceSettings()">
-                                💾 客単価設定を保存
-                            </button>
-                        </div>
+                    <!-- 操作ボタン群 -->
+                    <div style="margin-bottom:15px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+                        <button id="toggleStoreSummaryBtn" class="btn" style="background:#4caf50;color:#fff;padding:10px 20px;font-size:12px;" onclick="toggleStoreSummary()">
+                            📋 店番一覧
+                        </button>
+                        <button class="btn" style="background:#8bc34a;color:#fff;padding:10px 20px;font-size:12px;" onclick="showAddStoreModal()">
+                            ➕ 新規店番追加
+                        </button>
+                        <button class="btn" style="background:#2196f3;color:#fff;padding:10px 20px;font-size:12px;" onclick="saveStoreSettings()">
+                            💾 店番設定を保存
+                        </button>
+                    </div>
 
-                        <!-- 客単価一覧（初期非表示） -->
-                        <div id="unitPriceSummaryList" style="display:none;background:#fff;border:1px solid #e0e0e0;border-radius:8px;">
-                            <!-- JavaScript で描画 -->
-                        </div>
+                    <!-- 店番一覧（初期非表示） -->
+                    <div id="storeSummaryList" style="display:none;background:#fff;border:1px solid #e0e0e0;border-radius:8px;">
+                        <!-- JavaScript で描画 -->
+                    </div>
 
-                        <div id="unitPriceSummaryGuide" style="display:none;margin-top:15px;padding:10px;background:#e3f2fd;border-radius:8px;font-size:11px;color:#0277bd;border:1px solid #81d4fa;">
-                            <strong>操作ガイド:</strong><br>
-                            ・<strong>✏️ 編集</strong>: 店舗の客単価（総合/ランチ/ディナー）を編集<br>
-                            ・<strong>🗑️ 削除</strong>: 客単価設定を削除（デフォルト値に戻る）<br>
-                            ・設定はLocalStorageに保存され、次回起動時に自動的に復元されます。
-                        </div>
+                    <div id="storeSummaryGuide" style="display:none;margin-top:15px;padding:10px;background:#e8f5e9;border-radius:8px;font-size:11px;color:#558b2f;border:1px solid #c5e1a5;">
+                        <strong>操作ガイド:</strong><br>
+                        ・<strong>↑↓ボタン</strong>: 店舗の表示順を変更<br>
+                        ・<strong>✏️ 編集</strong>: 店番・店名を編集<br>
+                        ・<strong>🗑️ 削除</strong>: 店舗を削除<br>
+                        ・設定はLocalStorageに保存され、次回起動時に自動的に復元されます。
                     </div>
                 </div>
 
-                <!-- マスタ設定セクション -->
-                <div class="import-section" style="border-left:4px solid #9c27b0;margin-top:20px;">
-                    <h2 style="color:#7b1fa2;font-size:18px;margin-bottom:20px;">⚙️ マスタ設定</h2>
-                    <div style="display:flex;gap:15px;flex-wrap:wrap;">
-                        <button class="btn" style="background:linear-gradient(135deg, #9c27b0 0%, #6a1b9a 100%);color:#fff;padding:15px 30px;font-size:14px;border-radius:8px;" onclick="showMasterDataModal()">
-                            📋 マスタデータ履歴一覧
+                <!-- 客単価マスタ設定セクション -->
+                <div class="import-section" style="border-left:4px solid #2196f3;margin-bottom:20px;">
+                    <h2 style="color:#1565c0;font-size:18px;margin-bottom:20px;">💰 客単価マスタ設定</h2>
+                    <p style="color:#666;font-size:11px;margin-bottom:15px;">
+                        店舗別のデフォルト客単価を編集できます。この設定は予算インポート時の初期値として使用されます。
+                    </p>
+
+                    <!-- 操作ボタン群 -->
+                    <div style="margin-bottom:15px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+                        <button id="toggleUnitPriceSummaryBtn" class="btn" style="background:#2196f3;color:#fff;padding:10px 20px;font-size:12px;" onclick="toggleUnitPriceSummary()">
+                            📋 客単価一覧
                         </button>
-                        <button class="btn" style="background:#4caf50;color:#fff;padding:15px 30px;font-size:14px;border-radius:8px;" onclick="saveMasterDataToHistory()">
-                            💾 現在のマスタを履歴に保存
+                        <button class="btn" style="background:#2196f3;color:#fff;padding:10px 20px;font-size:12px;" onclick="saveUnitPriceSettings()">
+                            💾 客単価設定を保存
                         </button>
                     </div>
-                    <div style="margin-top:15px;padding:10px;background:#f3e5f5;border-radius:8px;font-size:11px;color:#7b1fa2;">
-                        <strong>マスタデータとは？</strong><br>
-                        予算項目コード（CUSTOMER_CODE_MAP / NAME_BASED_MAP）と店番（DEFAULT_UNIT_PRICES）の設定情報です。<br>
-                        履歴に保存しておくと、ブラウザを閉じても次回起動時に復元できます。
+
+                    <!-- 客単価一覧（初期非表示） -->
+                    <div id="unitPriceSummaryList" style="display:none;background:#fff;border:1px solid #e0e0e0;border-radius:8px;">
+                        <!-- JavaScript で描画 -->
+                    </div>
+
+                    <div id="unitPriceSummaryGuide" style="display:none;margin-top:15px;padding:10px;background:#e3f2fd;border-radius:8px;font-size:11px;color:#0277bd;border:1px solid #81d4fa;">
+                        <strong>操作ガイド:</strong><br>
+                        ・<strong>✏️ 編集</strong>: 店舗の客単価（総合/ランチ/ディナー）を編集<br>
+                        ・<strong>🗑️ 削除</strong>: 客単価設定を削除（デフォルト値に戻る）<br>
+                        ・設定はLocalStorageに保存され、次回起動時に自動的に復元されます。
                     </div>
                 </div>
 
-                <!-- カテゴリマッピング設定セクション（B案：サマリービュー） -->
-                <div class="import-section" style="border-left:4px solid #ff9800;margin-top:20px;">
+                <!-- 予算項目マッピング設定セクション -->
+                <div class="import-section" style="border-left:4px solid #ff9800;margin-bottom:20px;">
                     <h2 style="color:#f57c00;font-size:18px;margin-bottom:20px;">✏️ 予算項目マッピング設定</h2>
                     <p style="color:#666;font-size:11px;margin-bottom:15px;">
                         予算カテゴリと予算項目コード（科目コード）・予算項目名の紐付けを編集できます。<br>
@@ -913,7 +899,7 @@
                     <!-- 操作ボタン群 -->
                     <div style="margin-bottom:15px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
                         <button id="toggleCategorySummaryBtn" class="btn" style="background:#ff9800;color:#fff;padding:10px 20px;font-size:12px;" onclick="toggleCategorySummary()">
-                            📋 カテゴリ編集
+                            📋 カテゴリ一覧
                         </button>
                         <button class="btn" style="background:#4caf50;color:#fff;padding:10px 20px;font-size:12px;" onclick="showAddItemMappingModal()">
                             ➕ 新規項目追加
@@ -938,7 +924,25 @@
                         ・設定はLocalStorageに保存され、次回起動時に自動的に復元されます。
                     </div>
                 </div>
-            </div><!-- /import-subtab-settings -->
+
+                <!-- マスタデータ履歴セクション -->
+                <div class="import-section" style="border-left:4px solid #9c27b0;margin-bottom:20px;">
+                    <h2 style="color:#7b1fa2;font-size:18px;margin-bottom:20px;">⚙️ マスタデータ管理</h2>
+                    <div style="display:flex;gap:15px;flex-wrap:wrap;">
+                        <button class="btn" style="background:linear-gradient(135deg, #9c27b0 0%, #6a1b9a 100%);color:#fff;padding:15px 30px;font-size:14px;border-radius:8px;" onclick="showMasterDataModal()">
+                            📋 マスタデータ履歴一覧
+                        </button>
+                        <button class="btn" style="background:#4caf50;color:#fff;padding:15px 30px;font-size:14px;border-radius:8px;" onclick="saveMasterDataToHistory()">
+                            💾 現在のマスタを履歴に保存
+                        </button>
+                    </div>
+                    <div style="margin-top:15px;padding:10px;background:#f3e5f5;border-radius:8px;font-size:11px;color:#7b1fa2;">
+                        <strong>マスタデータとは？</strong><br>
+                        予算項目コード（CUSTOMER_CODE_MAP / NAME_BASED_MAP）と店番（DEFAULT_UNIT_PRICES）の設定情報です。<br>
+                        履歴に保存しておくと、ブラウザを閉じても次回起動時に復元できます。
+                    </div>
+                </div>
+            </div><!-- /import-subtab-master -->
 
             <!-- 項目マッピング編集モーダル -->
             <div id="itemMappingEditModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1001;overflow-y:auto;">
@@ -2667,12 +2671,17 @@
             var targetContent = document.getElementById('import-subtab-' + tabName);
             if (targetContent) targetContent.classList.add('active');
 
-            // 設定タブ表示時にリストを更新
+            // 設定インポートタブ表示時にリストを更新
             if (tabName === 'settings') {
                 if (typeof updateCurrentStoreList === 'function') updateCurrentStoreList();
                 if (typeof updateCurrentMappingList === 'function') updateCurrentMappingList();
                 if (typeof renderMappingCategoryFilter === 'function') renderMappingCategoryFilter();
-                // カテゴリサマリーは初期非表示（編集ボタンで表示）
+            }
+
+            // マスタ設定タブ表示時の処理
+            if (tabName === 'master') {
+                // マスタ設定タブ初期化（一覧は各編集ボタンで表示）
+                console.log('マスタ設定タブが選択されました');
             }
         }
 
