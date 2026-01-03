@@ -858,6 +858,9 @@
 
                     <!-- 操作ボタン群 -->
                     <div style="margin-bottom:15px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+                        <button id="toggleCategorySummaryBtn" class="btn" style="background:#ff9800;color:#fff;padding:10px 20px;font-size:12px;" onclick="toggleCategorySummary()">
+                            📋 カテゴリ編集
+                        </button>
                         <button class="btn" style="background:#4caf50;color:#fff;padding:10px 20px;font-size:12px;" onclick="showAddItemMappingModal()">
                             ➕ 新規項目追加
                         </button>
@@ -869,12 +872,12 @@
                         </button>
                     </div>
 
-                    <!-- カテゴリサマリービュー -->
-                    <div id="categorySummaryList" style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;">
+                    <!-- カテゴリサマリービュー（初期非表示） -->
+                    <div id="categorySummaryList" style="display:none;background:#fff;border:1px solid #e0e0e0;border-radius:8px;">
                         <!-- JavaScript で描画 -->
                     </div>
 
-                    <div style="margin-top:15px;padding:10px;background:#fff8e1;border-radius:8px;font-size:11px;color:#f57c00;border:1px solid #ffc107;">
+                    <div id="categorySummaryGuide" style="display:none;margin-top:15px;padding:10px;background:#fff8e1;border-radius:8px;font-size:11px;color:#f57c00;border:1px solid #ffc107;">
                         <strong>操作ガイド:</strong><br>
                         ・<strong>↑↓ボタン</strong>: カテゴリの表示順を変更<br>
                         ・<strong>📋 項目一覧</strong>: カテゴリ内の項目を表示・編集<br>
@@ -2504,9 +2507,8 @@
             if (tabName === 'settings') {
                 if (typeof updateCurrentStoreList === 'function') updateCurrentStoreList();
                 if (typeof updateCurrentMappingList === 'function') updateCurrentMappingList();
-                // カテゴリサマリービューを描画（B案）
                 if (typeof renderMappingCategoryFilter === 'function') renderMappingCategoryFilter();
-                if (typeof renderCategorySummary === 'function') renderCategorySummary();
+                // カテゴリサマリーは初期非表示（編集ボタンで表示）
             }
         }
 
@@ -7351,6 +7353,33 @@
                 html += '<option value="' + cat.name + '">' + cat.name + '</option>';
             });
             select.innerHTML = html;
+        }
+
+        // カテゴリサマリービューの表示/非表示を切り替え
+        function toggleCategorySummary() {
+            var container = document.getElementById('categorySummaryList');
+            var guide = document.getElementById('categorySummaryGuide');
+            var btn = document.getElementById('toggleCategorySummaryBtn');
+            if (!container) return;
+
+            if (container.style.display === 'none') {
+                // 表示
+                renderCategorySummary();
+                container.style.display = 'block';
+                if (guide) guide.style.display = 'block';
+                if (btn) {
+                    btn.innerHTML = '✕ カテゴリ編集を閉じる';
+                    btn.style.background = '#757575';
+                }
+            } else {
+                // 非表示
+                container.style.display = 'none';
+                if (guide) guide.style.display = 'none';
+                if (btn) {
+                    btn.innerHTML = '📋 カテゴリ編集';
+                    btn.style.background = '#ff9800';
+                }
+            }
         }
 
         // カテゴリサマリービューを描画（B案）
