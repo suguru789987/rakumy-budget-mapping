@@ -882,6 +882,22 @@ var currentCustomColumns = [
 var currentColumnGroups = { enabled: false, type: 'none' }; // none, quarter, half
 ```
 
+### 会計年度設定の全画面連動強化（2026-01-03）
+
+| 変更項目 | 変更内容 |
+|---------|---------|
+| **fiscalSortedMonths配列追加** | 会計年度順のソート情報を保持する配列を新規追加（position, calendarMonth, fiscalIndex, label） |
+| buildFiscalSortedMonths()追加 | activeMonthsとFISCAL_ORDERに基づいてfiscalSortedMonthsを生成する関数 |
+| createFiscalMonthHeaders()追加 | fiscalSortedMonthsを使用してテーブルヘッダーHTMLを生成する関数 |
+| renderInputTable()対応 | 「顧客予算入力（CSV取込値）」テーブルを会計年度順で表示するよう修正 |
+| renderCalcTable()対応 | 計算結果テーブルを会計年度順で表示するよう修正 |
+| renderRakumyTables()対応 | ラクミー入力値テーブル（費用予算設定・単月費用予算・予算設定）を会計年度順で表示するよう修正 |
+| renderOutputTable()対応 | 出力テーブル（MQパイプライン・比較セクション等）を会計年度順で表示するよう修正 |
+| renderMonthColsGrid()対応 | 月列検出結果グリッドを会計年度順で表示するよう修正（FISCAL_ORDERでソート） |
+| refreshAllTablesForFiscalYear()拡張 | renderInputTable/renderCalcTable/renderRakumyTables/renderOutputTableの再描画呼び出しを追加 |
+| **CSVインポート仕様変更** | autoDetectFiscalYearFromCSV()の呼び出しを削除、会計年度マスタ設定を優先使用するよう変更 |
+| UI説明文更新 | 「予算CSVインポート前に会計年度を設定してください」の案内文を追加 |
+
 ### 会計年度設定機能（2026-01-03）
 
 | 変更項目 | 変更内容 |
@@ -965,6 +981,60 @@ var storeFiscalSettings = {
 - 月選択プルダウン（単月・複数月）
 - シミュレーション入力テーブル
 - 比較レポートテーブル
+
+#### 会計年度順ソート機能（fiscalSortedMonths）
+
+データ位置と会計年度表示順のマッピングを行う配列。
+
+```javascript
+// グローバル変数
+var fiscalSortedMonths = [];
+
+// 配列要素の構造
+fiscalSortedMonths = [
+    { position: 3, calendarMonth: 4, fiscalIndex: 0, label: '4月' },
+    { position: 4, calendarMonth: 5, fiscalIndex: 1, label: '5月' },
+    // ...
+    { position: 2, calendarMonth: 3, fiscalIndex: 11, label: '3月' }
+];
+
+// プロパティ説明
+// - position: activeMonths配列内のインデックス（データアクセス用）
+// - calendarMonth: カレンダー月（1-12）
+// - fiscalIndex: 会計年度内の順番（0-11）
+// - label: 表示ラベル（'4月'等）
+```
+
+| 関数名 | 説明 |
+|--------|------|
+| buildFiscalSortedMonths() | activeMonthsとFISCAL_ORDERに基づいてfiscalSortedMonthsを生成 |
+| createFiscalMonthHeaders() | fiscalSortedMonthsを使用してテーブルヘッダーHTMLを生成 |
+
+#### 会計年度順対応描画関数
+
+| 関数名 | 対応内容 |
+|--------|----------|
+| renderInputTable() | 「顧客予算入力（CSV取込値）」テーブルを会計年度順で表示 |
+| renderCalcTable() | 計算結果テーブルを会計年度順で表示 |
+| renderRakumyTables() | ラクミー入力値テーブル（費用予算設定・単月費用予算・予算設定）を会計年度順で表示 |
+| renderOutputTable() | 出力テーブル（MQパイプライン・比較セクション等）を会計年度順で表示 |
+| renderMonthColsGrid() | 月列検出結果グリッドを会計年度順で表示 |
+| refreshAllTablesForFiscalYear() | 会計年度設定変更時に全テーブルを再描画 |
+
+#### 会計年度マスタ設定優先仕様
+
+CSVインポート時、月データの取り込み順序は会計年度マスタ設定を使用。
+
+```javascript
+// CSVインポート時の処理
+// ★★★ 仕様変更: 会計年度マスタ設定の値を使用（CSVからの自動検出を無効化）★★★
+// autoDetectFiscalYearFromCSV() は呼び出さない
+addLog('=== 会計年度設定（マスタ設定を適用）===', 'info');
+addLog('開始月: ' + fiscalYearSettings.startMonth + '月', 'success');
+FISCAL_ORDER = generateFiscalOrder();
+```
+
+**重要**: CSVから月列を検出しても、表示順序と取り込み順序は常に会計年度マスタ設定に従う。CSVの月列の順序によって自動検出された開始月は使用しない。
 
 ### v5.8（前バージョン）
 
