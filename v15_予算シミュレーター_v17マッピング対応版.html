@@ -3003,10 +3003,12 @@
         var storeUnitPrices = {}; // { storeName: { 0: {total, lunch, dinner}, 1: {...}, ... } }
 
         // ★★★ 予算カテゴリマッピング（カテゴリ表示順・出力先設定） ★★★
+        // costType: 'fixed'=固定費, 'variable'=変動費, 'both'=両方, 'none'=対象外
         var BUDGET_CATEGORY_MAP = {
             '売上高': {
                 output: 'mq',           // 出力先: mq=MQ計算, cost=費用予算設定, both=両方
                 type: 'sales',
+                costType: 'none',       // 費用区分（固定費/変動費）
                 displayOrder: 1,
                 color: '#4caf50',
                 items: []               // カテゴリ内項目（sortOrder順）
@@ -3014,6 +3016,7 @@
             '売上原価': {
                 output: 'mq',
                 type: 'cost_of_sales',
+                costType: 'none',
                 displayOrder: 2,
                 color: '#ff9800',
                 items: []
@@ -3021,6 +3024,7 @@
             '人件費': {
                 output: 'both',         // 詳細で分岐（固定/変動）
                 type: 'labor',
+                costType: 'both',       // 固定人件費・変動人件費の両方あり
                 displayOrder: 3,
                 color: '#2196f3',
                 items: []
@@ -3028,6 +3032,7 @@
             '水道光熱費': {
                 output: 'cost',
                 type: 'utility',
+                costType: 'variable',   // 変動費
                 displayOrder: 4,
                 color: '#9c27b0',
                 items: []
@@ -3035,6 +3040,7 @@
             '販促費': {
                 output: 'cost',
                 type: 'promotion',
+                costType: 'variable',
                 displayOrder: 5,
                 color: '#e91e63',
                 items: []
@@ -3042,6 +3048,7 @@
             '店舗運営費': {
                 output: 'cost',
                 type: 'operation',
+                costType: 'variable',
                 displayOrder: 6,
                 color: '#00bcd4',
                 items: []
@@ -3049,6 +3056,7 @@
             '管理費': {
                 output: 'cost',
                 type: 'admin',
+                costType: 'variable',
                 displayOrder: 7,
                 color: '#607d8b',
                 items: []
@@ -3056,6 +3064,7 @@
             '教育・採用費': {
                 output: 'cost',
                 type: 'education',
+                costType: 'variable',
                 displayOrder: 8,
                 color: '#795548',
                 items: []
@@ -3063,6 +3072,7 @@
             'IT・外注費': {
                 output: 'cost',
                 type: 'it',
+                costType: 'variable',
                 displayOrder: 9,
                 color: '#3f51b5',
                 items: []
@@ -3070,6 +3080,7 @@
             '固定費': {
                 output: 'cost',
                 type: 'fixed',
+                costType: 'fixed',      // 固定費
                 displayOrder: 10,
                 color: '#f44336',
                 items: []
@@ -3077,6 +3088,7 @@
             '損益': {
                 output: 'mq',
                 type: 'profit',
+                costType: 'none',
                 displayOrder: 11,
                 color: '#673ab7',
                 items: []
@@ -3084,6 +3096,7 @@
             'その他変動費': {
                 output: 'cost',
                 type: 'variable',
+                costType: 'variable',
                 displayOrder: 12,
                 color: '#009688',
                 items: []
@@ -3091,6 +3104,7 @@
             'KPI': {
                 output: 'mq',
                 type: 'kpi',
+                costType: 'none',
                 displayOrder: 13,
                 color: '#ff5722',
                 items: []
@@ -11367,33 +11381,40 @@
         // 表示順設定を保存
         function saveCategorySettings() {
             try {
-                // カテゴリ順を保存
-                var categoryOrder = {};
+                // カテゴリ情報を保存（displayOrder + costType）
+                var categorySettings = {};
                 for (var cat in BUDGET_CATEGORY_MAP) {
-                    categoryOrder[cat] = BUDGET_CATEGORY_MAP[cat].displayOrder;
+                    categorySettings[cat] = {
+                        displayOrder: BUDGET_CATEGORY_MAP[cat].displayOrder,
+                        costType: BUDGET_CATEGORY_MAP[cat].costType || 'variable'
+                    };
                 }
 
-                // 項目順を保存
-                var itemOrder = {};
+                // 項目情報を保存（sortOrder + フラグ）
+                var itemSettings = {};
                 for (var code in CUSTOMER_CODE_MAP) {
                     var item = CUSTOMER_CODE_MAP[code];
-                    if (!itemOrder[item.budgetCategory]) {
-                        itemOrder[item.budgetCategory] = {};
-                    }
-                    itemOrder[item.budgetCategory][code] = item.sortOrder;
+                    itemSettings[code] = {
+                        sortOrder: item.sortOrder || 0,
+                        costType: item.costType,
+                        isCostInput: item.isCostInput,
+                        isBudgetInput: item.isBudgetInput,
+                        isTotal: item.isTotal,
+                        isCalculated: item.isCalculated
+                    };
                 }
 
                 var settings = {
-                    categoryOrder: categoryOrder,
-                    itemOrder: itemOrder,
+                    categorySettings: categorySettings,
+                    itemSettings: itemSettings,
                     savedAt: new Date().toISOString()
                 };
 
                 localStorage.setItem(CATEGORY_ORDER_KEY, JSON.stringify(settings));
-                showStatus('success', '表示順設定を保存しました');
+                showStatus('success', 'マッピング設定を保存しました');
             } catch (e) {
-                console.error('表示順設定の保存に失敗:', e);
-                showStatus('error', '表示順設定の保存に失敗しました');
+                console.error('マッピング設定の保存に失敗:', e);
+                showStatus('error', 'マッピング設定の保存に失敗しました');
             }
         }
 
@@ -11405,8 +11426,20 @@
 
                 var settings = JSON.parse(saved);
 
-                // カテゴリ順を復元
-                if (settings.categoryOrder) {
+                // 新形式: categorySettings
+                if (settings.categorySettings) {
+                    for (var cat in settings.categorySettings) {
+                        if (BUDGET_CATEGORY_MAP[cat]) {
+                            var catData = settings.categorySettings[cat];
+                            BUDGET_CATEGORY_MAP[cat].displayOrder = catData.displayOrder;
+                            if (catData.costType) {
+                                BUDGET_CATEGORY_MAP[cat].costType = catData.costType;
+                            }
+                        }
+                    }
+                }
+                // 旧形式: categoryOrder（後方互換）
+                else if (settings.categoryOrder) {
                     for (var cat in settings.categoryOrder) {
                         if (BUDGET_CATEGORY_MAP[cat]) {
                             BUDGET_CATEGORY_MAP[cat].displayOrder = settings.categoryOrder[cat];
@@ -11414,8 +11447,33 @@
                     }
                 }
 
-                // 項目順を復元
-                if (settings.itemOrder) {
+                // 新形式: itemSettings
+                if (settings.itemSettings) {
+                    for (var code in settings.itemSettings) {
+                        if (CUSTOMER_CODE_MAP[code]) {
+                            var itemData = settings.itemSettings[code];
+                            CUSTOMER_CODE_MAP[code].sortOrder = itemData.sortOrder || 0;
+                            // フラグを復元（undefinedでない場合のみ）
+                            if (typeof itemData.costType !== 'undefined') {
+                                CUSTOMER_CODE_MAP[code].costType = itemData.costType;
+                            }
+                            if (typeof itemData.isCostInput !== 'undefined') {
+                                CUSTOMER_CODE_MAP[code].isCostInput = itemData.isCostInput;
+                            }
+                            if (typeof itemData.isBudgetInput !== 'undefined') {
+                                CUSTOMER_CODE_MAP[code].isBudgetInput = itemData.isBudgetInput;
+                            }
+                            if (typeof itemData.isTotal !== 'undefined') {
+                                CUSTOMER_CODE_MAP[code].isTotal = itemData.isTotal;
+                            }
+                            if (typeof itemData.isCalculated !== 'undefined') {
+                                CUSTOMER_CODE_MAP[code].isCalculated = itemData.isCalculated;
+                            }
+                        }
+                    }
+                }
+                // 旧形式: itemOrder（後方互換）
+                else if (settings.itemOrder) {
                     for (var category in settings.itemOrder) {
                         for (var code in settings.itemOrder[category]) {
                             if (CUSTOMER_CODE_MAP[code]) {
@@ -11425,10 +11483,10 @@
                     }
                 }
 
-                console.log('[loadCategorySettings] 表示順設定を復元しました');
+                console.log('[loadCategorySettings] マッピング設定を復元しました');
                 return true;
             } catch (e) {
-                console.error('表示順設定の読み込みに失敗:', e);
+                console.error('マッピング設定の読み込みに失敗:', e);
                 return false;
             }
         }
@@ -11571,6 +11629,115 @@
             }
         }
 
+        // ★★★ 項目フラグ管理関数 ★★★
+        // フラグのデフォルト値を判定
+        // - 費用(isCostInput): 費用予算設定に入力する値
+        // - 予算(isBudgetInput): 顧客予算からインポートする個別の予算値
+        // - 合計(isTotal): 個別項目を合計した値（人件費合計、固定費合計など）
+        // - 演算(isCalculated): 合計値同士を演算した値（変動費合計、限界利益、営業利益など）
+
+        // 演算項目リスト（合計値同士を演算した結果）
+        // 例: 変動費合計 = 原価合計 + 人件費合計 + その他変動費合計
+        //     限界利益 = 売上高合計 - 変動費合計
+        //     営業利益 = 店舗営業利益 - 販売管理費合計
+        var CALCULATED_ITEMS = [
+            '変動費合計',       // = 原価合計 + 人件費合計 + その他変動費合計
+            '限界利益',         // = 売上高合計 - 変動費合計
+            '売上総利益',       // = 売上高合計 - 原価合計
+            '粗利益',           // = 売上高合計 - 原価合計
+            '店舗営業利益',     // = 限界利益 - 固定費合計
+            '営業利益',         // = 店舗営業利益 - 販売管理費合計
+            '経常利益',
+            '税引前利益',
+            '原価合計'          // = 食材原価 + ドリンク原価 + 内部振替（個別原価の合計だが演算扱い）
+        ];
+
+        function getItemFlags(item) {
+            var inputStyle = item.inputStyle || '';
+            var categoryInfo = BUDGET_CATEGORY_MAP[item.budgetCategory || item.category] || {};
+            var output = categoryInfo.output || 'cost';
+            var costType = item.costType || categoryInfo.costType || 'variable';
+            var name = item.name || '';
+
+            // 名前に「合計」「小計」が含まれるか
+            var hasTotalInName = name.indexOf('合計') >= 0 || name.indexOf('小計') >= 0;
+            // 演算項目リストに含まれるか（合計値同士の演算結果）
+            var isCalculatedItem = CALCULATED_ITEMS.indexOf(name) >= 0;
+            // 利益系の判定（名前に「利益」を含む）
+            var isProfitName = name.indexOf('利益') >= 0;
+
+            // デフォルト値を計算
+            var defaults = {
+                isCostInput: false,     // 費用入力値
+                isBudgetInput: false,   // 予算入力値（MQ計算用）
+                isTotal: false,         // 合計値（個別項目の合計）
+                isCalculated: false,    // 演算値（合計値同士の演算）
+                costType: costType      // 固定費/変動費
+            };
+
+            // inputStyleに基づくデフォルト値
+            if (inputStyle === 'A.そのまま入力') {
+                // 顧客予算からそのままインポートする値
+                if (output === 'mq' || output === 'both') {
+                    defaults.isBudgetInput = true;
+                }
+                if (output === 'cost' || output === 'both') {
+                    defaults.isCostInput = true;
+                }
+            } else if (inputStyle === 'B.合算して入力') {
+                // 複数項目を合算して入力する費用項目
+                defaults.isCostInput = true;
+            } else if (inputStyle === 'C.自動演算') {
+                // 演算項目リストに含まれる、または利益系 → 演算値
+                if (isCalculatedItem || isProfitName) {
+                    defaults.isCalculated = true;
+                }
+                // 「合計」を含むが演算項目でない → 合計値（個別項目の合計）
+                else if (hasTotalInName) {
+                    defaults.isTotal = true;
+                }
+                // それ以外（店舗売上高など）→ 予算値としてインポート
+                else {
+                    defaults.isBudgetInput = true;
+                }
+            } else if (inputStyle === 'D.参照のみ') {
+                // 参照のみの項目は予算値として扱う
+                defaults.isBudgetInput = true;
+            }
+
+            // 明示的に設定されている場合はその値を使用
+            return {
+                isCostInput: typeof item.isCostInput !== 'undefined' ? item.isCostInput : defaults.isCostInput,
+                isBudgetInput: typeof item.isBudgetInput !== 'undefined' ? item.isBudgetInput : defaults.isBudgetInput,
+                isTotal: typeof item.isTotal !== 'undefined' ? item.isTotal : defaults.isTotal,
+                isCalculated: typeof item.isCalculated !== 'undefined' ? item.isCalculated : defaults.isCalculated,
+                costType: item.costType || defaults.costType
+            };
+        }
+
+        // 項目のフラグを更新
+        function updateItemFlag(code, flagName, value) {
+            if (!CUSTOMER_CODE_MAP[code]) return;
+            CUSTOMER_CODE_MAP[code][flagName] = value;
+            console.log('[updateItemFlag] ' + code + '.' + flagName + ' = ' + value);
+        }
+
+        // 項目の費用区分を更新
+        function updateItemCostType(code, costType) {
+            if (!CUSTOMER_CODE_MAP[code]) return;
+            CUSTOMER_CODE_MAP[code].costType = costType;
+            console.log('[updateItemCostType] ' + code + '.costType = ' + costType);
+        }
+
+        // カテゴリの費用区分を更新
+        function updateCategoryCostType(categoryName, costType) {
+            if (!BUDGET_CATEGORY_MAP[categoryName]) return;
+            BUDGET_CATEGORY_MAP[categoryName].costType = costType;
+            console.log('[updateCategoryCostType] ' + categoryName + '.costType = ' + costType);
+            // カテゴリ一覧を再描画
+            renderCategorySummary();
+        }
+
         // カテゴリサマリービューを描画（B案）
         function renderCategorySummary() {
             try {
@@ -11602,6 +11769,7 @@
                 html += '<th style="padding:10px;text-align:left;">カテゴリ名</th>';
                 html += '<th style="padding:10px;text-align:center;width:80px;">項目数</th>';
                 html += '<th style="padding:10px;text-align:center;width:80px;">出力先</th>';
+                html += '<th style="padding:10px;text-align:center;width:90px;">費用区分</th>';
                 html += '<th style="padding:10px;text-align:center;width:100px;">操作</th>';
                 html += '</tr></thead><tbody>';
 
@@ -11612,6 +11780,8 @@
                     var isFirst = idx === 0;
                     var isLast = idx === categories.length - 1;
                     var outputLabel = catInfo && catInfo.output === 'mq' ? 'MQ計算' : (catInfo && catInfo.output === 'both' ? '両方' : '費用予算');
+                    var costType = catInfo ? catInfo.costType || 'none' : 'none';
+                    var showCostTypeSelect = catInfo && (catInfo.output === 'cost' || catInfo.output === 'both');
 
                     html += '<tr style="background:' + catColor + '20;border-bottom:1px solid #e0e0e0;">';
 
@@ -11634,6 +11804,19 @@
 
                     // 出力先
                     html += '<td style="padding:10px;text-align:center;font-size:10px;color:#666;">' + outputLabel + '</td>';
+
+                    // 費用区分（費用設定カテゴリのみプルダウン表示）
+                    html += '<td style="padding:10px;text-align:center;">';
+                    if (showCostTypeSelect) {
+                        html += '<select onchange="updateCategoryCostType(\'' + categoryName + '\', this.value)" style="font-size:10px;padding:3px 6px;border-radius:3px;border:1px solid #ccc;">';
+                        html += '<option value="variable"' + (costType === 'variable' ? ' selected' : '') + '>変動費</option>';
+                        html += '<option value="fixed"' + (costType === 'fixed' ? ' selected' : '') + '>固定費</option>';
+                        html += '<option value="both"' + (costType === 'both' ? ' selected' : '') + '>両方</option>';
+                        html += '</select>';
+                    } else {
+                        html += '<span style="color:#aaa;font-size:10px;">-</span>';
+                    }
+                    html += '</td>';
 
                     // 操作ボタン
                     html += '<td style="padding:10px;text-align:center;">';
@@ -11702,13 +11885,16 @@
                 if (!item) continue;
                 var itemCat = item.budgetCategory || item.category || '未分類';
                 if (itemCat !== categoryName) continue;
+                // フラグ情報を取得
+                var flags = getItemFlags(item);
                 items.push({
                     code: code,
                     name: item.name || '',
                     v15No: item.v15No || 0,
                     sortOrder: item.sortOrder || 0,
                     inputStyle: item.inputStyle || '',
-                    screen: item.screen || ''
+                    screen: item.screen || '',
+                    flags: flags
                 });
             }
 
@@ -11722,40 +11908,81 @@
 
             var catInfo = BUDGET_CATEGORY_MAP[categoryName];
             var catColor = catInfo ? catInfo.color : '#ff9800';
+            var showCostType = catInfo && (catInfo.output === 'cost' || catInfo.output === 'both');
 
             var html = '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
             html += '<thead><tr style="background:' + catColor + '30;">';
-            html += '<th style="padding:8px;text-align:center;width:60px;">順序</th>';
-            html += '<th style="padding:8px;text-align:center;width:80px;">科目コード</th>';
-            html += '<th style="padding:8px;text-align:left;">予算項目名</th>';
-            html += '<th style="padding:8px;text-align:center;width:60px;">v17No</th>';
-            html += '<th style="padding:8px;text-align:center;width:100px;">操作</th>';
+            html += '<th style="padding:6px;text-align:center;width:50px;">順序</th>';
+            html += '<th style="padding:6px;text-align:center;width:70px;">コード</th>';
+            html += '<th style="padding:6px;text-align:left;">予算項目名</th>';
+            html += '<th style="padding:6px;text-align:center;width:50px;">v17No</th>';
+            // フラグ列ヘッダー
+            html += '<th style="padding:6px;text-align:center;width:50px;" title="費用予算設定に入力">費用</th>';
+            html += '<th style="padding:6px;text-align:center;width:50px;" title="MQ計算に必要な予算値">予算</th>';
+            html += '<th style="padding:6px;text-align:center;width:50px;" title="合計・小計値">合計</th>';
+            html += '<th style="padding:6px;text-align:center;width:50px;" title="自動演算値">演算</th>';
+            // 費用区分（費用設定カテゴリのみ）
+            if (showCostType) {
+                html += '<th style="padding:6px;text-align:center;width:80px;">費用区分</th>';
+            }
+            html += '<th style="padding:6px;text-align:center;width:60px;">操作</th>';
             html += '</tr></thead><tbody>';
 
             items.forEach(function(item, idx) {
                 var isFirst = idx === 0;
                 var isLast = idx === items.length - 1;
+                var flags = item.flags;
 
                 html += '<tr style="background:' + (idx % 2 === 0 ? '#fff' : '#fafafa') + ';border-bottom:1px solid #eee;">';
 
                 // 順序ボタン
-                html += '<td style="padding:8px;text-align:center;">';
-                html += '<button onclick="moveItemUp(\'' + item.code + '\')" style="background:' + (isFirst ? '#e0e0e0' : '#ff9800') + ';color:#fff;border:none;padding:3px 8px;border-radius:3px;cursor:' + (isFirst ? 'not-allowed' : 'pointer') + ';font-size:10px;margin-right:2px;" ' + (isFirst ? 'disabled' : '') + '>↑</button>';
-                html += '<button onclick="moveItemDown(\'' + item.code + '\')" style="background:' + (isLast ? '#e0e0e0' : '#ff9800') + ';color:#fff;border:none;padding:3px 8px;border-radius:3px;cursor:' + (isLast ? 'not-allowed' : 'pointer') + ';font-size:10px;" ' + (isLast ? 'disabled' : '') + '>↓</button>';
+                html += '<td style="padding:6px;text-align:center;">';
+                html += '<button onclick="moveItemUp(\'' + item.code + '\')" style="background:' + (isFirst ? '#e0e0e0' : '#ff9800') + ';color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:' + (isFirst ? 'not-allowed' : 'pointer') + ';font-size:9px;margin-right:1px;" ' + (isFirst ? 'disabled' : '') + '>↑</button>';
+                html += '<button onclick="moveItemDown(\'' + item.code + '\')" style="background:' + (isLast ? '#e0e0e0' : '#ff9800') + ';color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:' + (isLast ? 'not-allowed' : 'pointer') + ';font-size:9px;" ' + (isLast ? 'disabled' : '') + '>↓</button>';
                 html += '</td>';
 
                 // 科目コード
-                html += '<td style="padding:8px;text-align:center;"><code style="background:#e0e0e0;padding:2px 8px;border-radius:3px;">' + item.code + '</code></td>';
+                html += '<td style="padding:6px;text-align:center;"><code style="background:#e0e0e0;padding:1px 4px;border-radius:3px;font-size:10px;">' + item.code + '</code></td>';
 
                 // 予算項目名
-                html += '<td style="padding:8px;">' + escapeHtml(item.name) + '</td>';
+                html += '<td style="padding:6px;font-size:11px;">' + escapeHtml(item.name) + '</td>';
 
                 // v17No
-                html += '<td style="padding:8px;text-align:center;">' + (item.v15No || '-') + '</td>';
+                html += '<td style="padding:6px;text-align:center;">' + (item.v15No || '-') + '</td>';
+
+                // フラグチェックボックス - 費用入力値
+                html += '<td style="padding:6px;text-align:center;">';
+                html += '<input type="checkbox" ' + (flags.isCostInput ? 'checked' : '') + ' onchange="updateItemFlag(\'' + item.code + '\', \'isCostInput\', this.checked); renderCategoryItemsList(\'' + categoryName + '\');" style="cursor:pointer;">';
+                html += '</td>';
+
+                // フラグチェックボックス - 予算入力値
+                html += '<td style="padding:6px;text-align:center;">';
+                html += '<input type="checkbox" ' + (flags.isBudgetInput ? 'checked' : '') + ' onchange="updateItemFlag(\'' + item.code + '\', \'isBudgetInput\', this.checked); renderCategoryItemsList(\'' + categoryName + '\');" style="cursor:pointer;">';
+                html += '</td>';
+
+                // フラグチェックボックス - 合計値
+                html += '<td style="padding:6px;text-align:center;">';
+                html += '<input type="checkbox" ' + (flags.isTotal ? 'checked' : '') + ' onchange="updateItemFlag(\'' + item.code + '\', \'isTotal\', this.checked); renderCategoryItemsList(\'' + categoryName + '\');" style="cursor:pointer;">';
+                html += '</td>';
+
+                // フラグチェックボックス - 演算値
+                html += '<td style="padding:6px;text-align:center;">';
+                html += '<input type="checkbox" ' + (flags.isCalculated ? 'checked' : '') + ' onchange="updateItemFlag(\'' + item.code + '\', \'isCalculated\', this.checked); renderCategoryItemsList(\'' + categoryName + '\');" style="cursor:pointer;">';
+                html += '</td>';
+
+                // 費用区分プルダウン（費用設定カテゴリのみ）
+                if (showCostType) {
+                    html += '<td style="padding:6px;text-align:center;">';
+                    html += '<select onchange="updateItemCostType(\'' + item.code + '\', this.value); renderCategoryItemsList(\'' + categoryName + '\');" style="font-size:10px;padding:2px;border-radius:3px;border:1px solid #ccc;">';
+                    html += '<option value="variable"' + (flags.costType === 'variable' ? ' selected' : '') + '>変動費</option>';
+                    html += '<option value="fixed"' + (flags.costType === 'fixed' ? ' selected' : '') + '>固定費</option>';
+                    html += '</select>';
+                    html += '</td>';
+                }
 
                 // 操作ボタン
-                html += '<td style="padding:8px;text-align:center;">';
-                html += '<button onclick="showEditItemMappingModal(\'' + item.code + '\')" style="background:#4caf50;color:#fff;border:none;padding:5px 12px;border-radius:3px;cursor:pointer;font-size:10px;">✏️ 編集</button>';
+                html += '<td style="padding:6px;text-align:center;">';
+                html += '<button onclick="showEditItemMappingModal(\'' + item.code + '\')" style="background:#4caf50;color:#fff;border:none;padding:4px 8px;border-radius:3px;cursor:pointer;font-size:9px;">編集</button>';
                 html += '</td>';
 
                 html += '</tr>';
