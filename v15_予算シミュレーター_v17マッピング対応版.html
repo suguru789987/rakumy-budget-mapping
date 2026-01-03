@@ -1397,11 +1397,11 @@
                             MQ試算では目標客単価（P）を使用します。<br>
                             現在のデフォルト値は前年設定値から取得しています。
                         </p>
-                        <div style="display:flex;gap:10px;justify-content:center;position:relative;z-index:10;">
-                            <button type="button" onclick="alert('デフォルトボタンクリック');executeSimMQWithoutEdit()" class="btn" style="padding:12px 25px;background:#4caf50;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;position:relative;z-index:11;">
+                        <div style="display:flex;gap:10px;justify-content:center;">
+                            <button type="button" onclick="executeSimMQWithoutEdit()" class="btn" style="padding:12px 25px;background:#4caf50;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;">
                                 デフォルトで計算
                             </button>
-                            <button type="button" onclick="alert('編集ボタンクリック');showSimUnitPriceEditModal()" class="btn" style="padding:12px 25px;background:#ff9800;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;position:relative;z-index:11;">
+                            <button type="button" onclick="showSimUnitPriceEditModal()" class="btn" style="padding:12px 25px;background:#ff9800;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;">
                                 客単価を編集
                             </button>
                         </div>
@@ -1412,8 +1412,8 @@
                 </div>
 
                 <!-- ===== 予算試算用 目標客単価編集モーダル ===== -->
-                <div id="simUnitPriceEditModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1001;justify-content:center;align-items:center;overflow-y:auto;">
-                    <div style="background:#fff;border-radius:12px;padding:25px;max-width:700px;width:95%;margin:20px auto;box-shadow:0 10px 40px rgba(0,0,0,0.3);">
+                <div id="simUnitPriceEditModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1001;overflow-y:auto;">
+                    <div style="background:#fff;border-radius:12px;padding:25px;max-width:700px;width:95%;margin:50px auto;box-shadow:0 10px 40px rgba(0,0,0,0.3);">
                         <h3 style="color:#ff9800;margin:0 0 15px 0;font-size:16px;">📝 月別目標客単価編集</h3>
                         <p style="color:#666;font-size:11px;margin:0 0 15px 0;">
                             <span id="simMonthCountDisplay2">0</span>ヶ月分の目標客単価を編集できます（店舗別デフォルト値設定済み）
@@ -5064,7 +5064,7 @@
 
                 if (modal) {
                     console.log('表示前display:', modal.style.display);
-                    modal.style.display = 'flex';
+                    modal.style.display = 'block';
                     console.log('表示後display:', modal.style.display);
                     console.log('modal.offsetWidth:', modal.offsetWidth);
                     console.log('modal.offsetHeight:', modal.offsetHeight);
