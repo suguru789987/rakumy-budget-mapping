@@ -742,14 +742,38 @@
                     </div>
                     <div id="storeImportStatus" style="margin-top:10px;"></div>
 
-                    <!-- 現在の店舗一覧 -->
-                    <div style="margin-top:20px;">
-                        <details>
-                            <summary style="cursor:pointer;padding:10px;background:#e8f5e9;border-radius:4px;font-weight:bold;color:#2e7d32;">
-                                📋 現在の登録店舗一覧を表示（クリックで展開）
-                            </summary>
-                            <div id="currentStoreList" style="margin-top:10px;max-height:300px;overflow-y:auto;"></div>
-                        </details>
+                    <!-- 店番編集セクション -->
+                    <div style="margin-top:20px;padding:15px;background:#f1f8e9;border-radius:8px;border:1px solid #c5e1a5;">
+                        <h3 style="color:#558b2f;font-size:14px;margin:0 0 10px 0;">🏪 店番マスタ設定</h3>
+                        <p style="color:#666;font-size:11px;margin-bottom:15px;">
+                            店番と店名の紐付けを編集できます。この設定は予算CSVインポート時の店舗マッチングに使用されます。
+                        </p>
+
+                        <!-- 操作ボタン群 -->
+                        <div style="margin-bottom:15px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+                            <button id="toggleStoreSummaryBtn" class="btn" style="background:#4caf50;color:#fff;padding:10px 20px;font-size:12px;" onclick="toggleStoreSummary()">
+                                📋 店番編集
+                            </button>
+                            <button class="btn" style="background:#8bc34a;color:#fff;padding:10px 20px;font-size:12px;" onclick="showAddStoreModal()">
+                                ➕ 新規店番追加
+                            </button>
+                            <button class="btn" style="background:#2196f3;color:#fff;padding:10px 20px;font-size:12px;" onclick="saveStoreSettings()">
+                                💾 店番設定を保存
+                            </button>
+                        </div>
+
+                        <!-- 店番一覧（初期非表示） -->
+                        <div id="storeSummaryList" style="display:none;background:#fff;border:1px solid #e0e0e0;border-radius:8px;">
+                            <!-- JavaScript で描画 -->
+                        </div>
+
+                        <div id="storeSummaryGuide" style="display:none;margin-top:15px;padding:10px;background:#e8f5e9;border-radius:8px;font-size:11px;color:#558b2f;border:1px solid #c5e1a5;">
+                            <strong>操作ガイド:</strong><br>
+                            ・<strong>↑↓ボタン</strong>: 店舗の表示順を変更<br>
+                            ・<strong>✏️ 編集</strong>: 店番・店名を編集<br>
+                            ・<strong>🗑️ 削除</strong>: 店舗を削除<br>
+                            ・設定はLocalStorageに保存され、次回起動時に自動的に復元されます。
+                        </div>
                     </div>
                 </div>
 
@@ -983,6 +1007,65 @@
                         <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
                             <button onclick="hideCategoryItemsModal()" style="background:#9e9e9e;color:#fff;border:none;padding:12px 25px;border-radius:6px;font-size:13px;font-weight:bold;cursor:pointer;">
                                 閉じる
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 店番編集モーダル -->
+            <div id="storeEditModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1001;overflow-y:auto;">
+                <div style="background:#fff;border-radius:12px;margin:50px auto;max-width:500px;width:95%;box-shadow:0 4px 20px rgba(0,0,0,0.3);">
+                    <div style="background:linear-gradient(135deg, #4caf50 0%, #388e3c 100%);color:#fff;padding:20px;border-radius:12px 12px 0 0;display:flex;justify-content:space-between;align-items:center;">
+                        <h3 id="storeModalTitle" style="margin:0;font-size:18px;">🏪 店番編集</h3>
+                        <button onclick="hideStoreModal()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;padding:8px 15px;border-radius:4px;cursor:pointer;">✕ 閉じる</button>
+                    </div>
+                    <div style="padding:25px;">
+                        <input type="hidden" id="storeEditMode" value="add">
+                        <input type="hidden" id="storeEditOriginalName" value="">
+
+                        <!-- 店番 -->
+                        <div style="margin-bottom:20px;">
+                            <label style="display:block;font-weight:bold;font-size:12px;color:#333;margin-bottom:8px;">店番（必須）</label>
+                            <input type="text" id="storeEditCode" placeholder="例: 101" style="width:100%;padding:12px;border:2px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;">
+                            <p style="font-size:10px;color:#666;margin-top:5px;">予算CSVの店番列と照合されます</p>
+                        </div>
+
+                        <!-- 店名 -->
+                        <div style="margin-bottom:20px;">
+                            <label style="display:block;font-weight:bold;font-size:12px;color:#333;margin-bottom:8px;">店名（必須）</label>
+                            <input type="text" id="storeEditName" placeholder="例: なかめのてっぺん 本店" style="width:100%;padding:12px;border:2px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;">
+                            <p style="font-size:10px;color:#666;margin-top:5px;">店舗の表示名として使用されます</p>
+                        </div>
+
+                        <!-- 客単価（合計） -->
+                        <div style="margin-bottom:20px;">
+                            <label style="display:block;font-weight:bold;font-size:12px;color:#333;margin-bottom:8px;">目標客単価（合計）</label>
+                            <input type="number" id="storeEditTotal" placeholder="例: 5000" style="width:100%;padding:12px;border:2px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;">
+                        </div>
+
+                        <!-- 客単価（ランチ・ディナー） -->
+                        <div style="display:flex;gap:15px;margin-bottom:20px;">
+                            <div style="flex:1;">
+                                <label style="display:block;font-weight:bold;font-size:12px;color:#333;margin-bottom:8px;">ランチ客単価</label>
+                                <input type="number" id="storeEditLunch" placeholder="0" style="width:100%;padding:12px;border:2px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;">
+                            </div>
+                            <div style="flex:1;">
+                                <label style="display:block;font-weight:bold;font-size:12px;color:#333;margin-bottom:8px;">ディナー客単価</label>
+                                <input type="number" id="storeEditDinner" placeholder="5000" style="width:100%;padding:12px;border:2px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;">
+                            </div>
+                        </div>
+
+                        <!-- ボタン -->
+                        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:25px;">
+                            <button id="storeDeleteBtn" onclick="deleteStore()" style="background:#f44336;color:#fff;border:none;padding:12px 25px;border-radius:6px;font-size:13px;font-weight:bold;cursor:pointer;display:none;">
+                                🗑️ 削除
+                            </button>
+                            <button onclick="hideStoreModal()" style="background:#9e9e9e;color:#fff;border:none;padding:12px 25px;border-radius:6px;font-size:13px;font-weight:bold;cursor:pointer;">
+                                キャンセル
+                            </button>
+                            <button onclick="saveStore()" style="background:#4caf50;color:#fff;border:none;padding:12px 25px;border-radius:6px;font-size:13px;font-weight:bold;cursor:pointer;">
+                                💾 保存
                             </button>
                         </div>
                     </div>
@@ -6973,6 +7056,323 @@
             reader.readAsText(file, 'UTF-8');
         }
 
+        // ★★★ 店番マスタ編集機能 ★★★
+
+        // 店番一覧の表示/非表示を切り替え
+        function toggleStoreSummary() {
+            var container = document.getElementById('storeSummaryList');
+            var guide = document.getElementById('storeSummaryGuide');
+            var btn = document.getElementById('toggleStoreSummaryBtn');
+            if (!container) return;
+
+            if (container.style.display === 'none') {
+                // 表示
+                renderStoreSummary();
+                container.style.display = 'block';
+                if (guide) guide.style.display = 'block';
+                if (btn) {
+                    btn.innerHTML = '✕ 店番編集を閉じる';
+                    btn.style.background = '#757575';
+                }
+            } else {
+                // 非表示
+                container.style.display = 'none';
+                if (guide) guide.style.display = 'none';
+                if (btn) {
+                    btn.innerHTML = '📋 店番編集';
+                    btn.style.background = '#4caf50';
+                }
+            }
+        }
+
+        // 店番一覧を描画
+        function renderStoreSummary() {
+            var container = document.getElementById('storeSummaryList');
+            if (!container) return;
+
+            // 店舗リストを取得（_defaultを除く）
+            var storeNames = Object.keys(DEFAULT_UNIT_PRICES).filter(function(name) {
+                return name !== '_default';
+            });
+
+            // sortOrder順でソート（sortOrderがなければ店番順、それもなければ名前順）
+            storeNames.sort(function(a, b) {
+                var storeA = DEFAULT_UNIT_PRICES[a];
+                var storeB = DEFAULT_UNIT_PRICES[b];
+                var orderA = storeA.sortOrder !== undefined ? storeA.sortOrder : 9999;
+                var orderB = storeB.sortOrder !== undefined ? storeB.sortOrder : 9999;
+                if (orderA !== orderB) return orderA - orderB;
+                // sortOrderが同じ場合は店番で比較
+                var codeA = storeA.storeCode || 'zzzz';
+                var codeB = storeB.storeCode || 'zzzz';
+                if (codeA !== codeB) return codeA.localeCompare(codeB, undefined, { numeric: true });
+                return a.localeCompare(b);
+            });
+
+            if (storeNames.length === 0) {
+                container.innerHTML = '<div style="padding:20px;text-align:center;color:#666;">登録店舗がありません</div>';
+                return;
+            }
+
+            var html = '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+            html += '<thead><tr style="background:#c8e6c9;">';
+            html += '<th style="padding:10px;text-align:center;width:60px;">順序</th>';
+            html += '<th style="padding:10px;text-align:center;width:80px;">店番</th>';
+            html += '<th style="padding:10px;text-align:left;">店名</th>';
+            html += '<th style="padding:10px;text-align:right;width:100px;">客単価(合計)</th>';
+            html += '<th style="padding:10px;text-align:center;width:120px;">操作</th>';
+            html += '</tr></thead><tbody>';
+
+            storeNames.forEach(function(storeName, idx) {
+                var store = DEFAULT_UNIT_PRICES[storeName];
+                var storeCode = store.storeCode || '';
+                var isFirst = idx === 0;
+                var isLast = idx === storeNames.length - 1;
+                var bgColor = idx % 2 === 0 ? '#fff' : '#f5f5f5';
+
+                html += '<tr style="background:' + bgColor + ';border-bottom:1px solid #e0e0e0;">';
+
+                // 順序ボタン
+                html += '<td style="padding:8px;text-align:center;">';
+                html += '<button onclick="moveStoreUp(\'' + escapeHtml(storeName).replace(/'/g, "\\'") + '\')" style="background:' + (isFirst ? '#ccc' : '#4caf50') + ';color:#fff;border:none;padding:3px 8px;border-radius:3px;cursor:' + (isFirst ? 'not-allowed' : 'pointer') + ';font-size:10px;margin-right:2px;" ' + (isFirst ? 'disabled' : '') + '>↑</button>';
+                html += '<button onclick="moveStoreDown(\'' + escapeHtml(storeName).replace(/'/g, "\\'") + '\')" style="background:' + (isLast ? '#ccc' : '#4caf50') + ';color:#fff;border:none;padding:3px 8px;border-radius:3px;cursor:' + (isLast ? 'not-allowed' : 'pointer') + ';font-size:10px;" ' + (isLast ? 'disabled' : '') + '>↓</button>';
+                html += '</td>';
+
+                // 店番
+                html += '<td style="padding:8px;text-align:center;">';
+                if (storeCode) {
+                    html += '<code style="background:#e8f5e9;padding:3px 8px;border-radius:3px;color:#2e7d32;">' + storeCode + '</code>';
+                } else {
+                    html += '<span style="color:#999;font-size:10px;">未設定</span>';
+                }
+                html += '</td>';
+
+                // 店名
+                html += '<td style="padding:8px;">' + escapeHtml(storeName) + '</td>';
+
+                // 客単価
+                html += '<td style="padding:8px;text-align:right;">' + (store.total || 0).toLocaleString() + '円</td>';
+
+                // 操作ボタン
+                html += '<td style="padding:8px;text-align:center;">';
+                html += '<button onclick="showEditStoreModal(\'' + escapeHtml(storeName).replace(/'/g, "\\'") + '\')" style="background:#ff9800;color:#fff;border:none;padding:4px 10px;border-radius:3px;cursor:pointer;font-size:10px;margin-right:4px;">✏️ 編集</button>';
+                html += '<button onclick="confirmDeleteStore(\'' + escapeHtml(storeName).replace(/'/g, "\\'") + '\')" style="background:#f44336;color:#fff;border:none;padding:4px 10px;border-radius:3px;cursor:pointer;font-size:10px;">🗑️</button>';
+                html += '</td>';
+
+                html += '</tr>';
+            });
+
+            html += '</tbody></table>';
+            html += '<div style="padding:10px;text-align:right;color:#666;font-size:11px;">合計: ' + storeNames.length + '店舗</div>';
+            container.innerHTML = html;
+        }
+
+        // 店舗を上に移動
+        function moveStoreUp(storeName) {
+            var storeNames = Object.keys(DEFAULT_UNIT_PRICES).filter(function(name) { return name !== '_default'; });
+            storeNames.sort(function(a, b) {
+                var orderA = DEFAULT_UNIT_PRICES[a].sortOrder !== undefined ? DEFAULT_UNIT_PRICES[a].sortOrder : 9999;
+                var orderB = DEFAULT_UNIT_PRICES[b].sortOrder !== undefined ? DEFAULT_UNIT_PRICES[b].sortOrder : 9999;
+                return orderA - orderB;
+            });
+
+            var idx = storeNames.indexOf(storeName);
+            if (idx <= 0) return;
+
+            var prevName = storeNames[idx - 1];
+            var currentOrder = DEFAULT_UNIT_PRICES[storeName].sortOrder !== undefined ? DEFAULT_UNIT_PRICES[storeName].sortOrder : idx;
+            var prevOrder = DEFAULT_UNIT_PRICES[prevName].sortOrder !== undefined ? DEFAULT_UNIT_PRICES[prevName].sortOrder : idx - 1;
+
+            DEFAULT_UNIT_PRICES[storeName].sortOrder = prevOrder;
+            DEFAULT_UNIT_PRICES[prevName].sortOrder = currentOrder;
+
+            renderStoreSummary();
+        }
+
+        // 店舗を下に移動
+        function moveStoreDown(storeName) {
+            var storeNames = Object.keys(DEFAULT_UNIT_PRICES).filter(function(name) { return name !== '_default'; });
+            storeNames.sort(function(a, b) {
+                var orderA = DEFAULT_UNIT_PRICES[a].sortOrder !== undefined ? DEFAULT_UNIT_PRICES[a].sortOrder : 9999;
+                var orderB = DEFAULT_UNIT_PRICES[b].sortOrder !== undefined ? DEFAULT_UNIT_PRICES[b].sortOrder : 9999;
+                return orderA - orderB;
+            });
+
+            var idx = storeNames.indexOf(storeName);
+            if (idx < 0 || idx >= storeNames.length - 1) return;
+
+            var nextName = storeNames[idx + 1];
+            var currentOrder = DEFAULT_UNIT_PRICES[storeName].sortOrder !== undefined ? DEFAULT_UNIT_PRICES[storeName].sortOrder : idx;
+            var nextOrder = DEFAULT_UNIT_PRICES[nextName].sortOrder !== undefined ? DEFAULT_UNIT_PRICES[nextName].sortOrder : idx + 1;
+
+            DEFAULT_UNIT_PRICES[storeName].sortOrder = nextOrder;
+            DEFAULT_UNIT_PRICES[nextName].sortOrder = currentOrder;
+
+            renderStoreSummary();
+        }
+
+        // 新規店番追加モーダル表示
+        function showAddStoreModal() {
+            document.getElementById('storeEditMode').value = 'add';
+            document.getElementById('storeEditOriginalName').value = '';
+            document.getElementById('storeModalTitle').textContent = '➕ 新規店番追加';
+            document.getElementById('storeDeleteBtn').style.display = 'none';
+
+            // フォームをクリア
+            document.getElementById('storeEditCode').value = '';
+            document.getElementById('storeEditName').value = '';
+            document.getElementById('storeEditTotal').value = '5000';
+            document.getElementById('storeEditLunch').value = '0';
+            document.getElementById('storeEditDinner').value = '5000';
+
+            document.getElementById('storeEditModal').style.display = 'block';
+        }
+
+        // 店番編集モーダル表示
+        function showEditStoreModal(storeName) {
+            var store = DEFAULT_UNIT_PRICES[storeName];
+            if (!store) {
+                alert('店舗が見つかりません: ' + storeName);
+                return;
+            }
+
+            document.getElementById('storeEditMode').value = 'edit';
+            document.getElementById('storeEditOriginalName').value = storeName;
+            document.getElementById('storeModalTitle').textContent = '✏️ 店番編集';
+            document.getElementById('storeDeleteBtn').style.display = 'inline-block';
+
+            // フォームに値を設定
+            document.getElementById('storeEditCode').value = store.storeCode || '';
+            document.getElementById('storeEditName').value = storeName;
+            document.getElementById('storeEditTotal').value = store.total || 5000;
+            document.getElementById('storeEditLunch').value = store.lunch || 0;
+            document.getElementById('storeEditDinner').value = store.dinner || 5000;
+
+            document.getElementById('storeEditModal').style.display = 'block';
+        }
+
+        // 店番編集モーダルを非表示
+        function hideStoreModal() {
+            document.getElementById('storeEditModal').style.display = 'none';
+        }
+
+        // 店番を保存
+        function saveStore() {
+            var mode = document.getElementById('storeEditMode').value;
+            var originalName = document.getElementById('storeEditOriginalName').value;
+            var storeCode = document.getElementById('storeEditCode').value.trim();
+            var storeName = document.getElementById('storeEditName').value.trim();
+            var total = parseInt(document.getElementById('storeEditTotal').value) || 5000;
+            var lunch = parseInt(document.getElementById('storeEditLunch').value) || 0;
+            var dinner = parseInt(document.getElementById('storeEditDinner').value) || 5000;
+
+            if (!storeName) {
+                alert('店名を入力してください');
+                return;
+            }
+
+            // 新規追加時、既存の店名と重複チェック
+            if (mode === 'add' && DEFAULT_UNIT_PRICES[storeName] && storeName !== '_default') {
+                alert('同じ店名が既に登録されています: ' + storeName);
+                return;
+            }
+
+            // 編集時に店名を変更した場合
+            if (mode === 'edit' && originalName !== storeName) {
+                if (DEFAULT_UNIT_PRICES[storeName] && storeName !== '_default') {
+                    alert('同じ店名が既に登録されています: ' + storeName);
+                    return;
+                }
+                // 旧店名を削除
+                var oldStore = DEFAULT_UNIT_PRICES[originalName];
+                delete DEFAULT_UNIT_PRICES[originalName];
+                // 新しい店名で保存（sortOrderを引き継ぐ）
+                DEFAULT_UNIT_PRICES[storeName] = {
+                    storeCode: storeCode,
+                    total: total,
+                    lunch: lunch,
+                    dinner: dinner,
+                    sortOrder: oldStore ? oldStore.sortOrder : undefined
+                };
+            } else {
+                // 新規または店名変更なし
+                if (!DEFAULT_UNIT_PRICES[storeName]) {
+                    DEFAULT_UNIT_PRICES[storeName] = {};
+                }
+                DEFAULT_UNIT_PRICES[storeName].storeCode = storeCode;
+                DEFAULT_UNIT_PRICES[storeName].total = total;
+                DEFAULT_UNIT_PRICES[storeName].lunch = lunch;
+                DEFAULT_UNIT_PRICES[storeName].dinner = dinner;
+            }
+
+            hideStoreModal();
+            renderStoreSummary();
+            updateCurrentStoreList();
+            showStatus('success', mode === 'add' ? '店舗を追加しました: ' + storeName : '店舗を更新しました: ' + storeName);
+        }
+
+        // 店舗削除確認
+        function confirmDeleteStore(storeName) {
+            if (confirm('店舗「' + storeName + '」を削除しますか？\n\nこの操作は取り消せません。')) {
+                deleteStoreByName(storeName);
+            }
+        }
+
+        // 店舗を削除（名前指定）
+        function deleteStoreByName(storeName) {
+            if (DEFAULT_UNIT_PRICES[storeName]) {
+                delete DEFAULT_UNIT_PRICES[storeName];
+                renderStoreSummary();
+                updateCurrentStoreList();
+                showStatus('success', '店舗を削除しました: ' + storeName);
+            }
+        }
+
+        // 店舗を削除（モーダルから）
+        function deleteStore() {
+            var originalName = document.getElementById('storeEditOriginalName').value;
+            if (!originalName) return;
+
+            if (confirm('店舗「' + originalName + '」を削除しますか？\n\nこの操作は取り消せません。')) {
+                deleteStoreByName(originalName);
+                hideStoreModal();
+            }
+        }
+
+        // 店番設定を保存（LocalStorage）
+        function saveStoreSettings() {
+            try {
+                var storeData = {};
+                Object.keys(DEFAULT_UNIT_PRICES).forEach(function(name) {
+                    if (name !== '_default') {
+                        storeData[name] = DEFAULT_UNIT_PRICES[name];
+                    }
+                });
+                localStorage.setItem('rakumy_store_settings', JSON.stringify(storeData));
+                showStatus('success', '店番設定を保存しました（' + Object.keys(storeData).length + '店舗）');
+            } catch (e) {
+                showStatus('error', '保存に失敗しました: ' + e.message);
+            }
+        }
+
+        // 店番設定を読込（LocalStorage）
+        function loadStoreSettings() {
+            try {
+                var saved = localStorage.getItem('rakumy_store_settings');
+                if (saved) {
+                    var storeData = JSON.parse(saved);
+                    Object.keys(storeData).forEach(function(name) {
+                        if (name !== '_default') {
+                            DEFAULT_UNIT_PRICES[name] = storeData[name];
+                        }
+                    });
+                    console.log('[loadStoreSettings] 店番設定を読み込みました:', Object.keys(storeData).length + '店舗');
+                }
+            } catch (e) {
+                console.error('[loadStoreSettings] エラー:', e);
+            }
+        }
+
         // ★★★ マッピングドロップ処理 ★★★
         function handleMappingDrop(event) {
             event.preventDefault();
@@ -12307,6 +12707,8 @@
             updateExportHistoryCount();
             // カテゴリ表示順設定の読み込み
             loadCategorySettings();
+            // 店番設定の読み込み
+            loadStoreSettings();
             // 項目マッピング一覧は設定タブ表示時に描画されるため、ここでは初期化のみ
             renderMappingCategoryFilter();
         });
