@@ -1549,7 +1549,8 @@
                             <button id="btnColumnEdit" onclick="switchEditMode('column')" style="background:#7b1fa2;color:#fff;border:none;padding:8px 15px;border-radius:4px 0 0 4px;cursor:pointer;font-size:12px;">📊 列編集</button>
                             <button id="btnRowEdit" onclick="switchEditMode('row')" style="background:#e1bee7;color:#7b1fa2;border:none;padding:8px 15px;border-radius:0 4px 4px 0;cursor:pointer;font-size:12px;">📝 行編集</button>
                         </div>
-                        <div style="display:flex;gap:10px;margin-top:18px;">
+                        <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;">
+                            <button id="btnCreateNew" onclick="createNewTemplate()" style="background:#e91e63;color:#fff;padding:8px 15px;border:none;border-radius:4px;cursor:pointer;">🆕 新規作成</button>
                             <button id="btnAddColumn" onclick="addTemplateColumn()" style="display:none;background:#7b1fa2;color:#fff;padding:8px 15px;border:none;border-radius:4px;cursor:pointer;">➕ 列追加</button>
                             <button id="btnAddRow" onclick="addTemplateRow()" style="background:#4caf50;color:#fff;padding:8px 15px;border:none;border-radius:4px;cursor:pointer;">➕ 行追加</button>
                             <button class="btn" onclick="saveTemplateToHistory()" style="background:#1976d2;color:#fff;padding:8px 15px;">💾 保存</button>
@@ -9180,10 +9181,30 @@
                 // 列数が変わっている場合に対応
                 for (var colIdx = 0; colIdx < headers.length; colIdx++) {
                     var cell = row[colIdx] || '';
+                    var headerName = headers[colIdx] || '';
                     html += '<td style="padding:2px;border:1px solid #e0e0e0;">';
-                    html += '<input type="text" value="' + escapeHtml(cell) + '" ';
-                    html += 'onchange="updateTemplateCell(' + idx + ',' + colIdx + ',this.value)" ';
-                    html += 'style="width:100%;padding:4px;border:none;font-size:11px;box-sizing:border-box;">';
+
+                    // カテゴリ列の場合はドロップダウンを表示
+                    if (headerName.indexOf('カテゴリ') !== -1) {
+                        html += '<select onchange="updateTemplateCell(' + idx + ',' + colIdx + ',this.value)" ';
+                        html += 'style="width:100%;padding:4px;border:none;font-size:11px;box-sizing:border-box;background:#fff;">';
+                        html += '<option value="">--選択--</option>';
+                        // BUDGET_CATEGORY_MAPからカテゴリを取得してソート
+                        var categories = [];
+                        for (var cat in BUDGET_CATEGORY_MAP) {
+                            categories.push({ name: cat, order: BUDGET_CATEGORY_MAP[cat].displayOrder });
+                        }
+                        categories.sort(function(a, b) { return a.order - b.order; });
+                        categories.forEach(function(catObj) {
+                            var selected = (cell === catObj.name) ? ' selected' : '';
+                            html += '<option value="' + catObj.name + '"' + selected + '>' + catObj.name + '</option>';
+                        });
+                        html += '</select>';
+                    } else {
+                        html += '<input type="text" value="' + escapeHtml(cell) + '" ';
+                        html += 'onchange="updateTemplateCell(' + idx + ',' + colIdx + ',this.value)" ';
+                        html += 'style="width:100%;padding:4px;border:none;font-size:11px;box-sizing:border-box;">';
+                    }
                     html += '</td>';
                 }
                 html += '<td style="padding:2px;border:1px solid #e0e0e0;text-align:center;">';
@@ -9296,6 +9317,41 @@
             currentTemplateData.splice(idx, 1);
             renderTemplateEditorContent();
             showStatus('success', '行を削除しました');
+        }
+
+        // 新規テンプレート作成（基本列構成で空データ）
+        function createNewTemplate() {
+            // 基本的な列構成を定義
+            var standardHeaders = [
+                '予算カテゴリ',
+                '科目コード',
+                '予算項目名',
+                '1月', '2月', '3月', '4月', '5月', '6月',
+                '7月', '8月', '9月', '10月', '11月', '12月'
+            ];
+
+            currentTemplateHeaders = standardHeaders.slice();
+            currentOriginalHeaders = standardHeaders.slice();
+
+            // 空の1行を追加（最低1行必要）
+            var emptyRow = [];
+            for (var i = 0; i < standardHeaders.length; i++) {
+                emptyRow.push('');
+            }
+            currentTemplateData = [emptyRow];
+
+            // 保存名を更新
+            document.getElementById('templateSaveName').value = '新規テンプレート_' + new Date().toISOString().slice(0, 10);
+
+            // 列編集モードに切り替え
+            var modeToggle = document.getElementById('editModeToggle');
+            if (modeToggle) {
+                modeToggle.style.display = 'block';
+            }
+            switchEditMode('row');
+
+            renderTemplateEditorContent();
+            showStatus('success', '新規テンプレートを作成しました（基本列構成: ' + standardHeaders.length + '列）');
         }
 
         // テンプレート履歴管理
