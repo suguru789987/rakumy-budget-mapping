@@ -3699,12 +3699,13 @@
                 html += '  <td style="padding:10px;text-align:center;">' + entry.monthCount + 'ヶ月</td>';
                 html += '  <td style="padding:10px;text-align:center;">' + entry.itemCount + '項目</td>';
                 html += '  <td style="padding:10px;text-align:center;">';
-                html += '    <div style="display:flex;gap:5px;justify-content:center;flex-wrap:wrap;">';
-                html += '      <button onclick="showBudgetPreview(\'' + entry.id + '\')" class="btn" style="padding:5px 10px;font-size:10px;background:#9c27b0;color:#fff;border:none;border-radius:3px;" title="予算表をプレビュー">📊 予算表</button>';
-                html += '      <button onclick="loadBudgetFromHistory(\'' + entry.id + '\')" class="btn" style="padding:5px 10px;font-size:10px;background:#4caf50;color:#fff;border:none;border-radius:3px;" title="この履歴を読み込んで予算設定画面で表示・編集">📂 読込</button>';
-                html += '      <button onclick="archiveBudgetHistory(\'' + entry.id + '\')" class="btn" style="padding:5px 10px;font-size:10px;background:#ff9800;color:#fff;border:none;border-radius:3px;" title="JSONファイルとしてダウンロード">📦 保存</button>';
-                html += '      <button onclick="showHistoryDetail(\'' + entry.id + '\')" class="btn" style="padding:5px 10px;font-size:10px;background:#2196f3;color:#fff;border:none;border-radius:3px;" title="履歴の詳細を確認">👁️ 詳細</button>';
-                html += '      <button onclick="deleteBudgetHistory(\'' + entry.id + '\')" class="btn" style="padding:5px 10px;font-size:10px;background:#f44336;color:#fff;border:none;border-radius:3px;" title="この履歴を削除">🗑️</button>';
+                html += '    <div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap;">';
+                html += '      <button onclick="showBudgetPreview(\'' + entry.id + '\')" class="btn" style="padding:5px 8px;font-size:10px;background:#9c27b0;color:#fff;border:none;border-radius:3px;" title="予算表をプレビュー">📊</button>';
+                html += '      <button onclick="loadBudgetFromHistory(\'' + entry.id + '\')" class="btn" style="padding:5px 8px;font-size:10px;background:#4caf50;color:#fff;border:none;border-radius:3px;" title="この履歴を読み込んで予算設定画面で表示・編集">📂</button>';
+                html += '      <button onclick="duplicateBudgetHistory(\'' + entry.id + '\')" class="btn" style="padding:5px 8px;font-size:10px;background:#ff9800;color:#fff;border:none;border-radius:3px;" title="この履歴を複製して保存">💾</button>';
+                html += '      <button onclick="archiveBudgetHistory(\'' + entry.id + '\')" class="btn" style="padding:5px 8px;font-size:10px;background:#607d8b;color:#fff;border:none;border-radius:3px;" title="JSONファイルとしてダウンロード">📥</button>';
+                html += '      <button onclick="showHistoryDetail(\'' + entry.id + '\')" class="btn" style="padding:5px 8px;font-size:10px;background:#2196f3;color:#fff;border:none;border-radius:3px;" title="履歴の詳細を確認">👁️</button>';
+                html += '      <button onclick="deleteBudgetHistory(\'' + entry.id + '\')" class="btn" style="padding:5px 8px;font-size:10px;background:#f44336;color:#fff;border:none;border-radius:3px;" title="この履歴を削除">🗑️</button>';
                 html += '    </div>';
                 html += '  </td>';
                 html += '</tr>';
@@ -3908,6 +3909,47 @@
             var modal = document.getElementById('budgetPreviewModal');
             if (modal) modal.style.display = 'none';
             document.body.style.overflow = '';
+        }
+
+        // 履歴を複製して保存（シミュレータ内保存）
+        function duplicateBudgetHistory(historyId) {
+            var history = loadBudgetHistory();
+            var entry = history.find(function(e) { return e.id === historyId; });
+            if (!entry) {
+                showStatus('error', '履歴が見つかりません');
+                return;
+            }
+
+            // 新しいエントリとして保存
+            var now = new Date();
+            var y = now.getFullYear();
+            var m = ('0' + (now.getMonth() + 1)).slice(-2);
+            var d = ('0' + now.getDate()).slice(-2);
+            var h = ('0' + now.getHours()).slice(-2);
+            var min = ('0' + now.getMinutes()).slice(-2);
+            var sec = ('0' + now.getSeconds()).slice(-2);
+            var dateTimeDisplay = y + '-' + m + '-' + d + ' ' + h + ':' + min + ':' + sec;
+
+            var newEntry = {
+                id: Date.now().toString() + '_copy_' + entry.storeName.replace(/\s/g, '_'),
+                storeName: entry.storeName,
+                dateTime: dateTimeDisplay,
+                monthCount: entry.monthCount,
+                itemCount: entry.itemCount,
+                data: JSON.parse(JSON.stringify(entry.data)),
+                savedAt: now.toISOString(),
+                copiedFrom: entry.id
+            };
+
+            history.unshift(newEntry);
+            if (history.length > 50) history = history.slice(0, 50);
+
+            saveBudgetHistory(history);
+            renderBudgetHistoryList();
+            updateBudgetHistoryCount();
+            updateHistoryStoreFilter();
+
+            showStatus('success', '「' + entry.storeName + '」の履歴を複製保存しました');
         }
 
         // 履歴をJSONファイルとしてアーカイブ保存
