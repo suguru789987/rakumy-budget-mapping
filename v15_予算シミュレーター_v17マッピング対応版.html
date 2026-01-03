@@ -11339,6 +11339,9 @@
             console.log('recalculateMQ: renderMQResultSummary呼び出し前 - mqOutputs:', Object.keys(mqOutputs).length, 'activeMonths:', activeMonths.length);
             renderMQResultSummary();
 
+            // ★★★ 重要: allStoresDataに保存してエクスポートに反映 ★★★
+            saveCurrentStoreData();
+
             showStatus('success', 'MQ再計算完了（月別） - 年間G:' + fmtYen(totalG) + '円 平均FD:' + avgFD + '% PA:' + avgPA + '% P:' + fmt(avgP) + '円');
         }
 
