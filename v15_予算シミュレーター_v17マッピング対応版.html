@@ -1622,17 +1622,27 @@
                             </div>
                         </div>
 
-                        <!-- MQ再計算・マスタ保存ボタン -->
-                        <div style="text-align:center;display:flex;gap:15px;justify-content:center;flex-wrap:wrap;">
-                            <button onclick="resetMQUnitPricesToDefault()" class="btn" style="padding:12px 25px;font-size:14px;background:#9e9e9e;border:none;border-radius:6px;color:#fff;font-weight:bold;">
-                                🔄 デフォルトに戻す
+                        <!-- Step 1: 客単価編集アクション -->
+                        <div style="background:#f5f5f5;border-radius:8px;padding:12px 15px;margin-bottom:15px;border-left:4px solid #2196f3;">
+                            <div style="display:flex;align-items:center;gap:15px;flex-wrap:wrap;">
+                                <span style="font-size:12px;font-weight:bold;color:#1976d2;white-space:nowrap;">📝 客単価編集:</span>
+                                <button onclick="resetMQUnitPricesToDefault()" class="btn" style="padding:8px 16px;font-size:12px;background:#9e9e9e;border:none;border-radius:4px;color:#fff;font-weight:bold;">
+                                    🔄 デフォルトに戻す
+                                </button>
+                                <button onclick="saveMQUnitPricesToMaster()" class="btn" style="padding:8px 16px;font-size:12px;background:#4caf50;border:none;border-radius:4px;color:#fff;font-weight:bold;">
+                                    💾 マスタに保存
+                                </button>
+                                <span style="font-size:10px;color:#666;">※編集した客単価をマスタ設定に反映</span>
+                            </div>
+                        </div>
+
+                        <!-- Step 2: MQ再計算（メインアクション） -->
+                        <div style="text-align:center;background:linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);border-radius:10px;padding:20px;border:2px solid #ff9800;">
+                            <div style="font-size:12px;color:#e65100;margin-bottom:10px;font-weight:bold;">▼ 客単価・売上設定が完了したら</div>
+                            <button onclick="recalculateMQ()" class="btn btn-primary" style="padding:15px 60px;font-size:18px;background:linear-gradient(135deg, #ff9800 0%, #f57c00 100%);border:none;border-radius:8px;color:#fff;font-weight:bold;box-shadow:0 4px 15px rgba(255,152,0,0.4);cursor:pointer;">
+                                🔄 MQ再計算
                             </button>
-                            <button onclick="recalculateMQ()" class="btn btn-primary" style="padding:12px 50px;font-size:16px;background:#ff9800;border:none;border-radius:6px;color:#fff;font-weight:bold;">
-                                MQ再計算
-                            </button>
-                            <button onclick="saveMQUnitPricesToMaster()" class="btn" style="padding:12px 25px;font-size:14px;background:#4caf50;border:none;border-radius:6px;color:#fff;font-weight:bold;">
-                                💾 マスタに保存
-                            </button>
+                            <div style="font-size:11px;color:#bf360c;margin-top:8px;">売上・客単価からMQ損益を計算します</div>
                         </div>
 
                         <!-- MQ計算結果サマリー -->
