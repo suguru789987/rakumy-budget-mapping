@@ -847,6 +847,69 @@
                         履歴に保存しておくと、ブラウザを閉じても次回起動時に復元できます。
                     </div>
                 </div>
+
+                <!-- カテゴリマッピング設定セクション -->
+                <div class="import-section" style="border-left:4px solid #3f51b5;margin-top:20px;">
+                    <h2 style="color:#303f9f;font-size:18px;margin-bottom:20px;">📊 カテゴリマッピング設定</h2>
+                    <p style="color:#666;font-size:11px;margin-bottom:15px;">
+                        予算カテゴリの表示順序とカテゴリ内項目の表示順序を設定できます。
+                    </p>
+
+                    <!-- タブボタン -->
+                    <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;">
+                        <button id="btnCategoryOrder" class="btn" style="background:#3f51b5;color:#fff;padding:10px 20px;font-size:12px;" onclick="showCategoryOrderPanel()">
+                            📋 カテゴリ表示順設定
+                        </button>
+                        <button id="btnItemOrder" class="btn" style="background:#607d8b;color:#fff;padding:10px 20px;font-size:12px;" onclick="showItemOrderPanel()">
+                            📄 カテゴリ内項目順設定
+                        </button>
+                    </div>
+
+                    <!-- カテゴリ表示順設定パネル -->
+                    <div id="categoryOrderPanel" style="display:block;">
+                        <div style="background:#e8eaf6;padding:15px;border-radius:8px;margin-bottom:15px;">
+                            <h4 style="color:#303f9f;margin-bottom:10px;font-size:13px;">▼ カテゴリ表示順設定</h4>
+                            <p style="font-size:10px;color:#666;margin-bottom:10px;">
+                                カテゴリの表示順を変更できます。↑↓ボタンで順序を入れ替えてください。
+                            </p>
+                            <div id="categoryOrderList" style="max-height:400px;overflow-y:auto;">
+                                <!-- JavaScript で描画 -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- カテゴリ内項目順設定パネル -->
+                    <div id="itemOrderPanel" style="display:none;">
+                        <div style="background:#eceff1;padding:15px;border-radius:8px;margin-bottom:15px;">
+                            <h4 style="color:#455a64;margin-bottom:10px;font-size:13px;">▼ カテゴリ内項目表示順設定</h4>
+                            <div style="margin-bottom:15px;">
+                                <label style="font-weight:bold;font-size:11px;color:#455a64;">カテゴリ選択:</label>
+                                <select id="categorySelectForItems" onchange="renderItemOrderSettings(this.value)" style="padding:8px 12px;border:2px solid #607d8b;border-radius:4px;font-size:12px;min-width:200px;margin-left:10px;">
+                                    <!-- JavaScript で描画 -->
+                                </select>
+                            </div>
+                            <div id="itemOrderList" style="max-height:400px;overflow-y:auto;">
+                                <!-- JavaScript で描画 -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 保存ボタン -->
+                    <div style="margin-top:15px;display:flex;gap:10px;flex-wrap:wrap;">
+                        <button class="btn" style="background:#4caf50;color:#fff;padding:12px 25px;font-size:13px;border-radius:6px;" onclick="saveCategorySettings()">
+                            💾 表示順設定を保存
+                        </button>
+                        <button class="btn" style="background:#ff9800;color:#fff;padding:12px 25px;font-size:13px;border-radius:6px;" onclick="resetCategorySettings()">
+                            🔄 初期設定に戻す
+                        </button>
+                    </div>
+
+                    <div style="margin-top:15px;padding:10px;background:#e8eaf6;border-radius:8px;font-size:11px;color:#303f9f;">
+                        <strong>表示順設定とは？</strong><br>
+                        CSVインポート時の項目表示順序をカスタマイズできます。<br>
+                        設定はLocalStorageに保存され、次回起動時に自動的に復元されます。
+                    </div>
+                </div>
             </div><!-- /import-subtab-settings -->
 
             <!-- マスタデータ履歴モーダル -->
@@ -1456,66 +1519,187 @@
         // 店舗別月別目標客単価（ユーザー編集用）
         var storeUnitPrices = {}; // { storeName: { 0: {total, lunch, dinner}, 1: {...}, ... } }
 
+        // ★★★ 予算カテゴリマッピング（カテゴリ表示順・出力先設定） ★★★
+        var BUDGET_CATEGORY_MAP = {
+            '売上高': {
+                output: 'mq',           // 出力先: mq=MQ計算, cost=費用予算設定, both=両方
+                type: 'sales',
+                displayOrder: 1,
+                color: '#4caf50',
+                items: []               // カテゴリ内項目（sortOrder順）
+            },
+            '売上原価': {
+                output: 'mq',
+                type: 'cost_of_sales',
+                displayOrder: 2,
+                color: '#ff9800',
+                items: []
+            },
+            '人件費': {
+                output: 'both',         // 詳細で分岐（固定/変動）
+                type: 'labor',
+                displayOrder: 3,
+                color: '#2196f3',
+                items: []
+            },
+            '水道光熱費': {
+                output: 'cost',
+                type: 'utility',
+                displayOrder: 4,
+                color: '#9c27b0',
+                items: []
+            },
+            '販促費': {
+                output: 'cost',
+                type: 'promotion',
+                displayOrder: 5,
+                color: '#e91e63',
+                items: []
+            },
+            '店舗運営費': {
+                output: 'cost',
+                type: 'operation',
+                displayOrder: 6,
+                color: '#00bcd4',
+                items: []
+            },
+            '管理費': {
+                output: 'cost',
+                type: 'admin',
+                displayOrder: 7,
+                color: '#607d8b',
+                items: []
+            },
+            '教育・採用費': {
+                output: 'cost',
+                type: 'education',
+                displayOrder: 8,
+                color: '#795548',
+                items: []
+            },
+            'IT・外注費': {
+                output: 'cost',
+                type: 'it',
+                displayOrder: 9,
+                color: '#3f51b5',
+                items: []
+            },
+            '固定費': {
+                output: 'cost',
+                type: 'fixed',
+                displayOrder: 10,
+                color: '#f44336',
+                items: []
+            },
+            '損益': {
+                output: 'mq',
+                type: 'profit',
+                displayOrder: 11,
+                color: '#673ab7',
+                items: []
+            },
+            'その他変動費': {
+                output: 'cost',
+                type: 'variable',
+                displayOrder: 12,
+                color: '#009688',
+                items: []
+            },
+            'KPI': {
+                output: 'mq',
+                type: 'kpi',
+                displayOrder: 13,
+                color: '#ff5722',
+                items: []
+            }
+        };
+
         // 設定データ（v17マッピング準拠）
         // v17: 顧客予算_ラクミー_パイプラインマッピング表_v17_MUGEN限定.csv
+        // ★ budgetCategory: 予算テンプレートカテゴリ、sortOrder: カテゴリ内表示順
         var CUSTOMER_CODE_MAP = {
             // === 売上高（No.1-4） ===
-            '810': { v15No: 1, name: '店舗売上高', category: '売上高', inputStyle: 'C.自動演算', screen: '自動' },
-            '811': { v15No: 2, name: 'ドリンク売上', category: '売上高', inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定>売上構成比設定' },
-            '812': { v15No: 3, name: 'その他売上高', category: '売上高', inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定>売上構成比設定' },
-            '999': { v15No: 4, name: '売上高合計（税抜）', category: '売上高', inputStyle: 'C.自動演算', screen: '自動' },
+            '810': { v15No: 1, name: '店舗売上高', category: '売上高', budgetCategory: '売上高', sortOrder: 1, inputStyle: 'C.自動演算', screen: '自動' },
+            '811': { v15No: 2, name: 'ドリンク売上', category: '売上高', budgetCategory: '売上高', sortOrder: 2, inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定>売上構成比設定' },
+            '812': { v15No: 3, name: 'その他売上高', category: '売上高', budgetCategory: '売上高', sortOrder: 3, inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定>売上構成比設定' },
+            '999': { v15No: 4, name: '売上高合計（税抜）', category: '売上高', budgetCategory: '売上高', sortOrder: 4, inputStyle: 'C.自動演算', screen: '自動' },
             // === 売上原価（No.5-15） ===
-            '461': { v15No: 6, name: '食材仕入高', category: '売上原価', inputStyle: 'D.参照のみ', screen: '参照のみ' },
-            '4611': { v15No: 8, name: '食材原価', category: '売上原価', inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定' },
-            '462': { v15No: 10, name: 'ドリンク仕入高', category: '売上原価', inputStyle: 'D.参照のみ', screen: '参照のみ' },
-            '4621': { v15No: 12, name: 'ドリンク原価', category: '売上原価', inputStyle: 'B.合算して入力', screen: '設定>月次予算設定' },
+            '2028': { v15No: 5, name: '食材期首棚', category: '売上原価', budgetCategory: '売上原価', sortOrder: 1, inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定' },
+            '461': { v15No: 6, name: '食材仕入高', category: '売上原価', budgetCategory: '売上原価', sortOrder: 2, inputStyle: 'D.参照のみ', screen: '参照のみ' },
+            '2029': { v15No: 7, name: '食材期末棚', category: '売上原価', budgetCategory: '売上原価', sortOrder: 3, inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定' },
+            '4611': { v15No: 8, name: '食材原価', category: '売上原価', budgetCategory: '売上原価', sortOrder: 4, inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定' },
+            '2030': { v15No: 9, name: 'ドリンク期首棚', category: '売上原価', budgetCategory: '売上原価', sortOrder: 5, inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定' },
+            '462': { v15No: 10, name: 'ドリンク仕入高', category: '売上原価', budgetCategory: '売上原価', sortOrder: 6, inputStyle: 'D.参照のみ', screen: '参照のみ' },
+            '2031': { v15No: 11, name: 'ドリンク期末棚', category: '売上原価', budgetCategory: '売上原価', sortOrder: 7, inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定' },
+            '4621': { v15No: 12, name: 'ドリンク原価', category: '売上原価', budgetCategory: '売上原価', sortOrder: 8, inputStyle: 'B.合算して入力', screen: '設定>月次予算設定' },
+            '9991': { v15No: 13, name: '内部振替', category: '売上原価', budgetCategory: '売上原価', sortOrder: 9, inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定' },
+            '9992': { v15No: 14, name: '原価合計', category: '売上原価', budgetCategory: '売上原価', sortOrder: 10, inputStyle: 'C.自動演算', screen: '自動' },
+            '9993': { v15No: 15, name: '売上総利益', category: '売上原価', budgetCategory: '売上原価', sortOrder: 11, inputStyle: 'C.自動演算', screen: '自動' },
             // === 人件費（No.16-26） ===
-            '501': { v15No: 16, name: '給料手当', category: '人件費', inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
-            '5011': { v15No: 17, name: '店長料理長昇給', category: '人件費', inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
-            '5012': { v15No: 18, name: '社員給与', category: '人件費', inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
-            '509': { v15No: 19, name: '雑給', category: '人件費', inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定' },
-            '503': { v15No: 20, name: 'ヘルプ人件費', category: '人件費', inputStyle: 'B.合算して入力', screen: '設定>月次予算設定' },
-            '504': { v15No: 21, name: '法定福利費', category: '人件費', inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
-            '508': { v15No: 22, name: '通勤交通費', category: '人件費', inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
-            '506': { v15No: 23, name: '賞与引当金繰入', category: '人件費', inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
-            '553': { v15No: 24, name: '社宅家賃', category: '人件費', inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
-            '2105': { v15No: 25, name: '休業手当', category: '人件費', inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
-            // === その他変動費（No.27-51） ===
-            '510': { v15No: 27, name: '販売促進費', category: 'その他変動費', inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '541': { v15No: 28, name: 'メニューコピー', category: 'その他変動費', inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '516': { v15No: 29, name: '調査費', category: 'その他変動費', inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '514': { v15No: 30, name: '衛生費', category: 'その他変動費', inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '542': { v15No: 31, name: 'サービス費', category: 'その他変動費', inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '520': { v15No: 32, name: '電気代', category: 'その他変動費', inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '521': { v15No: 33, name: 'ガス代', category: 'その他変動費', inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '522': { v15No: 34, name: '水道代', category: 'その他変動費', inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '523': { v15No: 35, name: '消耗品費', category: 'その他変動費', inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '526': { v15No: 36, name: '保守修繕費', category: 'その他変動費', inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '527': { v15No: 37, name: '租税公課', category: 'その他変動費', inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '529': { v15No: 38, name: '接待交際費', category: 'その他変動費', inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '530': { v15No: 39, name: '旅費交通費', category: 'その他変動費', inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '531': { v15No: 40, name: '通信費', category: 'その他変動費', inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '5321': { v15No: 41, name: 'クレジット手数料', category: 'その他変動費', inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '532': { v15No: 42, name: '支払手数料', category: 'その他変動費', inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '533': { v15No: 43, name: '会議費', category: 'その他変動費', inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '534': { v15No: 44, name: '諸会費', category: 'その他変動費', inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '536': { v15No: 45, name: '図書教育費', category: 'その他変動費', inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '546': { v15No: 46, name: '研修費', category: 'その他変動費', inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '537': { v15No: 47, name: '業態研究費', category: 'その他変動費', inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '518': { v15No: 48, name: '採用費', category: 'その他変動費', inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '550': { v15No: 49, name: 'IT費', category: 'その他変動費', inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '2128': { v15No: 50, name: '外注費', category: 'その他変動費', inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '539': { v15No: 51, name: '雑費', category: 'その他変動費', inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            // === 固定費（No.55-59） ===
-            '528': { v15No: 55, name: '減価償却費', category: '固定費', inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
-            '554': { v15No: 56, name: '家賃', category: '固定費', inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
-            '552': { v15No: 57, name: '警備料', category: '固定費', inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
-            '5241': { v15No: 58, name: 'リース料', category: '固定費', inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
-            '524': { v15No: 59, name: '賃借料', category: '固定費', inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
-            // === 利益（No.63）営業利益はNAME_BASED_MAPで取得（コード9640は不正確な値のため削除） ===
+            '501': { v15No: 16, name: '給料手当', category: '人件費', budgetCategory: '人件費', sortOrder: 1, inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
+            '5011': { v15No: 17, name: '店長料理長昇給', category: '人件費', budgetCategory: '人件費', sortOrder: 2, inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
+            '5012': { v15No: 18, name: '社員給与', category: '人件費', budgetCategory: '人件費', sortOrder: 3, inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
+            '509': { v15No: 19, name: '雑給', category: '人件費', budgetCategory: '人件費', sortOrder: 4, inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定' },
+            '503': { v15No: 20, name: 'ヘルプ人件費', category: '人件費', budgetCategory: '人件費', sortOrder: 5, inputStyle: 'B.合算して入力', screen: '設定>月次予算設定' },
+            '504': { v15No: 21, name: '法定福利費', category: '人件費', budgetCategory: '人件費', sortOrder: 6, inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
+            '508': { v15No: 22, name: '通勤交通費', category: '人件費', budgetCategory: '人件費', sortOrder: 7, inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
+            '506': { v15No: 23, name: '賞与引当金繰入', category: '人件費', budgetCategory: '人件費', sortOrder: 8, inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
+            '553': { v15No: 24, name: '社宅家賃', category: '人件費', budgetCategory: '人件費', sortOrder: 9, inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
+            '2105': { v15No: 25, name: '休業手当', category: '人件費', budgetCategory: '人件費', sortOrder: 10, inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
+            '9994': { v15No: 26, name: '人件費合計', category: '人件費', budgetCategory: '人件費', sortOrder: 11, inputStyle: 'C.自動演算', screen: '自動' },
+            // === 水道光熱費（No.27-30） ===
+            '520': { v15No: 32, name: '電気代', category: '水道光熱費', budgetCategory: '水道光熱費', sortOrder: 1, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '521': { v15No: 33, name: 'ガス代', category: '水道光熱費', budgetCategory: '水道光熱費', sortOrder: 2, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '522': { v15No: 34, name: '水道代', category: '水道光熱費', budgetCategory: '水道光熱費', sortOrder: 3, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '9995': { v15No: 0, name: '水道光熱費合計', category: '水道光熱費', budgetCategory: '水道光熱費', sortOrder: 4, inputStyle: 'C.自動演算', screen: '自動' },
+            // === 販促費（No.31-35） ===
+            '510': { v15No: 27, name: '販売促進費', category: '販促費', budgetCategory: '販促費', sortOrder: 1, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '541': { v15No: 28, name: 'メニューコピー', category: '販促費', budgetCategory: '販促費', sortOrder: 2, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '516': { v15No: 29, name: '調査費', category: '販促費', budgetCategory: '販促費', sortOrder: 3, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '542': { v15No: 31, name: 'サービス費', category: '販促費', budgetCategory: '販促費', sortOrder: 4, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '9996': { v15No: 0, name: '販促費合計', category: '販促費', budgetCategory: '販促費', sortOrder: 5, inputStyle: 'C.自動演算', screen: '自動' },
+            // === 店舗運営費（No.36-39） ===
+            '514': { v15No: 30, name: '衛生費', category: '店舗運営費', budgetCategory: '店舗運営費', sortOrder: 1, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '523': { v15No: 35, name: '消耗品費', category: '店舗運営費', budgetCategory: '店舗運営費', sortOrder: 2, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '526': { v15No: 36, name: '保守修繕費', category: '店舗運営費', budgetCategory: '店舗運営費', sortOrder: 3, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '9997': { v15No: 0, name: '店舗運営費合計', category: '店舗運営費', budgetCategory: '店舗運営費', sortOrder: 4, inputStyle: 'C.自動演算', screen: '自動' },
+            // === 管理費（No.40-49） ===
+            '527': { v15No: 37, name: '租税公課', category: '管理費', budgetCategory: '管理費', sortOrder: 1, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '529': { v15No: 38, name: '接待交際費', category: '管理費', budgetCategory: '管理費', sortOrder: 2, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '530': { v15No: 39, name: '旅費交通費', category: '管理費', budgetCategory: '管理費', sortOrder: 3, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '531': { v15No: 40, name: '通信費', category: '管理費', budgetCategory: '管理費', sortOrder: 4, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '5321': { v15No: 41, name: 'クレジット手数料', category: '管理費', budgetCategory: '管理費', sortOrder: 5, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '532': { v15No: 42, name: '支払手数料', category: '管理費', budgetCategory: '管理費', sortOrder: 6, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '533': { v15No: 43, name: '会議費', category: '管理費', budgetCategory: '管理費', sortOrder: 7, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '534': { v15No: 44, name: '諸会費', category: '管理費', budgetCategory: '管理費', sortOrder: 8, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '539': { v15No: 51, name: '雑費', category: '管理費', budgetCategory: '管理費', sortOrder: 9, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '9998': { v15No: 0, name: '管理費合計', category: '管理費', budgetCategory: '管理費', sortOrder: 10, inputStyle: 'C.自動演算', screen: '自動' },
+            // === 教育・採用費（No.50-54） ===
+            '536': { v15No: 45, name: '図書教育費', category: '教育・採用費', budgetCategory: '教育・採用費', sortOrder: 1, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '546': { v15No: 46, name: '研修費', category: '教育・採用費', budgetCategory: '教育・採用費', sortOrder: 2, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '537': { v15No: 47, name: '業態研究費', category: '教育・採用費', budgetCategory: '教育・採用費', sortOrder: 3, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '518': { v15No: 48, name: '採用費', category: '教育・採用費', budgetCategory: '教育・採用費', sortOrder: 4, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '9999': { v15No: 0, name: '教育・採用費合計', category: '教育・採用費', budgetCategory: '教育・採用費', sortOrder: 5, inputStyle: 'C.自動演算', screen: '自動' },
+            // === IT・外注費（No.55-58） ===
+            '550': { v15No: 49, name: 'IT費', category: 'IT・外注費', budgetCategory: 'IT・外注費', sortOrder: 1, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '2128': { v15No: 50, name: '外注費', category: 'IT・外注費', budgetCategory: 'IT・外注費', sortOrder: 2, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '99991': { v15No: 0, name: 'IT・外注費合計', category: 'IT・外注費', budgetCategory: 'IT・外注費', sortOrder: 3, inputStyle: 'C.自動演算', screen: '自動' },
+            '99992': { v15No: 0, name: '変動費合計', category: 'IT・外注費', budgetCategory: 'IT・外注費', sortOrder: 4, inputStyle: 'C.自動演算', screen: '自動' },
+            '99993': { v15No: 0, name: '限界利益', category: 'IT・外注費', budgetCategory: 'IT・外注費', sortOrder: 5, inputStyle: 'C.自動演算', screen: '自動' },
+            // === 固定費（No.59-64） ===
+            '528': { v15No: 55, name: '減価償却費', category: '固定費', budgetCategory: '固定費', sortOrder: 1, inputStyle: 'A.そのまま入力', screen: '設定>費用予算設定' },
+            '554': { v15No: 56, name: '家賃', category: '固定費', budgetCategory: '固定費', sortOrder: 2, inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
+            '552': { v15No: 57, name: '警備料', category: '固定費', budgetCategory: '固定費', sortOrder: 3, inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
+            '5241': { v15No: 58, name: 'リース料', category: '固定費', budgetCategory: '固定費', sortOrder: 4, inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
+            '524': { v15No: 59, name: '賃借料', category: '固定費', budgetCategory: '固定費', sortOrder: 5, inputStyle: 'B.合算して入力', screen: '設定>費用予算設定' },
+            '99994': { v15No: 0, name: '固定費合計', category: '固定費', budgetCategory: '固定費', sortOrder: 6, inputStyle: 'C.自動演算', screen: '自動' },
+            // === 損益（No.65-67） ===
+            '99995': { v15No: 63, name: '店舗営業利益', category: '損益', budgetCategory: '損益', sortOrder: 1, inputStyle: 'C.自動演算', screen: '自動' },
+            '99996': { v15No: 0, name: '販売管理費合計', category: '損益', budgetCategory: '損益', sortOrder: 2, inputStyle: 'C.自動演算', screen: '自動' },
+            '9640': { v15No: 63, name: '営業利益', category: '損益', budgetCategory: '損益', sortOrder: 3, inputStyle: 'C.自動演算', screen: '自動' },
             // === KPI（No.64-70） ===
-            '9641': { v15No: 64, name: '客数', category: 'KPI', inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定' },
-            '9642': { v15No: 65, name: '客単価', category: 'KPI', inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定' }
+            '9641': { v15No: 64, name: '客数', category: 'KPI', budgetCategory: 'KPI', sortOrder: 1, inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定' },
+            '9642': { v15No: 65, name: '客単価', category: 'KPI', budgetCategory: 'KPI', sortOrder: 2, inputStyle: 'A.そのまま入力', screen: '設定>月次予算設定' }
         };
 
         // ★ 項目名ベースのマッピング（E列空欄・セル結合解除対応）
@@ -6908,6 +7092,389 @@
             }
         }
 
+        // ===== カテゴリ表示順設定機能 =====
+        var CATEGORY_ORDER_KEY = 'rakumy_category_order';
+        var ITEM_ORDER_KEY = 'rakumy_item_order';
+
+        // カテゴリ表示順パネル表示
+        function showCategoryOrderPanel() {
+            document.getElementById('categoryOrderPanel').style.display = 'block';
+            document.getElementById('itemOrderPanel').style.display = 'none';
+            document.getElementById('btnCategoryOrder').style.background = '#3f51b5';
+            document.getElementById('btnItemOrder').style.background = '#607d8b';
+            renderCategoryOrderSettings();
+        }
+
+        // カテゴリ内項目順パネル表示
+        function showItemOrderPanel() {
+            document.getElementById('categoryOrderPanel').style.display = 'none';
+            document.getElementById('itemOrderPanel').style.display = 'block';
+            document.getElementById('btnCategoryOrder').style.background = '#607d8b';
+            document.getElementById('btnItemOrder').style.background = '#3f51b5';
+            renderCategorySelectOptions();
+            var select = document.getElementById('categorySelectForItems');
+            if (select && select.options.length > 0) {
+                renderItemOrderSettings(select.value);
+            }
+        }
+
+        // カテゴリ表示順設定UIを描画
+        function renderCategoryOrderSettings() {
+            var container = document.getElementById('categoryOrderList');
+            if (!container) return;
+
+            // カテゴリをdisplayOrder順でソート
+            var categories = [];
+            for (var cat in BUDGET_CATEGORY_MAP) {
+                categories.push({
+                    name: cat,
+                    data: BUDGET_CATEGORY_MAP[cat]
+                });
+            }
+            categories.sort(function(a, b) {
+                return a.data.displayOrder - b.data.displayOrder;
+            });
+
+            var html = '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
+            html += '<thead><tr style="background:#c5cae9;">';
+            html += '<th style="padding:8px;text-align:center;width:50px;">順番</th>';
+            html += '<th style="padding:8px;text-align:left;">カテゴリ名</th>';
+            html += '<th style="padding:8px;text-align:center;width:80px;">出力先</th>';
+            html += '<th style="padding:8px;text-align:center;width:40px;">色</th>';
+            html += '<th style="padding:8px;text-align:center;width:80px;">操作</th>';
+            html += '</tr></thead><tbody>';
+
+            categories.forEach(function(cat, idx) {
+                var outputLabel = cat.data.output === 'mq' ? 'MQ計算' :
+                                  cat.data.output === 'cost' ? '費用予算' :
+                                  cat.data.output === 'both' ? '両方' : cat.data.output;
+                html += '<tr style="background:' + (idx % 2 === 0 ? '#fff' : '#f5f5f5') + ';border-bottom:1px solid #ddd;">';
+                html += '<td style="padding:8px;text-align:center;font-weight:bold;">' + cat.data.displayOrder + '</td>';
+                html += '<td style="padding:8px;">' + escapeHtml(cat.name) + '</td>';
+                html += '<td style="padding:8px;text-align:center;"><span style="background:#e0e0e0;padding:2px 6px;border-radius:3px;font-size:10px;">' + outputLabel + '</span></td>';
+                html += '<td style="padding:8px;text-align:center;"><span style="display:inline-block;width:20px;height:20px;background:' + cat.data.color + ';border-radius:3px;"></span></td>';
+                html += '<td style="padding:8px;text-align:center;">';
+                html += '<button onclick="moveCategoryUp(\'' + cat.name + '\')" style="background:#3f51b5;color:#fff;border:none;padding:4px 8px;border-radius:3px;cursor:pointer;margin-right:4px;" ' + (idx === 0 ? 'disabled style="opacity:0.5"' : '') + '>↑</button>';
+                html += '<button onclick="moveCategoryDown(\'' + cat.name + '\')" style="background:#3f51b5;color:#fff;border:none;padding:4px 8px;border-radius:3px;cursor:pointer;" ' + (idx === categories.length - 1 ? 'disabled style="opacity:0.5"' : '') + '>↓</button>';
+                html += '</td>';
+                html += '</tr>';
+            });
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        // カテゴリを上に移動
+        function moveCategoryUp(categoryName) {
+            var categories = [];
+            for (var cat in BUDGET_CATEGORY_MAP) {
+                categories.push({ name: cat, order: BUDGET_CATEGORY_MAP[cat].displayOrder });
+            }
+            categories.sort(function(a, b) { return a.order - b.order; });
+
+            var idx = categories.findIndex(function(c) { return c.name === categoryName; });
+            if (idx > 0) {
+                // スワップ
+                var prevCat = categories[idx - 1].name;
+                var currOrder = BUDGET_CATEGORY_MAP[categoryName].displayOrder;
+                var prevOrder = BUDGET_CATEGORY_MAP[prevCat].displayOrder;
+                BUDGET_CATEGORY_MAP[categoryName].displayOrder = prevOrder;
+                BUDGET_CATEGORY_MAP[prevCat].displayOrder = currOrder;
+            }
+            renderCategoryOrderSettings();
+        }
+
+        // カテゴリを下に移動
+        function moveCategoryDown(categoryName) {
+            var categories = [];
+            for (var cat in BUDGET_CATEGORY_MAP) {
+                categories.push({ name: cat, order: BUDGET_CATEGORY_MAP[cat].displayOrder });
+            }
+            categories.sort(function(a, b) { return a.order - b.order; });
+
+            var idx = categories.findIndex(function(c) { return c.name === categoryName; });
+            if (idx < categories.length - 1) {
+                // スワップ
+                var nextCat = categories[idx + 1].name;
+                var currOrder = BUDGET_CATEGORY_MAP[categoryName].displayOrder;
+                var nextOrder = BUDGET_CATEGORY_MAP[nextCat].displayOrder;
+                BUDGET_CATEGORY_MAP[categoryName].displayOrder = nextOrder;
+                BUDGET_CATEGORY_MAP[nextCat].displayOrder = currOrder;
+            }
+            renderCategoryOrderSettings();
+        }
+
+        // カテゴリセレクターの選択肢を描画
+        function renderCategorySelectOptions() {
+            var select = document.getElementById('categorySelectForItems');
+            if (!select) return;
+
+            var categories = [];
+            for (var cat in BUDGET_CATEGORY_MAP) {
+                categories.push({ name: cat, order: BUDGET_CATEGORY_MAP[cat].displayOrder });
+            }
+            categories.sort(function(a, b) { return a.order - b.order; });
+
+            select.innerHTML = '';
+            categories.forEach(function(cat) {
+                var option = document.createElement('option');
+                option.value = cat.name;
+                option.textContent = cat.name;
+                select.appendChild(option);
+            });
+        }
+
+        // カテゴリ内項目順設定UIを描画
+        function renderItemOrderSettings(categoryName) {
+            var container = document.getElementById('itemOrderList');
+            if (!container || !categoryName) return;
+
+            // このカテゴリに属する項目を取得
+            var items = [];
+            for (var code in CUSTOMER_CODE_MAP) {
+                var item = CUSTOMER_CODE_MAP[code];
+                if (item.budgetCategory === categoryName) {
+                    items.push({
+                        code: code,
+                        name: item.name,
+                        sortOrder: item.sortOrder || 0
+                    });
+                }
+            }
+            items.sort(function(a, b) { return a.sortOrder - b.sortOrder; });
+
+            if (items.length === 0) {
+                container.innerHTML = '<div style="padding:20px;text-align:center;color:#666;">このカテゴリには項目がありません</div>';
+                return;
+            }
+
+            var html = '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
+            html += '<thead><tr style="background:#cfd8dc;">';
+            html += '<th style="padding:8px;text-align:center;width:50px;">順番</th>';
+            html += '<th style="padding:8px;text-align:center;width:80px;">コード</th>';
+            html += '<th style="padding:8px;text-align:left;">項目名</th>';
+            html += '<th style="padding:8px;text-align:center;width:80px;">操作</th>';
+            html += '</tr></thead><tbody>';
+
+            items.forEach(function(item, idx) {
+                html += '<tr style="background:' + (idx % 2 === 0 ? '#fff' : '#f5f5f5') + ';border-bottom:1px solid #ddd;">';
+                html += '<td style="padding:8px;text-align:center;font-weight:bold;">' + (idx + 1) + '</td>';
+                html += '<td style="padding:8px;text-align:center;"><code style="background:#e0e0e0;padding:2px 6px;border-radius:3px;">' + item.code + '</code></td>';
+                html += '<td style="padding:8px;">' + escapeHtml(item.name) + '</td>';
+                html += '<td style="padding:8px;text-align:center;">';
+                html += '<button onclick="moveItemUp(\'' + item.code + '\', \'' + categoryName + '\')" style="background:#607d8b;color:#fff;border:none;padding:4px 8px;border-radius:3px;cursor:pointer;margin-right:4px;" ' + (idx === 0 ? 'disabled style="opacity:0.5"' : '') + '>↑</button>';
+                html += '<button onclick="moveItemDown(\'' + item.code + '\', \'' + categoryName + '\')" style="background:#607d8b;color:#fff;border:none;padding:4px 8px;border-radius:3px;cursor:pointer;" ' + (idx === items.length - 1 ? 'disabled style="opacity:0.5"' : '') + '>↓</button>';
+                html += '</td>';
+                html += '</tr>';
+            });
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        // 項目を上に移動
+        function moveItemUp(code, categoryName) {
+            var items = [];
+            for (var c in CUSTOMER_CODE_MAP) {
+                var item = CUSTOMER_CODE_MAP[c];
+                if (item.budgetCategory === categoryName) {
+                    items.push({ code: c, sortOrder: item.sortOrder || 0 });
+                }
+            }
+            items.sort(function(a, b) { return a.sortOrder - b.sortOrder; });
+
+            var idx = items.findIndex(function(i) { return i.code === code; });
+            if (idx > 0) {
+                var prevCode = items[idx - 1].code;
+                var currOrder = CUSTOMER_CODE_MAP[code].sortOrder;
+                var prevOrder = CUSTOMER_CODE_MAP[prevCode].sortOrder;
+                CUSTOMER_CODE_MAP[code].sortOrder = prevOrder;
+                CUSTOMER_CODE_MAP[prevCode].sortOrder = currOrder;
+            }
+            renderItemOrderSettings(categoryName);
+        }
+
+        // 項目を下に移動
+        function moveItemDown(code, categoryName) {
+            var items = [];
+            for (var c in CUSTOMER_CODE_MAP) {
+                var item = CUSTOMER_CODE_MAP[c];
+                if (item.budgetCategory === categoryName) {
+                    items.push({ code: c, sortOrder: item.sortOrder || 0 });
+                }
+            }
+            items.sort(function(a, b) { return a.sortOrder - b.sortOrder; });
+
+            var idx = items.findIndex(function(i) { return i.code === code; });
+            if (idx < items.length - 1) {
+                var nextCode = items[idx + 1].code;
+                var currOrder = CUSTOMER_CODE_MAP[code].sortOrder;
+                var nextOrder = CUSTOMER_CODE_MAP[nextCode].sortOrder;
+                CUSTOMER_CODE_MAP[code].sortOrder = nextOrder;
+                CUSTOMER_CODE_MAP[nextCode].sortOrder = currOrder;
+            }
+            renderItemOrderSettings(categoryName);
+        }
+
+        // 表示順設定を保存
+        function saveCategorySettings() {
+            try {
+                // カテゴリ順を保存
+                var categoryOrder = {};
+                for (var cat in BUDGET_CATEGORY_MAP) {
+                    categoryOrder[cat] = BUDGET_CATEGORY_MAP[cat].displayOrder;
+                }
+
+                // 項目順を保存
+                var itemOrder = {};
+                for (var code in CUSTOMER_CODE_MAP) {
+                    var item = CUSTOMER_CODE_MAP[code];
+                    if (!itemOrder[item.budgetCategory]) {
+                        itemOrder[item.budgetCategory] = {};
+                    }
+                    itemOrder[item.budgetCategory][code] = item.sortOrder;
+                }
+
+                var settings = {
+                    categoryOrder: categoryOrder,
+                    itemOrder: itemOrder,
+                    savedAt: new Date().toISOString()
+                };
+
+                localStorage.setItem(CATEGORY_ORDER_KEY, JSON.stringify(settings));
+                showStatus('success', '表示順設定を保存しました');
+            } catch (e) {
+                console.error('表示順設定の保存に失敗:', e);
+                showStatus('error', '表示順設定の保存に失敗しました');
+            }
+        }
+
+        // 表示順設定を読み込み
+        function loadCategorySettings() {
+            try {
+                var saved = localStorage.getItem(CATEGORY_ORDER_KEY);
+                if (!saved) return false;
+
+                var settings = JSON.parse(saved);
+
+                // カテゴリ順を復元
+                if (settings.categoryOrder) {
+                    for (var cat in settings.categoryOrder) {
+                        if (BUDGET_CATEGORY_MAP[cat]) {
+                            BUDGET_CATEGORY_MAP[cat].displayOrder = settings.categoryOrder[cat];
+                        }
+                    }
+                }
+
+                // 項目順を復元
+                if (settings.itemOrder) {
+                    for (var category in settings.itemOrder) {
+                        for (var code in settings.itemOrder[category]) {
+                            if (CUSTOMER_CODE_MAP[code]) {
+                                CUSTOMER_CODE_MAP[code].sortOrder = settings.itemOrder[category][code];
+                            }
+                        }
+                    }
+                }
+
+                console.log('[loadCategorySettings] 表示順設定を復元しました');
+                return true;
+            } catch (e) {
+                console.error('表示順設定の読み込みに失敗:', e);
+                return false;
+            }
+        }
+
+        // 表示順設定を初期化
+        function resetCategorySettings() {
+            if (!confirm('表示順設定を初期状態に戻しますか？\\n（保存された設定は削除されます）')) {
+                return;
+            }
+
+            localStorage.removeItem(CATEGORY_ORDER_KEY);
+
+            // BUDGET_CATEGORY_MAPを初期化
+            var defaultCategoryOrder = {
+                '売上高': 1, '売上原価': 2, '人件費': 3, '水道光熱費': 4,
+                '販促費': 5, '店舗運営費': 6, '管理費': 7, '教育・採用費': 8,
+                'IT・外注費': 9, '固定費': 10, '損益': 11, 'その他変動費': 12, 'KPI': 13
+            };
+            for (var cat in defaultCategoryOrder) {
+                if (BUDGET_CATEGORY_MAP[cat]) {
+                    BUDGET_CATEGORY_MAP[cat].displayOrder = defaultCategoryOrder[cat];
+                }
+            }
+
+            // CUSTOMER_CODE_MAPのsortOrderを再設定（v15No順）
+            var itemsByCategory = {};
+            for (var code in CUSTOMER_CODE_MAP) {
+                var item = CUSTOMER_CODE_MAP[code];
+                if (!itemsByCategory[item.budgetCategory]) {
+                    itemsByCategory[item.budgetCategory] = [];
+                }
+                itemsByCategory[item.budgetCategory].push({ code: code, v15No: item.v15No });
+            }
+
+            for (var category in itemsByCategory) {
+                itemsByCategory[category].sort(function(a, b) { return a.v15No - b.v15No; });
+                itemsByCategory[category].forEach(function(item, idx) {
+                    CUSTOMER_CODE_MAP[item.code].sortOrder = idx + 1;
+                });
+            }
+
+            showStatus('success', '表示順設定を初期状態に戻しました');
+            renderCategoryOrderSettings();
+        }
+
+        // CSVインポート時のカテゴリ検証（ダブルチェック）
+        function validateCategoryMapping(code, name, csvCategory) {
+            var result = {
+                v17No: null,
+                category: null,
+                matchType: 'none',
+                warning: null
+            };
+
+            // 1. 科目コードでマッチ
+            var codeMatch = CUSTOMER_CODE_MAP[code];
+
+            // 2. 項目名でマッチ
+            var nameMatch = NAME_BASED_MAP[name];
+
+            // 3. CSVカテゴリでマッチ
+            var categoryMatch = BUDGET_CATEGORY_MAP[csvCategory];
+
+            // ダブルチェック
+            if (codeMatch) {
+                result.v17No = codeMatch.v15No;
+                result.category = codeMatch.budgetCategory;
+                result.matchType = 'code';
+
+                // CSVカテゴリとの不一致チェック
+                if (csvCategory && codeMatch.budgetCategory !== csvCategory) {
+                    result.warning = 'カテゴリ不一致: コード=' + codeMatch.budgetCategory + ', CSV=' + csvCategory;
+                    console.warn('[validateCategoryMapping] ' + name + ': ' + result.warning);
+                }
+            } else if (nameMatch) {
+                result.v17No = nameMatch.v17No;
+                result.category = nameMatch.category;
+                result.matchType = 'name';
+
+                // CSVカテゴリとの不一致チェック
+                if (csvCategory && nameMatch.category !== csvCategory) {
+                    result.warning = 'カテゴリ不一致: 名前マッチ=' + nameMatch.category + ', CSV=' + csvCategory;
+                    console.warn('[validateCategoryMapping] ' + name + ': ' + result.warning);
+                }
+            } else if (categoryMatch) {
+                result.category = csvCategory;
+                result.matchType = 'category';
+            }
+
+            return result;
+        }
+
+        // ===== カテゴリ表示順設定機能ここまで =====
+
         var selectedHistoryId = null;  // 選択中の履歴ID
         var selectedHistoryCategory = 'all';  // 履歴カテゴリフィルター: 'all', 'stores', 'items', 'prices'
 
@@ -8940,6 +9507,20 @@
                 var category = finalMatch.category;
                 var matchedName = finalMatch.name || itemName;
 
+                // ★ CSVカテゴリとのダブルチェック（予算テンプレート形式対応）
+                var csvCategory = (cols[0] || '').trim();  // CSV A列: 予算カテゴリ
+                if (csvCategory && BUDGET_CATEGORY_MAP[csvCategory]) {
+                    // validateCategoryMappingで検証
+                    var validation = validateCategoryMapping(accountCode, itemName, csvCategory);
+                    if (validation.warning) {
+                        addLog('⚠️【カテゴリ不一致】行' + lineIdx + ': ' + validation.warning, 'warn');
+                    }
+                    // CSVカテゴリが有効な場合は項目のbudgetCategoryを更新
+                    if (CUSTOMER_CODE_MAP[accountCode]) {
+                        CUSTOMER_CODE_MAP[accountCode].budgetCategory = csvCategory;
+                    }
+                }
+
                 // デバッグ：監視対象のv17Noがマッチしたか記録
                 if (DEBUG_V17NOS.indexOf(v17No) >= 0) {
                     debugMatches[v17No] = {
@@ -9032,6 +9613,10 @@
                     annualData[v17No][ami] = (annualData[v17No][ami] || 0) + rowData[ami];
                 }
 
+                // budgetCategoryとsortOrderを取得（CSVカテゴリまたはマッピング定義から）
+                var itemBudgetCategory = csvCategory || (CUSTOMER_CODE_MAP[accountCode] ? CUSTOMER_CODE_MAP[accountCode].budgetCategory : category);
+                var itemSortOrder = CUSTOMER_CODE_MAP[accountCode] ? (CUSTOMER_CODE_MAP[accountCode].sortOrder || 0) : 0;
+
                 var newItem = {
                     displayIndex: displayIndex,  // 連番インデックス
                     lineIdx: lineIdx,            // 元CSV行番号
@@ -9041,6 +9626,8 @@
                     v15No: v17No,
                     v15Name: ITEMS[v17No] ? ITEMS[v17No].name : matchedName,
                     category: category,
+                    budgetCategory: itemBudgetCategory,  // ★ 予算カテゴリ（表示順制御用）
+                    sortOrder: itemSortOrder,            // ★ カテゴリ内表示順
                     matchType: matchType,
                     sampleValue: firstValue,
                     hasValue: hasValue,
@@ -11329,6 +11916,9 @@
             showStatus('info', 'CSVファイルを選択してください');
             initHistory();
             updateExportHistoryCount();
+            // カテゴリ表示順設定の読み込み・初期描画
+            loadCategorySettings();
+            renderCategoryOrderSettings();
         });
     </script>
 </body>
