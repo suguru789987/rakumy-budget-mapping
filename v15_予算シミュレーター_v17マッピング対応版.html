@@ -1005,6 +1005,27 @@
                 </div>
             </div><!-- /import-subtab-history -->
 
+            <!-- 予算表プレビューモーダル -->
+            <div id="budgetPreviewModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:1002;overflow-y:auto;">
+                <div style="background:#fff;border-radius:12px;margin:30px auto;max-width:95%;width:1200px;box-shadow:0 4px 30px rgba(0,0,0,0.4);">
+                    <div style="background:linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%);color:#fff;padding:20px;border-radius:12px 12px 0 0;display:flex;justify-content:space-between;align-items:center;">
+                        <h3 id="budgetPreviewTitle" style="margin:0;font-size:18px;">📊 予算表プレビュー</h3>
+                        <button onclick="hideBudgetPreviewModal()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;padding:8px 15px;border-radius:4px;cursor:pointer;font-size:14px;">✕ 閉じる</button>
+                    </div>
+                    <div style="padding:20px;">
+                        <!-- 店舗情報 -->
+                        <div id="budgetPreviewInfo" style="margin-bottom:15px;padding:12px;background:#f3e5f5;border-radius:6px;font-size:12px;"></div>
+                        <!-- 予算表テーブル -->
+                        <div style="overflow-x:auto;max-height:70vh;">
+                            <table class="data-table" style="width:100%;font-size:11px;border-collapse:collapse;" id="budgetPreviewTable">
+                                <thead id="budgetPreviewHead"></thead>
+                                <tbody id="budgetPreviewBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- 項目マッピング編集モーダル -->
             <div id="itemMappingEditModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1001;overflow-y:auto;">
                 <div style="background:#fff;border-radius:12px;margin:50px auto;max-width:600px;width:95%;box-shadow:0 4px 20px rgba(0,0,0,0.3);">
@@ -3672,6 +3693,7 @@
                 html += '  <td style="padding:10px;text-align:center;">' + entry.itemCount + '項目</td>';
                 html += '  <td style="padding:10px;text-align:center;">';
                 html += '    <div style="display:flex;gap:5px;justify-content:center;flex-wrap:wrap;">';
+                html += '      <button onclick="showBudgetPreview(\'' + entry.id + '\')" class="btn" style="padding:5px 10px;font-size:10px;background:#9c27b0;color:#fff;border:none;border-radius:3px;" title="予算表をプレビュー">📊 予算表</button>';
                 html += '      <button onclick="loadBudgetFromHistory(\'' + entry.id + '\')" class="btn" style="padding:5px 10px;font-size:10px;background:#4caf50;color:#fff;border:none;border-radius:3px;" title="この履歴を読み込んで予算設定画面で表示・編集">📂 読込</button>';
                 html += '      <button onclick="showHistoryDetail(\'' + entry.id + '\')" class="btn" style="padding:5px 10px;font-size:10px;background:#2196f3;color:#fff;border:none;border-radius:3px;" title="履歴の詳細を確認">👁️ 詳細</button>';
                 html += '      <button onclick="deleteBudgetHistory(\'' + entry.id + '\')" class="btn" style="padding:5px 10px;font-size:10px;background:#f44336;color:#fff;border:none;border-radius:3px;" title="この履歴を削除">🗑️</button>';
@@ -3767,6 +3789,115 @@
 
             content.innerHTML = html;
             preview.style.display = 'block';
+        }
+
+        // 予算表プレビューを表示
+        function showBudgetPreview(historyId) {
+            var history = loadBudgetHistory();
+            var entry = history.find(function(e) { return e.id === historyId; });
+            if (!entry) {
+                showStatus('error', '履歴が見つかりません');
+                return;
+            }
+
+            var storeData = entry.data;
+            var modal = document.getElementById('budgetPreviewModal');
+            var title = document.getElementById('budgetPreviewTitle');
+            var info = document.getElementById('budgetPreviewInfo');
+            var thead = document.getElementById('budgetPreviewHead');
+            var tbody = document.getElementById('budgetPreviewBody');
+
+            if (!modal || !thead || !tbody) return;
+
+            // タイトル更新
+            title.textContent = '📊 予算表プレビュー - ' + entry.storeName;
+
+            // 店舗情報
+            info.innerHTML = '<strong>店舗:</strong> ' + entry.storeName +
+                ' | <strong>取込日時:</strong> ' + entry.dateTime +
+                ' | <strong>対象月:</strong> ' + (storeData.monthLabels || []).join(', ') +
+                ' | <strong>項目数:</strong> ' + (storeData.matchedItems || []).length + '項目';
+
+            // ヘッダー行を生成
+            var monthLabels = storeData.monthLabels || [];
+            var headerHtml = '<tr style="background:#9c27b0;color:#fff;">';
+            headerHtml += '<th style="padding:8px;text-align:left;min-width:50px;position:sticky;left:0;background:#9c27b0;">No</th>';
+            headerHtml += '<th style="padding:8px;text-align:left;min-width:120px;">カテゴリ</th>';
+            headerHtml += '<th style="padding:8px;text-align:left;min-width:150px;">項目名</th>';
+            for (var i = 0; i < monthLabels.length; i++) {
+                headerHtml += '<th style="padding:8px;text-align:right;min-width:80px;">' + monthLabels[i] + '</th>';
+            }
+            headerHtml += '<th style="padding:8px;text-align:right;min-width:90px;background:#7b1fa2;">合計</th>';
+            headerHtml += '</tr>';
+            thead.innerHTML = headerHtml;
+
+            // ボディ行を生成
+            var matchedItems = storeData.matchedItems || [];
+            var annualData = storeData.annualData || {};
+            var activeMonths = storeData.activeMonths || [];
+            var bodyHtml = '';
+
+            // カテゴリでグループ化して表示
+            var categories = {};
+            matchedItems.forEach(function(item) {
+                var cat = item.category || '未分類';
+                if (!categories[cat]) categories[cat] = [];
+                categories[cat].push(item);
+            });
+
+            var rowNum = 1;
+            var categoryColors = {
+                '売上高': '#e8f5e9',
+                '売上原価': '#fff3e0',
+                '人件費': '#e3f2fd',
+                '水道光熱費': '#fce4ec',
+                '販促費': '#f3e5f5',
+                '店舗運営費': '#e0f7fa',
+                '管理費': '#eceff1',
+                '教育・採用費': '#efebe9',
+                'IT・外注費': '#e8eaf6',
+                '固定費': '#ffebee',
+                '損益': '#f1f8e9'
+            };
+
+            for (var cat in categories) {
+                var items = categories[cat];
+                var bgColor = categoryColors[cat] || '#fafafa';
+
+                items.forEach(function(item, idx) {
+                    var v17No = item.v17No;
+                    var rowData = annualData[v17No] || {};
+
+                    bodyHtml += '<tr style="background:' + (idx % 2 === 0 ? bgColor : '#fff') + ';border-bottom:1px solid #e0e0e0;">';
+                    bodyHtml += '<td style="padding:6px;text-align:center;font-size:10px;color:#666;">' + rowNum + '</td>';
+                    bodyHtml += '<td style="padding:6px;font-size:10px;color:#7b1fa2;">' + cat + '</td>';
+                    bodyHtml += '<td style="padding:6px;font-weight:bold;">' + item.name + '</td>';
+
+                    var total = 0;
+                    for (var m = 0; m < activeMonths.length; m++) {
+                        var mi = activeMonths[m];
+                        var val = rowData[m] || 0;
+                        total += val;
+                        bodyHtml += '<td style="padding:6px;text-align:right;">' + (val ? Math.round(val).toLocaleString() : '-') + '</td>';
+                    }
+                    bodyHtml += '<td style="padding:6px;text-align:right;font-weight:bold;background:#f3e5f5;">' + Math.round(total).toLocaleString() + '</td>';
+                    bodyHtml += '</tr>';
+                    rowNum++;
+                });
+            }
+
+            tbody.innerHTML = bodyHtml || '<tr><td colspan="' + (monthLabels.length + 4) + '" style="text-align:center;padding:30px;color:#999;">データがありません</td></tr>';
+
+            // モーダル表示
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+
+        // 予算表プレビューモーダルを閉じる
+        function hideBudgetPreviewModal() {
+            var modal = document.getElementById('budgetPreviewModal');
+            if (modal) modal.style.display = 'none';
+            document.body.style.overflow = '';
         }
 
         // 履歴を削除
