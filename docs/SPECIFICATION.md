@@ -161,7 +161,117 @@ ITEMS = {
 };
 ```
 
-### 3.3 演算ルール（CALC_RULES）
+#### CUSTOMER_CODE_MAP（予算テンプレートコードマップ）
+
+顧客予算テンプレートCSVの科目コード（101, 201...）をv17番号にマッピング。
+**screen属性**により値種別フラグが自動判定される。
+
+```javascript
+CUSTOMER_CODE_MAP = {
+    '101': {
+        v15No: 1,                    // v17番号（内部項目ID）
+        name: '店舗売上高',           // 項目名
+        category: '売上高',           // カテゴリ
+        budgetCategory: '売上高',     // 予算カテゴリ（表示順制御用）
+        sortOrder: 1,                // カテゴリ内表示順
+        inputStyle: 'C.自動演算',     // 入力スタイル
+        screen: '自動'               // ★ 出力先画面（フラグ判定に使用）
+    },
+    '301': {
+        v15No: 16,
+        name: '給料手当',
+        category: '人件費',
+        budgetCategory: '人件費',
+        sortOrder: 1,
+        inputStyle: 'B.合算して入力',
+        screen: '設定>費用予算設定'   // → 費用出力フラグ=true
+    },
+    '201': {
+        v15No: 5,
+        name: '食材期首棚',
+        category: '売上原価',
+        budgetCategory: '売上原価',
+        sortOrder: 1,
+        inputStyle: 'D.参照のみ',
+        screen: '参照のみ'           // → 参照のみフラグ=true
+    },
+    // ...
+};
+```
+
+### 3.3 v17No（v17番号）
+
+**v17No**はラクミー経営管理システムの内部項目識別番号。
+
+| 範囲 | 内容 |
+|------|------|
+| 1-4 | 売上高（店舗売上、ドリンク、その他、合計） |
+| 5-15 | 売上原価（棚卸、仕入、原価、利益） |
+| 16-26 | 人件費 |
+| 27-51 | 各種経費（販促費、水道光熱費、管理費等） |
+| 52-54 | 変動費合計、ロイヤリティ、店舗補填 |
+| 55-60 | 固定費（減価償却、家賃、リース等） |
+| 61-63 | 損益（店舗営業利益、販管費合計、営業利益） |
+
+**データ格納**: `annualData[v17No][arrayIdx]` で月別データにアクセス
+
+### 3.4 マッピング優先順位
+
+CSVインポート時のマッピング検索順序：
+
+```
+1. CUSTOMER_CODE_MAP（予算テンプレートコード）
+   └─ screen属性からフラグ判定 ★
+         ↓ マッチしない場合
+2. CODE_BASED_MAP（勘定科目コード）
+         ↓ マッチしない場合
+3. NAME_BASED_MAP（項目名）
+         ↓
+4. ITEMS[v17No]で正式な項目情報を参照
+```
+
+### 3.5 値種別フラグシステム
+
+#### フラグ一覧
+
+| フラグ名 | 説明 | UI表示 |
+|---------|------|--------|
+| `isCostInput` | 費用予算設定に出力 | 費用出力 |
+| `isBudgetInput` | MQ計算に出力 | MQ出力 |
+| `isReferenceOnly` | 参照のみ（出力なし） | 参照のみ |
+| `isTotal` | 合計値（個別項目の合計） | 合計 |
+| `isCalculated` | 演算値（合計値同士の演算結果） | 演算 |
+
+#### screen属性からのフラグ自動判定
+
+| screen属性 | isCostInput | isBudgetInput | isReferenceOnly |
+|-----------|-------------|---------------|-----------------|
+| `'設定>費用予算設定'` | ✅ true | false | false |
+| `'設定>月次予算設定'` | false | ✅ true | false |
+| `'設定>月次予算設定>売上構成比設定'` | false | ✅ true | false |
+| `'参照のみ'` | false | false | ✅ true |
+| `'自動'` | false | false | false |
+
+#### inputStyleからのフラグ自動判定
+
+| 条件 | isTotal | isCalculated |
+|------|---------|--------------|
+| `inputStyle='C.自動演算'` かつ 名前に「合計」「小計」 | ✅ true | false |
+| `inputStyle='C.自動演算'` かつ CALCULATED_ITEMSに含まれる or 「利益」 | false | ✅ true |
+| その他 | false | false |
+
+#### CALCULATED_ITEMS（演算項目リスト）
+
+```javascript
+var CALCULATED_ITEMS = [
+    '売上総利益', '粗利', '粗利益',
+    '限界利益', '限界利益額',
+    '営業利益', '店舗営業利益', '経常利益',
+    '変動費合計', '固定費合計', '販売管理費合計'
+];
+```
+
+### 3.6 演算ルール（CALC_RULES）
 
 | ルール名 | 計算式 | 説明 |
 |----------|--------|------|

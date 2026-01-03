@@ -603,3 +603,182 @@ CSVパース → マッピング → annualData格納 → allStoresData保存
 2. 新店舗のデータをannualData/calcResultsに復元
 3. 各テーブルを再描画
 4. 予算試算タブの店舗セレクトも同期
+
+---
+
+## 13. CUSTOMER_CODE_MAP（予算テンプレートコードマップ）
+
+### 13.1 概要
+
+顧客予算テンプレートCSVの科目コード（101, 201...）をv17番号にマッピング。
+**screen属性**により値種別フラグが自動判定される。
+
+### 13.2 データ構造
+
+```javascript
+CUSTOMER_CODE_MAP = {
+    '101': {
+        v15No: 1,                    // v17番号（内部項目ID）
+        name: '店舗売上高',           // 項目名
+        category: '売上高',           // カテゴリ
+        budgetCategory: '売上高',     // 予算カテゴリ（表示順制御用）
+        sortOrder: 1,                // カテゴリ内表示順
+        inputStyle: 'C.自動演算',     // 入力スタイル
+        screen: '自動'               // ★ 出力先画面（フラグ判定に使用）
+    },
+    '301': {
+        v15No: 16,
+        name: '給料手当',
+        category: '人件費',
+        budgetCategory: '人件費',
+        sortOrder: 1,
+        inputStyle: 'B.合算して入力',
+        screen: '設定>費用予算設定'   // → 費用出力フラグ=true
+    },
+    '201': {
+        v15No: 5,
+        name: '食材期首棚',
+        category: '売上原価',
+        budgetCategory: '売上原価',
+        sortOrder: 1,
+        inputStyle: 'D.参照のみ',
+        screen: '参照のみ'           // → 参照のみフラグ=true
+    },
+    // ...
+};
+```
+
+### 13.3 screen属性の値と意味
+
+| screen属性 | 意味 | 出力先 |
+|-----------|------|--------|
+| `'設定>費用予算設定'` | 費用予算設定画面に出力 | 費用予算設定 |
+| `'設定>月次予算設定'` | MQ計算に使用 | MQ計算 |
+| `'設定>月次予算設定>売上構成比設定'` | 売上構成比設定 | MQ計算 |
+| `'参照のみ'` | 出力なし（参照用） | なし |
+| `'自動'` | 自動演算項目 | 自動 |
+
+---
+
+## 14. 値種別フラグシステム
+
+### 14.1 フラグ一覧
+
+顧客予算項目をインポートする際、以下のフラグで出力先・計算方法を判定：
+
+| フラグ名 | 説明 | UI表示 |
+|---------|------|--------|
+| `isCostInput` | 費用予算設定に出力 | 費用出力 |
+| `isBudgetInput` | MQ計算に出力 | MQ出力 |
+| `isReferenceOnly` | 参照のみ（出力なし） | 参照のみ |
+| `isTotal` | 合計値（個別項目の合計） | 合計 |
+| `isCalculated` | 演算値（合計値同士の演算結果） | 演算 |
+
+### 14.2 screen属性からのフラグ自動判定
+
+CSVインポート時、CUSTOMER_CODE_MAPのscreen属性から自動でフラグを設定：
+
+| screen属性 | isCostInput | isBudgetInput | isReferenceOnly |
+|-----------|-------------|---------------|-----------------|
+| `'設定>費用予算設定'` | ✅ true | false | false |
+| `'設定>月次予算設定'` | false | ✅ true | false |
+| `'設定>月次予算設定>売上構成比設定'` | false | ✅ true | false |
+| `'参照のみ'` | false | false | ✅ true |
+| `'自動'` | false | false | false |
+
+### 14.3 inputStyleからのフラグ自動判定
+
+isTotal・isCalculatedはinputStyleと項目名から判定：
+
+| 条件 | isTotal | isCalculated |
+|------|---------|--------------|
+| `inputStyle='C.自動演算'` かつ 名前に「合計」「小計」 | ✅ true | false |
+| `inputStyle='C.自動演算'` かつ CALCULATED_ITEMSに含まれる or 「利益」 | false | ✅ true |
+| その他 | false | false |
+
+### 14.4 CALCULATED_ITEMS（演算項目リスト）
+
+以下の項目名はisCalculated=trueとして判定：
+
+```javascript
+var CALCULATED_ITEMS = [
+    '売上総利益', '粗利', '粗利益',
+    '限界利益', '限界利益額',
+    '営業利益', '店舗営業利益', '経常利益',
+    '変動費合計', '固定費合計', '販売管理費合計'
+];
+```
+
+### 14.5 フラグ判定ロジック（実装）
+
+```javascript
+function determineFlags(item, screen, inputStyle) {
+    var flags = {
+        isCostInput: false,
+        isBudgetInput: false,
+        isReferenceOnly: false,
+        isTotal: false,
+        isCalculated: false
+    };
+
+    // screen属性からフラグ判定
+    if (screen === '設定>費用予算設定') {
+        flags.isCostInput = true;
+    } else if (screen === '設定>月次予算設定' ||
+               screen === '設定>月次予算設定>売上構成比設定') {
+        flags.isBudgetInput = true;
+    } else if (screen === '参照のみ') {
+        flags.isReferenceOnly = true;
+    }
+
+    // inputStyleからisTotal/isCalculated判定
+    if (inputStyle === 'C.自動演算') {
+        var name = item.name || '';
+        if (name.indexOf('合計') >= 0 || name.indexOf('小計') >= 0) {
+            flags.isTotal = true;
+        } else if (CALCULATED_ITEMS.indexOf(name) >= 0 ||
+                   name.indexOf('利益') >= 0) {
+            flags.isCalculated = true;
+        }
+    }
+
+    return flags;
+}
+```
+
+---
+
+## 15. マッピング優先順位
+
+### 15.1 CSVインポート時のマッピング検索順序
+
+```
+1. CUSTOMER_CODE_MAP（予算テンプレートコード）
+   └─ screen属性からフラグ判定 ★
+         ↓ マッチしない場合
+2. CODE_BASED_MAP（勘定科目コード）
+         ↓ マッチしない場合
+3. NAME_BASED_MAP（項目名）
+         ↓
+4. ITEMS[v17No]で正式な項目情報を参照
+```
+
+### 15.2 マッピングの使い分け
+
+| マッピング | 用途 | 特徴 |
+|-----------|------|------|
+| CUSTOMER_CODE_MAP | 予算テンプレートCSV | screen属性でフラグ自動判定 |
+| CODE_BASED_MAP | 勘定科目コード形式CSV | 勘定科目コードで直接マッチ |
+| NAME_BASED_MAP | 項目名のみのCSV | 表記揺れに対応（多数のバリエーション） |
+
+### 15.3 v17No（v17番号）の範囲
+
+| 範囲 | 内容 |
+|------|------|
+| 1-4 | 売上高（店舗売上、ドリンク、その他、合計） |
+| 5-15 | 売上原価（棚卸、仕入、原価、利益） |
+| 16-26 | 人件費 |
+| 27-51 | 各種経費（販促費、水道光熱費、管理費等） |
+| 52-54 | 変動費合計、ロイヤリティ、店舗補填 |
+| 55-60 | 固定費（減価償却、家賃、リース等） |
+| 61-63 | 損益（店舗営業利益、販管費合計、営業利益） |
