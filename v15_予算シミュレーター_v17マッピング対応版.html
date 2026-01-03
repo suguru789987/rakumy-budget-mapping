@@ -848,102 +848,48 @@
                     </div>
                 </div>
 
-                <!-- カテゴリマッピング設定セクション -->
-                <div class="import-section" style="border-left:4px solid #3f51b5;margin-top:20px;">
-                    <h2 style="color:#303f9f;font-size:18px;margin-bottom:20px;">📊 カテゴリマッピング設定</h2>
+                <!-- カテゴリマッピング設定セクション（統合版） -->
+                <div class="import-section" style="border-left:4px solid #ff9800;margin-top:20px;">
+                    <h2 style="color:#f57c00;font-size:18px;margin-bottom:20px;">✏️ 予算項目マッピング設定</h2>
                     <p style="color:#666;font-size:11px;margin-bottom:15px;">
-                        予算カテゴリの表示順序とカテゴリ内項目の表示順序を設定できます。
+                        予算カテゴリと予算項目コード（科目コード）・予算項目名の紐付けを編集できます。<br>
+                        この設定は予算CSVインポート時の項目マッチングに使用されます。<br>
+                        <strong>↑↓ボタン</strong>でカテゴリ順・項目順を変更できます。
                     </p>
 
-                    <!-- タブボタン -->
-                    <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;">
-                        <button id="btnCategoryOrder" class="btn" style="background:#3f51b5;color:#fff;padding:10px 20px;font-size:12px;" onclick="showCategoryOrderPanel()">
-                            📋 カテゴリ表示順設定
+                    <!-- 操作ボタン群 -->
+                    <div style="margin-bottom:15px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+                        <button class="btn" style="background:#4caf50;color:#fff;padding:10px 20px;font-size:12px;" onclick="showAddItemMappingModal()">
+                            ➕ 新規項目追加
                         </button>
-                        <button id="btnItemOrder" class="btn" style="background:#607d8b;color:#fff;padding:10px 20px;font-size:12px;" onclick="showItemOrderPanel()">
-                            📄 カテゴリ内項目順設定
+                        <button class="btn" style="background:#2196f3;color:#fff;padding:10px 20px;font-size:12px;" onclick="saveCategorySettings()">
+                            💾 設定を保存
                         </button>
-                        <button id="btnItemMapping" class="btn" style="background:#607d8b;color:#fff;padding:10px 20px;font-size:12px;" onclick="showItemMappingPanel()">
-                            ✏️ 項目マッピング編集
-                        </button>
-                    </div>
-
-                    <!-- カテゴリ表示順設定パネル -->
-                    <div id="categoryOrderPanel" style="display:block;">
-                        <div style="background:#e8eaf6;padding:15px;border-radius:8px;margin-bottom:15px;">
-                            <h4 style="color:#303f9f;margin-bottom:10px;font-size:13px;">▼ カテゴリ表示順設定</h4>
-                            <p style="font-size:10px;color:#666;margin-bottom:10px;">
-                                カテゴリの表示順を変更できます。↑↓ボタンで順序を入れ替えてください。
-                            </p>
-                            <div id="categoryOrderList" style="max-height:400px;overflow-y:auto;">
-                                <!-- JavaScript で描画 -->
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- カテゴリ内項目順設定パネル -->
-                    <div id="itemOrderPanel" style="display:none;">
-                        <div style="background:#eceff1;padding:15px;border-radius:8px;margin-bottom:15px;">
-                            <h4 style="color:#455a64;margin-bottom:10px;font-size:13px;">▼ カテゴリ内項目表示順設定</h4>
-                            <div style="margin-bottom:15px;">
-                                <label style="font-weight:bold;font-size:11px;color:#455a64;">カテゴリ選択:</label>
-                                <select id="categorySelectForItems" onchange="renderItemOrderSettings(this.value)" style="padding:8px 12px;border:2px solid #607d8b;border-radius:4px;font-size:12px;min-width:200px;margin-left:10px;">
-                                    <!-- JavaScript で描画 -->
-                                </select>
-                            </div>
-                            <div id="itemOrderList" style="max-height:400px;overflow-y:auto;">
-                                <!-- JavaScript で描画 -->
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 項目マッピング編集パネル -->
-                    <div id="itemMappingPanel" style="display:none;">
-                        <div style="background:#fff8e1;padding:15px;border-radius:8px;margin-bottom:15px;border:2px solid #ffc107;">
-                            <h4 style="color:#f57c00;margin-bottom:10px;font-size:13px;">✏️ 項目マッピング編集</h4>
-                            <p style="font-size:10px;color:#666;margin-bottom:15px;">
-                                予算カテゴリと予算項目コード（科目コード）・予算項目名の紐付けを編集できます。<br>
-                                この設定は予算CSVインポート時の項目マッチングに使用されます。
-                            </p>
-
-                            <!-- 新規追加ボタン -->
-                            <div style="margin-bottom:15px;">
-                                <button class="btn" style="background:#4caf50;color:#fff;padding:8px 16px;font-size:12px;" onclick="showAddItemMappingModal()">
-                                    ➕ 新規項目追加
-                                </button>
-                            </div>
-
-                            <!-- カテゴリフィルター -->
-                            <div style="margin-bottom:15px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                                <label style="font-weight:bold;font-size:11px;color:#f57c00;">カテゴリで絞込:</label>
-                                <select id="mappingCategoryFilter" onchange="renderItemMappingList()" style="padding:8px 12px;border:2px solid #ffc107;border-radius:4px;font-size:12px;min-width:200px;">
-                                    <option value="">すべて表示</option>
-                                    <!-- JavaScript で描画 -->
-                                </select>
-                                <span id="mappingItemCount" style="font-size:11px;color:#666;"></span>
-                            </div>
-
-                            <!-- マッピング一覧テーブル -->
-                            <div id="itemMappingList" style="max-height:500px;overflow-y:auto;">
-                                <!-- JavaScript で描画 -->
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 保存ボタン -->
-                    <div style="margin-top:15px;display:flex;gap:10px;flex-wrap:wrap;">
-                        <button class="btn" style="background:#4caf50;color:#fff;padding:12px 25px;font-size:13px;border-radius:6px;" onclick="saveCategorySettings()">
-                            💾 表示順設定を保存
-                        </button>
-                        <button class="btn" style="background:#ff9800;color:#fff;padding:12px 25px;font-size:13px;border-radius:6px;" onclick="resetCategorySettings()">
+                        <button class="btn" style="background:#9e9e9e;color:#fff;padding:10px 20px;font-size:12px;" onclick="resetCategorySettings()">
                             🔄 初期設定に戻す
                         </button>
                     </div>
 
-                    <div style="margin-top:15px;padding:10px;background:#e8eaf6;border-radius:8px;font-size:11px;color:#303f9f;">
-                        <strong>表示順設定とは？</strong><br>
-                        CSVインポート時の項目表示順序をカスタマイズできます。<br>
-                        設定はLocalStorageに保存され、次回起動時に自動的に復元されます。
+                    <!-- カテゴリフィルター -->
+                    <div style="margin-bottom:15px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                        <label style="font-weight:bold;font-size:11px;color:#f57c00;">カテゴリで絞込:</label>
+                        <select id="mappingCategoryFilter" onchange="renderItemMappingList()" style="padding:8px 12px;border:2px solid #ffc107;border-radius:4px;font-size:12px;min-width:200px;">
+                            <option value="">すべて表示</option>
+                            <!-- JavaScript で描画 -->
+                        </select>
+                        <span id="mappingItemCount" style="font-size:11px;color:#666;"></span>
+                    </div>
+
+                    <!-- マッピング一覧テーブル（カテゴリ・項目順ボタン統合版） -->
+                    <div id="itemMappingList" style="max-height:600px;overflow-y:auto;background:#fff;border:1px solid #e0e0e0;border-radius:8px;">
+                        <!-- JavaScript で描画 -->
+                    </div>
+
+                    <div style="margin-top:15px;padding:10px;background:#fff8e1;border-radius:8px;font-size:11px;color:#f57c00;border:1px solid #ffc107;">
+                        <strong>操作ガイド:</strong><br>
+                        ・<strong>↑↓ボタン</strong>: カテゴリ/項目の表示順を変更<br>
+                        ・<strong>✏️ 編集</strong>: 項目の詳細を編集（科目コード、項目名、カテゴリ、v17番号など）<br>
+                        ・設定はLocalStorageに保存され、次回起動時に自動的に復元されます。
                     </div>
                 </div>
             </div><!-- /import-subtab-settings -->
@@ -7211,226 +7157,6 @@
         var CATEGORY_ORDER_KEY = 'rakumy_category_order';
         var ITEM_ORDER_KEY = 'rakumy_item_order';
 
-        // カテゴリ表示順パネル表示
-        function showCategoryOrderPanel() {
-            document.getElementById('categoryOrderPanel').style.display = 'block';
-            document.getElementById('itemOrderPanel').style.display = 'none';
-            document.getElementById('btnCategoryOrder').style.background = '#3f51b5';
-            document.getElementById('btnItemOrder').style.background = '#607d8b';
-            renderCategoryOrderSettings();
-        }
-
-        // カテゴリ内項目順パネル表示
-        function showItemOrderPanel() {
-            document.getElementById('categoryOrderPanel').style.display = 'none';
-            document.getElementById('itemOrderPanel').style.display = 'block';
-            document.getElementById('btnCategoryOrder').style.background = '#607d8b';
-            document.getElementById('btnItemOrder').style.background = '#3f51b5';
-            renderCategorySelectOptions();
-            var select = document.getElementById('categorySelectForItems');
-            if (select && select.options.length > 0) {
-                renderItemOrderSettings(select.value);
-            }
-        }
-
-        // カテゴリ表示順設定UIを描画
-        function renderCategoryOrderSettings() {
-            var container = document.getElementById('categoryOrderList');
-            if (!container) return;
-
-            // カテゴリをdisplayOrder順でソート
-            var categories = [];
-            for (var cat in BUDGET_CATEGORY_MAP) {
-                categories.push({
-                    name: cat,
-                    data: BUDGET_CATEGORY_MAP[cat]
-                });
-            }
-            categories.sort(function(a, b) {
-                return a.data.displayOrder - b.data.displayOrder;
-            });
-
-            var html = '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
-            html += '<thead><tr style="background:#c5cae9;">';
-            html += '<th style="padding:8px;text-align:center;width:50px;">順番</th>';
-            html += '<th style="padding:8px;text-align:left;">カテゴリ名</th>';
-            html += '<th style="padding:8px;text-align:center;width:80px;">出力先</th>';
-            html += '<th style="padding:8px;text-align:center;width:40px;">色</th>';
-            html += '<th style="padding:8px;text-align:center;width:80px;">操作</th>';
-            html += '</tr></thead><tbody>';
-
-            categories.forEach(function(cat, idx) {
-                var outputLabel = cat.data.output === 'mq' ? 'MQ計算' :
-                                  cat.data.output === 'cost' ? '費用予算' :
-                                  cat.data.output === 'both' ? '両方' : cat.data.output;
-                html += '<tr style="background:' + (idx % 2 === 0 ? '#fff' : '#f5f5f5') + ';border-bottom:1px solid #ddd;">';
-                html += '<td style="padding:8px;text-align:center;font-weight:bold;">' + cat.data.displayOrder + '</td>';
-                html += '<td style="padding:8px;">' + escapeHtml(cat.name) + '</td>';
-                html += '<td style="padding:8px;text-align:center;"><span style="background:#e0e0e0;padding:2px 6px;border-radius:3px;font-size:10px;">' + outputLabel + '</span></td>';
-                html += '<td style="padding:8px;text-align:center;"><span style="display:inline-block;width:20px;height:20px;background:' + cat.data.color + ';border-radius:3px;"></span></td>';
-                html += '<td style="padding:8px;text-align:center;">';
-                html += '<button onclick="moveCategoryUp(\'' + cat.name + '\')" style="background:#3f51b5;color:#fff;border:none;padding:4px 8px;border-radius:3px;cursor:pointer;margin-right:4px;" ' + (idx === 0 ? 'disabled style="opacity:0.5"' : '') + '>↑</button>';
-                html += '<button onclick="moveCategoryDown(\'' + cat.name + '\')" style="background:#3f51b5;color:#fff;border:none;padding:4px 8px;border-radius:3px;cursor:pointer;" ' + (idx === categories.length - 1 ? 'disabled style="opacity:0.5"' : '') + '>↓</button>';
-                html += '</td>';
-                html += '</tr>';
-            });
-
-            html += '</tbody></table>';
-            container.innerHTML = html;
-        }
-
-        // カテゴリを上に移動
-        function moveCategoryUp(categoryName) {
-            var categories = [];
-            for (var cat in BUDGET_CATEGORY_MAP) {
-                categories.push({ name: cat, order: BUDGET_CATEGORY_MAP[cat].displayOrder });
-            }
-            categories.sort(function(a, b) { return a.order - b.order; });
-
-            var idx = categories.findIndex(function(c) { return c.name === categoryName; });
-            if (idx > 0) {
-                // スワップ
-                var prevCat = categories[idx - 1].name;
-                var currOrder = BUDGET_CATEGORY_MAP[categoryName].displayOrder;
-                var prevOrder = BUDGET_CATEGORY_MAP[prevCat].displayOrder;
-                BUDGET_CATEGORY_MAP[categoryName].displayOrder = prevOrder;
-                BUDGET_CATEGORY_MAP[prevCat].displayOrder = currOrder;
-            }
-            renderCategoryOrderSettings();
-        }
-
-        // カテゴリを下に移動
-        function moveCategoryDown(categoryName) {
-            var categories = [];
-            for (var cat in BUDGET_CATEGORY_MAP) {
-                categories.push({ name: cat, order: BUDGET_CATEGORY_MAP[cat].displayOrder });
-            }
-            categories.sort(function(a, b) { return a.order - b.order; });
-
-            var idx = categories.findIndex(function(c) { return c.name === categoryName; });
-            if (idx < categories.length - 1) {
-                // スワップ
-                var nextCat = categories[idx + 1].name;
-                var currOrder = BUDGET_CATEGORY_MAP[categoryName].displayOrder;
-                var nextOrder = BUDGET_CATEGORY_MAP[nextCat].displayOrder;
-                BUDGET_CATEGORY_MAP[categoryName].displayOrder = nextOrder;
-                BUDGET_CATEGORY_MAP[nextCat].displayOrder = currOrder;
-            }
-            renderCategoryOrderSettings();
-        }
-
-        // カテゴリセレクターの選択肢を描画
-        function renderCategorySelectOptions() {
-            var select = document.getElementById('categorySelectForItems');
-            if (!select) return;
-
-            var categories = [];
-            for (var cat in BUDGET_CATEGORY_MAP) {
-                categories.push({ name: cat, order: BUDGET_CATEGORY_MAP[cat].displayOrder });
-            }
-            categories.sort(function(a, b) { return a.order - b.order; });
-
-            select.innerHTML = '';
-            categories.forEach(function(cat) {
-                var option = document.createElement('option');
-                option.value = cat.name;
-                option.textContent = cat.name;
-                select.appendChild(option);
-            });
-        }
-
-        // カテゴリ内項目順設定UIを描画
-        function renderItemOrderSettings(categoryName) {
-            var container = document.getElementById('itemOrderList');
-            if (!container || !categoryName) return;
-
-            // このカテゴリに属する項目を取得
-            var items = [];
-            for (var code in CUSTOMER_CODE_MAP) {
-                var item = CUSTOMER_CODE_MAP[code];
-                if (item.budgetCategory === categoryName) {
-                    items.push({
-                        code: code,
-                        name: item.name,
-                        sortOrder: item.sortOrder || 0
-                    });
-                }
-            }
-            items.sort(function(a, b) { return a.sortOrder - b.sortOrder; });
-
-            if (items.length === 0) {
-                container.innerHTML = '<div style="padding:20px;text-align:center;color:#666;">このカテゴリには項目がありません</div>';
-                return;
-            }
-
-            var html = '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
-            html += '<thead><tr style="background:#cfd8dc;">';
-            html += '<th style="padding:8px;text-align:center;width:50px;">順番</th>';
-            html += '<th style="padding:8px;text-align:center;width:80px;">コード</th>';
-            html += '<th style="padding:8px;text-align:left;">項目名</th>';
-            html += '<th style="padding:8px;text-align:center;width:80px;">操作</th>';
-            html += '</tr></thead><tbody>';
-
-            items.forEach(function(item, idx) {
-                html += '<tr style="background:' + (idx % 2 === 0 ? '#fff' : '#f5f5f5') + ';border-bottom:1px solid #ddd;">';
-                html += '<td style="padding:8px;text-align:center;font-weight:bold;">' + (idx + 1) + '</td>';
-                html += '<td style="padding:8px;text-align:center;"><code style="background:#e0e0e0;padding:2px 6px;border-radius:3px;">' + item.code + '</code></td>';
-                html += '<td style="padding:8px;">' + escapeHtml(item.name) + '</td>';
-                html += '<td style="padding:8px;text-align:center;">';
-                html += '<button onclick="moveItemUp(\'' + item.code + '\', \'' + categoryName + '\')" style="background:#607d8b;color:#fff;border:none;padding:4px 8px;border-radius:3px;cursor:pointer;margin-right:4px;" ' + (idx === 0 ? 'disabled style="opacity:0.5"' : '') + '>↑</button>';
-                html += '<button onclick="moveItemDown(\'' + item.code + '\', \'' + categoryName + '\')" style="background:#607d8b;color:#fff;border:none;padding:4px 8px;border-radius:3px;cursor:pointer;" ' + (idx === items.length - 1 ? 'disabled style="opacity:0.5"' : '') + '>↓</button>';
-                html += '</td>';
-                html += '</tr>';
-            });
-
-            html += '</tbody></table>';
-            container.innerHTML = html;
-        }
-
-        // 項目を上に移動
-        function moveItemUp(code, categoryName) {
-            var items = [];
-            for (var c in CUSTOMER_CODE_MAP) {
-                var item = CUSTOMER_CODE_MAP[c];
-                if (item.budgetCategory === categoryName) {
-                    items.push({ code: c, sortOrder: item.sortOrder || 0 });
-                }
-            }
-            items.sort(function(a, b) { return a.sortOrder - b.sortOrder; });
-
-            var idx = items.findIndex(function(i) { return i.code === code; });
-            if (idx > 0) {
-                var prevCode = items[idx - 1].code;
-                var currOrder = CUSTOMER_CODE_MAP[code].sortOrder;
-                var prevOrder = CUSTOMER_CODE_MAP[prevCode].sortOrder;
-                CUSTOMER_CODE_MAP[code].sortOrder = prevOrder;
-                CUSTOMER_CODE_MAP[prevCode].sortOrder = currOrder;
-            }
-            renderItemOrderSettings(categoryName);
-        }
-
-        // 項目を下に移動
-        function moveItemDown(code, categoryName) {
-            var items = [];
-            for (var c in CUSTOMER_CODE_MAP) {
-                var item = CUSTOMER_CODE_MAP[c];
-                if (item.budgetCategory === categoryName) {
-                    items.push({ code: c, sortOrder: item.sortOrder || 0 });
-                }
-            }
-            items.sort(function(a, b) { return a.sortOrder - b.sortOrder; });
-
-            var idx = items.findIndex(function(i) { return i.code === code; });
-            if (idx < items.length - 1) {
-                var nextCode = items[idx + 1].code;
-                var currOrder = CUSTOMER_CODE_MAP[code].sortOrder;
-                var nextOrder = CUSTOMER_CODE_MAP[nextCode].sortOrder;
-                CUSTOMER_CODE_MAP[code].sortOrder = nextOrder;
-                CUSTOMER_CODE_MAP[nextCode].sortOrder = currOrder;
-            }
-            renderItemOrderSettings(categoryName);
-        }
-
         // 表示順設定を保存
         function saveCategorySettings() {
             try {
@@ -7538,7 +7264,8 @@
             }
 
             showStatus('success', '表示順設定を初期状態に戻しました');
-            renderCategoryOrderSettings();
+            renderItemMappingList();
+            renderMappingCategoryFilter();
         }
 
         // CSVインポート時のカテゴリ検証（ダブルチェック）
@@ -7590,19 +7317,7 @@
 
         // ===== カテゴリ表示順設定機能ここまで =====
 
-        // ===== 項目マッピング編集機能 =====
-
-        // 項目マッピング編集パネル表示
-        function showItemMappingPanel() {
-            document.getElementById('categoryOrderPanel').style.display = 'none';
-            document.getElementById('itemOrderPanel').style.display = 'none';
-            document.getElementById('itemMappingPanel').style.display = 'block';
-            document.getElementById('btnCategoryOrder').style.background = '#607d8b';
-            document.getElementById('btnItemOrder').style.background = '#607d8b';
-            document.getElementById('btnItemMapping').style.background = '#ff9800';
-            renderMappingCategoryFilter();
-            renderItemMappingList();
-        }
+        // ===== 項目マッピング編集機能（統合版） =====
 
         // カテゴリフィルターの選択肢を描画
         function renderMappingCategoryFilter() {
@@ -7622,7 +7337,7 @@
             select.innerHTML = html;
         }
 
-        // 項目マッピング一覧を描画
+        // 項目マッピング一覧を描画（統合版：カテゴリ・項目に↑↓ボタン付き）
         function renderItemMappingList() {
             var container = document.getElementById('itemMappingList');
             if (!container) return;
@@ -7656,6 +7371,19 @@
                 return a.sortOrder - b.sortOrder;
             });
 
+            // カテゴリごとにグループ化（カテゴリ内の項目数と最初/最後を判定するため）
+            var categoryGroups = {};
+            items.forEach(function(item) {
+                var cat = item.budgetCategory;
+                if (!categoryGroups[cat]) categoryGroups[cat] = [];
+                categoryGroups[cat].push(item);
+            });
+
+            // カテゴリリスト（表示順）
+            var categories = Object.keys(BUDGET_CATEGORY_MAP).sort(function(a, b) {
+                return BUDGET_CATEGORY_MAP[a].displayOrder - BUDGET_CATEGORY_MAP[b].displayOrder;
+            });
+
             // 件数表示
             document.getElementById('mappingItemCount').textContent = '（' + items.length + '件）';
 
@@ -7666,40 +7394,159 @@
 
             var html = '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
             html += '<thead><tr style="background:#ffe0b2;">';
+            html += '<th style="padding:8px;text-align:center;width:60px;">順序</th>';
             html += '<th style="padding:8px;text-align:center;width:80px;">科目コード</th>';
             html += '<th style="padding:8px;text-align:left;">予算項目名</th>';
             html += '<th style="padding:8px;text-align:left;width:100px;">予算カテゴリ</th>';
             html += '<th style="padding:8px;text-align:center;width:60px;">v17No</th>';
-            html += '<th style="padding:8px;text-align:center;width:100px;">入力スタイル</th>';
             html += '<th style="padding:8px;text-align:center;width:80px;">操作</th>';
             html += '</tr></thead><tbody>';
 
             var currentCategory = null;
+            var categoryIndex = 0;
             items.forEach(function(item, idx) {
-                // カテゴリヘッダー
+                // カテゴリヘッダー（フィルター無効時のみ表示）
                 if (!filterCategory && item.budgetCategory !== currentCategory) {
                     currentCategory = item.budgetCategory;
+                    categoryIndex = categories.indexOf(currentCategory);
                     var catColor = BUDGET_CATEGORY_MAP[currentCategory] ? BUDGET_CATEGORY_MAP[currentCategory].color : '#607d8b';
-                    html += '<tr style="background:' + catColor + '20;">';
-                    html += '<td colspan="6" style="padding:8px;font-weight:bold;color:' + catColor + ';">';
-                    html += '📁 ' + currentCategory;
+                    var catOrder = BUDGET_CATEGORY_MAP[currentCategory] ? BUDGET_CATEGORY_MAP[currentCategory].displayOrder : 999;
+                    var isFirstCat = categoryIndex === 0;
+                    var isLastCat = categoryIndex === categories.length - 1;
+
+                    html += '<tr style="background:' + catColor + '30;">';
+                    html += '<td style="padding:8px;text-align:center;">';
+                    html += '<button onclick="moveCategoryUp(\'' + currentCategory + '\')" style="background:' + (isFirstCat ? '#ccc' : '#3f51b5') + ';color:#fff;border:none;padding:3px 8px;border-radius:3px;cursor:' + (isFirstCat ? 'not-allowed' : 'pointer') + ';font-size:10px;margin-right:2px;" ' + (isFirstCat ? 'disabled' : '') + '>↑</button>';
+                    html += '<button onclick="moveCategoryDown(\'' + currentCategory + '\')" style="background:' + (isLastCat ? '#ccc' : '#3f51b5') + ';color:#fff;border:none;padding:3px 8px;border-radius:3px;cursor:' + (isLastCat ? 'not-allowed' : 'pointer') + ';font-size:10px;" ' + (isLastCat ? 'disabled' : '') + '>↓</button>';
+                    html += '</td>';
+                    html += '<td colspan="5" style="padding:10px;font-weight:bold;color:' + catColor + ';font-size:13px;">';
+                    html += '📁 ' + currentCategory + ' <span style="font-size:10px;font-weight:normal;color:#666;">（' + (categoryGroups[currentCategory] ? categoryGroups[currentCategory].length : 0) + '件）</span>';
                     html += '</td></tr>';
                 }
 
+                // 項目行（カテゴリ内での位置を判定）
+                var itemsInCat = categoryGroups[item.budgetCategory] || [];
+                var itemIdxInCat = itemsInCat.findIndex(function(i) { return i.code === item.code; });
+                var isFirstItem = itemIdxInCat === 0;
+                var isLastItem = itemIdxInCat === itemsInCat.length - 1;
+
                 html += '<tr style="background:' + (idx % 2 === 0 ? '#fff' : '#fafafa') + ';border-bottom:1px solid #eee;">';
-                html += '<td style="padding:8px;text-align:center;"><code style="background:#e0e0e0;padding:2px 6px;border-radius:3px;">' + item.code + '</code></td>';
-                html += '<td style="padding:8px;">' + escapeHtml(item.name) + '</td>';
-                html += '<td style="padding:8px;font-size:10px;">' + escapeHtml(item.budgetCategory) + '</td>';
-                html += '<td style="padding:8px;text-align:center;">' + (item.v15No || '-') + '</td>';
-                html += '<td style="padding:8px;text-align:center;font-size:10px;">' + escapeHtml(item.inputStyle || '-') + '</td>';
-                html += '<td style="padding:8px;text-align:center;">';
-                html += '<button onclick="showEditItemMappingModal(\'' + item.code + '\')" style="background:#ff9800;color:#fff;border:none;padding:4px 10px;border-radius:3px;cursor:pointer;font-size:10px;">✏️ 編集</button>';
+                html += '<td style="padding:6px;text-align:center;">';
+                html += '<button onclick="moveItemUp(\'' + item.code + '\')" style="background:' + (isFirstItem ? '#e0e0e0' : '#ff9800') + ';color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:' + (isFirstItem ? 'not-allowed' : 'pointer') + ';font-size:9px;margin-right:2px;" ' + (isFirstItem ? 'disabled' : '') + '>↑</button>';
+                html += '<button onclick="moveItemDown(\'' + item.code + '\')" style="background:' + (isLastItem ? '#e0e0e0' : '#ff9800') + ';color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:' + (isLastItem ? 'not-allowed' : 'pointer') + ';font-size:9px;" ' + (isLastItem ? 'disabled' : '') + '>↓</button>';
+                html += '</td>';
+                html += '<td style="padding:6px;text-align:center;"><code style="background:#e0e0e0;padding:2px 6px;border-radius:3px;">' + item.code + '</code></td>';
+                html += '<td style="padding:6px;">' + escapeHtml(item.name) + '</td>';
+                html += '<td style="padding:6px;font-size:10px;">' + escapeHtml(item.budgetCategory) + '</td>';
+                html += '<td style="padding:6px;text-align:center;">' + (item.v15No || '-') + '</td>';
+                html += '<td style="padding:6px;text-align:center;">';
+                html += '<button onclick="showEditItemMappingModal(\'' + item.code + '\')" style="background:#4caf50;color:#fff;border:none;padding:4px 10px;border-radius:3px;cursor:pointer;font-size:10px;">✏️</button>';
                 html += '</td>';
                 html += '</tr>';
             });
 
             html += '</tbody></table>';
             container.innerHTML = html;
+        }
+
+        // カテゴリを上に移動
+        function moveCategoryUp(categoryName) {
+            var categories = Object.keys(BUDGET_CATEGORY_MAP).sort(function(a, b) {
+                return BUDGET_CATEGORY_MAP[a].displayOrder - BUDGET_CATEGORY_MAP[b].displayOrder;
+            });
+            var idx = categories.indexOf(categoryName);
+            if (idx <= 0) return;
+
+            // 現在のカテゴリと一つ上のカテゴリのdisplayOrderを交換
+            var currentOrder = BUDGET_CATEGORY_MAP[categoryName].displayOrder;
+            var prevCategory = categories[idx - 1];
+            var prevOrder = BUDGET_CATEGORY_MAP[prevCategory].displayOrder;
+
+            BUDGET_CATEGORY_MAP[categoryName].displayOrder = prevOrder;
+            BUDGET_CATEGORY_MAP[prevCategory].displayOrder = currentOrder;
+
+            renderItemMappingList();
+            renderMappingCategoryFilter();
+        }
+
+        // カテゴリを下に移動
+        function moveCategoryDown(categoryName) {
+            var categories = Object.keys(BUDGET_CATEGORY_MAP).sort(function(a, b) {
+                return BUDGET_CATEGORY_MAP[a].displayOrder - BUDGET_CATEGORY_MAP[b].displayOrder;
+            });
+            var idx = categories.indexOf(categoryName);
+            if (idx < 0 || idx >= categories.length - 1) return;
+
+            // 現在のカテゴリと一つ下のカテゴリのdisplayOrderを交換
+            var currentOrder = BUDGET_CATEGORY_MAP[categoryName].displayOrder;
+            var nextCategory = categories[idx + 1];
+            var nextOrder = BUDGET_CATEGORY_MAP[nextCategory].displayOrder;
+
+            BUDGET_CATEGORY_MAP[categoryName].displayOrder = nextOrder;
+            BUDGET_CATEGORY_MAP[nextCategory].displayOrder = currentOrder;
+
+            renderItemMappingList();
+            renderMappingCategoryFilter();
+        }
+
+        // 項目を上に移動（カテゴリ内）
+        function moveItemUp(code) {
+            var item = CUSTOMER_CODE_MAP[code];
+            if (!item) return;
+
+            var category = item.budgetCategory;
+
+            // 同じカテゴリの項目をsortOrder順で取得
+            var itemsInCat = [];
+            for (var c in CUSTOMER_CODE_MAP) {
+                if (CUSTOMER_CODE_MAP[c].budgetCategory === category) {
+                    itemsInCat.push({ code: c, sortOrder: CUSTOMER_CODE_MAP[c].sortOrder || 0 });
+                }
+            }
+            itemsInCat.sort(function(a, b) { return a.sortOrder - b.sortOrder; });
+
+            var idx = itemsInCat.findIndex(function(i) { return i.code === code; });
+            if (idx <= 0) return;
+
+            // 現在の項目と一つ上の項目のsortOrderを交換
+            var prevCode = itemsInCat[idx - 1].code;
+            var currentOrder = CUSTOMER_CODE_MAP[code].sortOrder || 0;
+            var prevOrder = CUSTOMER_CODE_MAP[prevCode].sortOrder || 0;
+
+            CUSTOMER_CODE_MAP[code].sortOrder = prevOrder;
+            CUSTOMER_CODE_MAP[prevCode].sortOrder = currentOrder;
+
+            renderItemMappingList();
+        }
+
+        // 項目を下に移動（カテゴリ内）
+        function moveItemDown(code) {
+            var item = CUSTOMER_CODE_MAP[code];
+            if (!item) return;
+
+            var category = item.budgetCategory;
+
+            // 同じカテゴリの項目をsortOrder順で取得
+            var itemsInCat = [];
+            for (var c in CUSTOMER_CODE_MAP) {
+                if (CUSTOMER_CODE_MAP[c].budgetCategory === category) {
+                    itemsInCat.push({ code: c, sortOrder: CUSTOMER_CODE_MAP[c].sortOrder || 0 });
+                }
+            }
+            itemsInCat.sort(function(a, b) { return a.sortOrder - b.sortOrder; });
+
+            var idx = itemsInCat.findIndex(function(i) { return i.code === code; });
+            if (idx < 0 || idx >= itemsInCat.length - 1) return;
+
+            // 現在の項目と一つ下の項目のsortOrderを交換
+            var nextCode = itemsInCat[idx + 1].code;
+            var currentOrder = CUSTOMER_CODE_MAP[code].sortOrder || 0;
+            var nextOrder = CUSTOMER_CODE_MAP[nextCode].sortOrder || 0;
+
+            CUSTOMER_CODE_MAP[code].sortOrder = nextOrder;
+            CUSTOMER_CODE_MAP[nextCode].sortOrder = currentOrder;
+
+            renderItemMappingList();
         }
 
         // 新規項目追加モーダル表示
@@ -12330,7 +12177,8 @@
             updateExportHistoryCount();
             // カテゴリ表示順設定の読み込み・初期描画
             loadCategorySettings();
-            renderCategoryOrderSettings();
+            renderMappingCategoryFilter();
+            renderItemMappingList();
         });
     </script>
 </body>
