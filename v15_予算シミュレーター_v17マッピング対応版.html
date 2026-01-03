@@ -1401,7 +1401,7 @@
                             <button onclick="executeSimMQWithoutEdit()" class="btn" style="padding:12px 25px;background:#4caf50;color:#fff;border:none;border-radius:6px;font-size:13px;">
                                 デフォルトで計算
                             </button>
-                            <button onclick="showUnitPriceEditModal()" class="btn" style="padding:12px 25px;background:#ff9800;color:#fff;border:none;border-radius:6px;font-size:13px;">
+                            <button onclick="showSimUnitPriceEditModal()" class="btn" style="padding:12px 25px;background:#ff9800;color:#fff;border:none;border-radius:6px;font-size:13px;">
                                 客単価を編集
                             </button>
                         </div>
@@ -1428,7 +1428,7 @@
                                 デフォルトにリセット
                             </button>
                             <div style="display:flex;gap:10px;flex-wrap:wrap;">
-                                <button onclick="hideUnitPriceEditModal()" class="btn" style="padding:10px 20px;background:#9e9e9e;color:#fff;border:none;border-radius:6px;">
+                                <button onclick="hideSimUnitPriceEditModal()" class="btn" style="padding:10px 20px;background:#9e9e9e;color:#fff;border:none;border-radius:6px;">
                                     キャンセル
                                 </button>
                                 <button onclick="executeSimMQWithEdit()" class="btn" style="padding:10px 20px;background:#ff9800;color:#fff;border:none;border-radius:6px;font-weight:bold;">
@@ -5046,8 +5046,8 @@
             if (modal) modal.style.display = 'none';
         }
 
-        // ★★★ 目標客単価編集モーダル表示 ★★★
-        function showUnitPriceEditModal() {
+        // ★★★ 予算試算用 目標客単価編集モーダル表示 ★★★
+        function showSimUnitPriceEditModal() {
             hideUnitPriceConfirmModal();
             // 店舗名を取得
             var select = document.getElementById('simulationStoreSelect');
@@ -5065,7 +5065,7 @@
             }
         }
 
-        function hideUnitPriceEditModal() {
+        function hideSimUnitPriceEditModal() {
             var modal = document.getElementById('unitPriceEditModal');
             if (modal) modal.style.display = 'none';
         }
@@ -5078,7 +5078,7 @@
 
         // ★★★ 編集後の値でMQ試算実行 ★★★
         function executeSimMQWithEdit() {
-            hideUnitPriceEditModal();
+            hideSimUnitPriceEditModal();
             executeSimMQAndShowResult();
         }
 
@@ -5145,7 +5145,7 @@
             saveSimUnitPricesToMaster();
             // マスタ履歴にも自動保存（LocalStorage永続化）
             saveMasterDataToHistory();
-            hideUnitPriceEditModal();
+            hideSimUnitPriceEditModal();
             executeSimMQAndShowResult();
         }
 
