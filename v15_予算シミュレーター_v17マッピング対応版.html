@@ -8585,8 +8585,8 @@
         // マッピング編集モーダル
         function showColumnMappingEditor() {
             if (!currentMappingPresetId) {
-                // プリセットが選択されていない場合は新規作成を促す
-                showStatus('error', '先にプリセットを選択または作成してください');
+                // プリセットが選択されていない場合は新規作成モーダルを開く
+                showNewPresetModal();
                 return;
             }
 
