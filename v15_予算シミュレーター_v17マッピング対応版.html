@@ -863,6 +863,9 @@
                         <button id="btnItemOrder" class="btn" style="background:#607d8b;color:#fff;padding:10px 20px;font-size:12px;" onclick="showItemOrderPanel()">
                             📄 カテゴリ内項目順設定
                         </button>
+                        <button id="btnItemMapping" class="btn" style="background:#607d8b;color:#fff;padding:10px 20px;font-size:12px;" onclick="showItemMappingPanel()">
+                            ✏️ 項目マッピング編集
+                        </button>
                     </div>
 
                     <!-- カテゴリ表示順設定パネル -->
@@ -894,6 +897,39 @@
                         </div>
                     </div>
 
+                    <!-- 項目マッピング編集パネル -->
+                    <div id="itemMappingPanel" style="display:none;">
+                        <div style="background:#fff8e1;padding:15px;border-radius:8px;margin-bottom:15px;border:2px solid #ffc107;">
+                            <h4 style="color:#f57c00;margin-bottom:10px;font-size:13px;">✏️ 項目マッピング編集</h4>
+                            <p style="font-size:10px;color:#666;margin-bottom:15px;">
+                                予算カテゴリと予算項目コード（科目コード）・予算項目名の紐付けを編集できます。<br>
+                                この設定は予算CSVインポート時の項目マッチングに使用されます。
+                            </p>
+
+                            <!-- 新規追加ボタン -->
+                            <div style="margin-bottom:15px;">
+                                <button class="btn" style="background:#4caf50;color:#fff;padding:8px 16px;font-size:12px;" onclick="showAddItemMappingModal()">
+                                    ➕ 新規項目追加
+                                </button>
+                            </div>
+
+                            <!-- カテゴリフィルター -->
+                            <div style="margin-bottom:15px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                                <label style="font-weight:bold;font-size:11px;color:#f57c00;">カテゴリで絞込:</label>
+                                <select id="mappingCategoryFilter" onchange="renderItemMappingList()" style="padding:8px 12px;border:2px solid #ffc107;border-radius:4px;font-size:12px;min-width:200px;">
+                                    <option value="">すべて表示</option>
+                                    <!-- JavaScript で描画 -->
+                                </select>
+                                <span id="mappingItemCount" style="font-size:11px;color:#666;"></span>
+                            </div>
+
+                            <!-- マッピング一覧テーブル -->
+                            <div id="itemMappingList" style="max-height:500px;overflow-y:auto;">
+                                <!-- JavaScript で描画 -->
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- 保存ボタン -->
                     <div style="margin-top:15px;display:flex;gap:10px;flex-wrap:wrap;">
                         <button class="btn" style="background:#4caf50;color:#fff;padding:12px 25px;font-size:13px;border-radius:6px;" onclick="saveCategorySettings()">
@@ -911,6 +947,85 @@
                     </div>
                 </div>
             </div><!-- /import-subtab-settings -->
+
+            <!-- 項目マッピング編集モーダル -->
+            <div id="itemMappingEditModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1001;overflow-y:auto;">
+                <div style="background:#fff;border-radius:12px;margin:50px auto;max-width:600px;width:95%;box-shadow:0 4px 20px rgba(0,0,0,0.3);">
+                    <div style="background:linear-gradient(135deg, #ff9800 0%, #f57c00 100%);color:#fff;padding:20px;border-radius:12px 12px 0 0;display:flex;justify-content:space-between;align-items:center;">
+                        <h3 id="mappingModalTitle" style="margin:0;font-size:18px;">✏️ 項目マッピング編集</h3>
+                        <button onclick="hideItemMappingModal()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;padding:8px 15px;border-radius:4px;cursor:pointer;">✕ 閉じる</button>
+                    </div>
+                    <div style="padding:25px;">
+                        <input type="hidden" id="mappingEditMode" value="add">
+                        <input type="hidden" id="mappingEditOriginalCode" value="">
+
+                        <!-- 科目コード -->
+                        <div style="margin-bottom:20px;">
+                            <label style="display:block;font-weight:bold;font-size:12px;color:#333;margin-bottom:8px;">科目コード（必須）</label>
+                            <input type="text" id="mappingEditCode" placeholder="例: 810" style="width:100%;padding:12px;border:2px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;">
+                            <p style="font-size:10px;color:#666;margin-top:5px;">予算CSVの科目コード列（B列）と照合されます</p>
+                        </div>
+
+                        <!-- 予算項目名 -->
+                        <div style="margin-bottom:20px;">
+                            <label style="display:block;font-weight:bold;font-size:12px;color:#333;margin-bottom:8px;">予算項目名（必須）</label>
+                            <input type="text" id="mappingEditName" placeholder="例: 店舗売上高" style="width:100%;padding:12px;border:2px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;">
+                            <p style="font-size:10px;color:#666;margin-top:5px;">予算CSVの項目名列と照合されます</p>
+                        </div>
+
+                        <!-- 予算カテゴリ -->
+                        <div style="margin-bottom:20px;">
+                            <label style="display:block;font-weight:bold;font-size:12px;color:#333;margin-bottom:8px;">予算カテゴリ（必須）</label>
+                            <select id="mappingEditCategory" style="width:100%;padding:12px;border:2px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;">
+                                <!-- JavaScript で描画 -->
+                            </select>
+                        </div>
+
+                        <!-- v17No -->
+                        <div style="margin-bottom:20px;">
+                            <label style="display:block;font-weight:bold;font-size:12px;color:#333;margin-bottom:8px;">v17番号</label>
+                            <input type="number" id="mappingEditV17No" placeholder="例: 1" style="width:100%;padding:12px;border:2px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;">
+                            <p style="font-size:10px;color:#666;margin-top:5px;">ラクミー予算項目との紐付け番号（0=未設定）</p>
+                        </div>
+
+                        <!-- 入力スタイル -->
+                        <div style="margin-bottom:20px;">
+                            <label style="display:block;font-weight:bold;font-size:12px;color:#333;margin-bottom:8px;">入力スタイル</label>
+                            <select id="mappingEditInputStyle" style="width:100%;padding:12px;border:2px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;">
+                                <option value="A.そのまま入力">A.そのまま入力</option>
+                                <option value="B.合算して入力">B.合算して入力</option>
+                                <option value="C.自動演算">C.自動演算</option>
+                                <option value="D.参照のみ">D.参照のみ</option>
+                            </select>
+                        </div>
+
+                        <!-- 出力先画面 -->
+                        <div style="margin-bottom:20px;">
+                            <label style="display:block;font-weight:bold;font-size:12px;color:#333;margin-bottom:8px;">出力先画面</label>
+                            <select id="mappingEditScreen" style="width:100%;padding:12px;border:2px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;">
+                                <option value="設定>費用予算設定">設定>費用予算設定</option>
+                                <option value="設定>月次予算設定">設定>月次予算設定</option>
+                                <option value="設定>月次予算設定>売上構成比設定">設定>月次予算設定>売上構成比設定</option>
+                                <option value="自動">自動</option>
+                                <option value="参照のみ">参照のみ</option>
+                            </select>
+                        </div>
+
+                        <!-- ボタン -->
+                        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:25px;">
+                            <button id="mappingDeleteBtn" onclick="deleteItemMapping()" style="background:#f44336;color:#fff;border:none;padding:12px 25px;border-radius:6px;font-size:13px;font-weight:bold;cursor:pointer;display:none;">
+                                🗑️ 削除
+                            </button>
+                            <button onclick="hideItemMappingModal()" style="background:#9e9e9e;color:#fff;border:none;padding:12px 25px;border-radius:6px;font-size:13px;font-weight:bold;cursor:pointer;">
+                                キャンセル
+                            </button>
+                            <button onclick="saveItemMapping()" style="background:#4caf50;color:#fff;border:none;padding:12px 25px;border-radius:6px;font-size:13px;font-weight:bold;cursor:pointer;">
+                                💾 保存
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <!-- マスタデータ履歴モーダル -->
             <div id="masterDataModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;overflow-y:auto;">
@@ -7474,6 +7589,303 @@
         }
 
         // ===== カテゴリ表示順設定機能ここまで =====
+
+        // ===== 項目マッピング編集機能 =====
+
+        // 項目マッピング編集パネル表示
+        function showItemMappingPanel() {
+            document.getElementById('categoryOrderPanel').style.display = 'none';
+            document.getElementById('itemOrderPanel').style.display = 'none';
+            document.getElementById('itemMappingPanel').style.display = 'block';
+            document.getElementById('btnCategoryOrder').style.background = '#607d8b';
+            document.getElementById('btnItemOrder').style.background = '#607d8b';
+            document.getElementById('btnItemMapping').style.background = '#ff9800';
+            renderMappingCategoryFilter();
+            renderItemMappingList();
+        }
+
+        // カテゴリフィルターの選択肢を描画
+        function renderMappingCategoryFilter() {
+            var select = document.getElementById('mappingCategoryFilter');
+            if (!select) return;
+
+            var categories = [];
+            for (var cat in BUDGET_CATEGORY_MAP) {
+                categories.push({ name: cat, order: BUDGET_CATEGORY_MAP[cat].displayOrder });
+            }
+            categories.sort(function(a, b) { return a.order - b.order; });
+
+            var html = '<option value="">すべて表示</option>';
+            categories.forEach(function(cat) {
+                html += '<option value="' + cat.name + '">' + cat.name + '</option>';
+            });
+            select.innerHTML = html;
+        }
+
+        // 項目マッピング一覧を描画
+        function renderItemMappingList() {
+            var container = document.getElementById('itemMappingList');
+            if (!container) return;
+
+            var filterCategory = document.getElementById('mappingCategoryFilter').value;
+
+            // CUSTOMER_CODE_MAPから項目を取得
+            var items = [];
+            for (var code in CUSTOMER_CODE_MAP) {
+                var item = CUSTOMER_CODE_MAP[code];
+                if (filterCategory && item.budgetCategory !== filterCategory) continue;
+                items.push({
+                    code: code,
+                    name: item.name,
+                    category: item.category,
+                    budgetCategory: item.budgetCategory || item.category,
+                    v15No: item.v15No,
+                    sortOrder: item.sortOrder || 0,
+                    inputStyle: item.inputStyle || '',
+                    screen: item.screen || ''
+                });
+            }
+
+            // カテゴリ順 → sortOrder順でソート
+            items.sort(function(a, b) {
+                var catA = BUDGET_CATEGORY_MAP[a.budgetCategory] || { displayOrder: 999 };
+                var catB = BUDGET_CATEGORY_MAP[b.budgetCategory] || { displayOrder: 999 };
+                if (catA.displayOrder !== catB.displayOrder) {
+                    return catA.displayOrder - catB.displayOrder;
+                }
+                return a.sortOrder - b.sortOrder;
+            });
+
+            // 件数表示
+            document.getElementById('mappingItemCount').textContent = '（' + items.length + '件）';
+
+            if (items.length === 0) {
+                container.innerHTML = '<div style="padding:20px;text-align:center;color:#666;">該当する項目がありません</div>';
+                return;
+            }
+
+            var html = '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
+            html += '<thead><tr style="background:#ffe0b2;">';
+            html += '<th style="padding:8px;text-align:center;width:80px;">科目コード</th>';
+            html += '<th style="padding:8px;text-align:left;">予算項目名</th>';
+            html += '<th style="padding:8px;text-align:left;width:100px;">予算カテゴリ</th>';
+            html += '<th style="padding:8px;text-align:center;width:60px;">v17No</th>';
+            html += '<th style="padding:8px;text-align:center;width:100px;">入力スタイル</th>';
+            html += '<th style="padding:8px;text-align:center;width:80px;">操作</th>';
+            html += '</tr></thead><tbody>';
+
+            var currentCategory = null;
+            items.forEach(function(item, idx) {
+                // カテゴリヘッダー
+                if (!filterCategory && item.budgetCategory !== currentCategory) {
+                    currentCategory = item.budgetCategory;
+                    var catColor = BUDGET_CATEGORY_MAP[currentCategory] ? BUDGET_CATEGORY_MAP[currentCategory].color : '#607d8b';
+                    html += '<tr style="background:' + catColor + '20;">';
+                    html += '<td colspan="6" style="padding:8px;font-weight:bold;color:' + catColor + ';">';
+                    html += '📁 ' + currentCategory;
+                    html += '</td></tr>';
+                }
+
+                html += '<tr style="background:' + (idx % 2 === 0 ? '#fff' : '#fafafa') + ';border-bottom:1px solid #eee;">';
+                html += '<td style="padding:8px;text-align:center;"><code style="background:#e0e0e0;padding:2px 6px;border-radius:3px;">' + item.code + '</code></td>';
+                html += '<td style="padding:8px;">' + escapeHtml(item.name) + '</td>';
+                html += '<td style="padding:8px;font-size:10px;">' + escapeHtml(item.budgetCategory) + '</td>';
+                html += '<td style="padding:8px;text-align:center;">' + (item.v15No || '-') + '</td>';
+                html += '<td style="padding:8px;text-align:center;font-size:10px;">' + escapeHtml(item.inputStyle || '-') + '</td>';
+                html += '<td style="padding:8px;text-align:center;">';
+                html += '<button onclick="showEditItemMappingModal(\'' + item.code + '\')" style="background:#ff9800;color:#fff;border:none;padding:4px 10px;border-radius:3px;cursor:pointer;font-size:10px;">✏️ 編集</button>';
+                html += '</td>';
+                html += '</tr>';
+            });
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        // 新規項目追加モーダル表示
+        function showAddItemMappingModal() {
+            document.getElementById('mappingEditMode').value = 'add';
+            document.getElementById('mappingEditOriginalCode').value = '';
+            document.getElementById('mappingModalTitle').textContent = '➕ 新規項目追加';
+            document.getElementById('mappingDeleteBtn').style.display = 'none';
+
+            // フォームをクリア
+            document.getElementById('mappingEditCode').value = '';
+            document.getElementById('mappingEditName').value = '';
+            document.getElementById('mappingEditV17No').value = '';
+            document.getElementById('mappingEditInputStyle').value = 'A.そのまま入力';
+            document.getElementById('mappingEditScreen').value = '設定>費用予算設定';
+
+            // カテゴリセレクターを描画
+            renderMappingEditCategoryOptions();
+
+            document.getElementById('itemMappingEditModal').style.display = 'block';
+        }
+
+        // 項目編集モーダル表示
+        function showEditItemMappingModal(code) {
+            var item = CUSTOMER_CODE_MAP[code];
+            if (!item) {
+                alert('項目が見つかりません: ' + code);
+                return;
+            }
+
+            document.getElementById('mappingEditMode').value = 'edit';
+            document.getElementById('mappingEditOriginalCode').value = code;
+            document.getElementById('mappingModalTitle').textContent = '✏️ 項目マッピング編集';
+            document.getElementById('mappingDeleteBtn').style.display = 'inline-block';
+
+            // フォームに値を設定
+            document.getElementById('mappingEditCode').value = code;
+            document.getElementById('mappingEditName').value = item.name || '';
+            document.getElementById('mappingEditV17No').value = item.v15No || '';
+            document.getElementById('mappingEditInputStyle').value = item.inputStyle || 'A.そのまま入力';
+            document.getElementById('mappingEditScreen').value = item.screen || '設定>費用予算設定';
+
+            // カテゴリセレクターを描画して選択
+            renderMappingEditCategoryOptions();
+            document.getElementById('mappingEditCategory').value = item.budgetCategory || item.category || '';
+
+            document.getElementById('itemMappingEditModal').style.display = 'block';
+        }
+
+        // モーダルを閉じる
+        function hideItemMappingModal() {
+            document.getElementById('itemMappingEditModal').style.display = 'none';
+        }
+
+        // 編集モーダルのカテゴリセレクターを描画
+        function renderMappingEditCategoryOptions() {
+            var select = document.getElementById('mappingEditCategory');
+            if (!select) return;
+
+            var categories = [];
+            for (var cat in BUDGET_CATEGORY_MAP) {
+                categories.push({ name: cat, order: BUDGET_CATEGORY_MAP[cat].displayOrder });
+            }
+            categories.sort(function(a, b) { return a.order - b.order; });
+
+            var html = '';
+            categories.forEach(function(cat) {
+                html += '<option value="' + cat.name + '">' + cat.name + '</option>';
+            });
+            select.innerHTML = html;
+        }
+
+        // 項目マッピングを保存
+        function saveItemMapping() {
+            var mode = document.getElementById('mappingEditMode').value;
+            var originalCode = document.getElementById('mappingEditOriginalCode').value;
+
+            var code = document.getElementById('mappingEditCode').value.trim();
+            var name = document.getElementById('mappingEditName').value.trim();
+            var category = document.getElementById('mappingEditCategory').value;
+            var v17No = parseInt(document.getElementById('mappingEditV17No').value) || 0;
+            var inputStyle = document.getElementById('mappingEditInputStyle').value;
+            var screen = document.getElementById('mappingEditScreen').value;
+
+            // バリデーション
+            if (!code) {
+                alert('科目コードを入力してください');
+                return;
+            }
+            if (!name) {
+                alert('予算項目名を入力してください');
+                return;
+            }
+            if (!category) {
+                alert('予算カテゴリを選択してください');
+                return;
+            }
+
+            // 新規追加時のコード重複チェック
+            if (mode === 'add' && CUSTOMER_CODE_MAP[code]) {
+                alert('科目コード「' + code + '」は既に存在します');
+                return;
+            }
+
+            // 編集時にコードを変更した場合の重複チェック
+            if (mode === 'edit' && code !== originalCode && CUSTOMER_CODE_MAP[code]) {
+                alert('科目コード「' + code + '」は既に存在します');
+                return;
+            }
+
+            // sortOrderを決定（同じカテゴリの最大値+1）
+            var maxSortOrder = 0;
+            for (var c in CUSTOMER_CODE_MAP) {
+                if (CUSTOMER_CODE_MAP[c].budgetCategory === category) {
+                    maxSortOrder = Math.max(maxSortOrder, CUSTOMER_CODE_MAP[c].sortOrder || 0);
+                }
+            }
+
+            // 編集時に元のコードを削除
+            if (mode === 'edit' && originalCode && originalCode !== code) {
+                delete CUSTOMER_CODE_MAP[originalCode];
+            }
+
+            // データを保存
+            CUSTOMER_CODE_MAP[code] = {
+                v15No: v17No,
+                name: name,
+                category: category,
+                budgetCategory: category,
+                sortOrder: mode === 'add' ? (maxSortOrder + 1) : (CUSTOMER_CODE_MAP[originalCode] ? CUSTOMER_CODE_MAP[originalCode].sortOrder : maxSortOrder + 1),
+                inputStyle: inputStyle,
+                screen: screen
+            };
+
+            // NAME_BASED_MAPにも追加（項目名でのマッチング用）
+            NAME_BASED_MAP[name] = {
+                v17No: v17No,
+                category: category
+            };
+
+            hideItemMappingModal();
+            renderItemMappingList();
+            showStatus('success', mode === 'add' ? '項目を追加しました: ' + name : '項目を更新しました: ' + name);
+        }
+
+        // 項目マッピングを削除
+        function deleteItemMapping() {
+            var originalCode = document.getElementById('mappingEditOriginalCode').value;
+            if (!originalCode) return;
+
+            var item = CUSTOMER_CODE_MAP[originalCode];
+            if (!item) return;
+
+            if (!confirm('「' + item.name + '」（コード: ' + originalCode + '）を削除しますか？\n\n※削除すると予算CSVインポート時にこの項目がマッチしなくなります。')) {
+                return;
+            }
+
+            // NAME_BASED_MAPからも削除
+            if (NAME_BASED_MAP[item.name]) {
+                delete NAME_BASED_MAP[item.name];
+            }
+
+            // CUSTOMER_CODE_MAPから削除
+            delete CUSTOMER_CODE_MAP[originalCode];
+
+            hideItemMappingModal();
+            renderItemMappingList();
+            showStatus('success', '項目を削除しました: ' + item.name);
+        }
+
+        // showCategoryOrderPanelとshowItemOrderPanelを更新（itemMappingPanelも非表示に）
+        var _originalShowCategoryOrderPanel = showCategoryOrderPanel;
+        showCategoryOrderPanel = function() {
+            document.getElementById('itemMappingPanel').style.display = 'none';
+            document.getElementById('btnItemMapping').style.background = '#607d8b';
+            _originalShowCategoryOrderPanel();
+        };
+
+        var _originalShowItemOrderPanel = showItemOrderPanel;
+        showItemOrderPanel = function() {
+            document.getElementById('itemMappingPanel').style.display = 'none';
+            document.getElementById('btnItemMapping').style.background = '#607d8b';
+            _originalShowItemOrderPanel();
+        };
+
+        // ===== 項目マッピング編集機能ここまで =====
 
         var selectedHistoryId = null;  // 選択中の履歴ID
         var selectedHistoryCategory = 'all';  // 履歴カテゴリフィルター: 'all', 'stores', 'items', 'prices'
