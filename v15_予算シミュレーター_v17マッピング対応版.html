@@ -5048,20 +5048,27 @@
 
         // ★★★ 予算試算用 目標客単価編集モーダル表示 ★★★
         function showSimUnitPriceEditModal() {
-            hideUnitPriceConfirmModal();
-            // 店舗名を取得
-            var select = document.getElementById('simulationStoreSelect');
-            var storeName = select ? select.value : '';
-            // 客単価テーブルをモーダル内に再描画してデフォルト値をセット
-            initSimUnitPrices(storeName);
-            var modal = document.getElementById('unitPriceEditModal');
-            if (modal) {
-                modal.style.display = 'flex';
-            }
-            // 月数表示を更新
-            var countEl = document.getElementById('simMonthCountDisplay2');
-            if (countEl && simulationData && simulationData.activeMonths) {
-                countEl.textContent = simulationData.activeMonths.length;
+            try {
+                console.log('showSimUnitPriceEditModal called');
+                hideUnitPriceConfirmModal();
+                // 店舗名を取得
+                var select = document.getElementById('simulationStoreSelect');
+                var storeName = select ? select.value : '';
+                console.log('storeName:', storeName);
+                // 客単価テーブルをモーダル内に再描画してデフォルト値をセット
+                initSimUnitPrices(storeName);
+                var modal = document.getElementById('unitPriceEditModal');
+                if (modal) {
+                    modal.style.display = 'flex';
+                }
+                // 月数表示を更新
+                var countEl = document.getElementById('simMonthCountDisplay2');
+                if (countEl && simulationData && simulationData.activeMonths) {
+                    countEl.textContent = simulationData.activeMonths.length;
+                }
+            } catch (e) {
+                console.error('showSimUnitPriceEditModal error:', e);
+                alert('エラー: ' + e.message);
             }
         }
 
@@ -5072,8 +5079,14 @@
 
         // ★★★ デフォルト値でMQ試算実行 ★★★
         function executeSimMQWithoutEdit() {
-            hideUnitPriceConfirmModal();
-            executeSimMQAndShowResult();
+            try {
+                console.log('executeSimMQWithoutEdit called');
+                hideUnitPriceConfirmModal();
+                executeSimMQAndShowResult();
+            } catch (e) {
+                console.error('executeSimMQWithoutEdit error:', e);
+                alert('エラー: ' + e.message);
+            }
         }
 
         // ★★★ 編集後の値でMQ試算実行 ★★★
