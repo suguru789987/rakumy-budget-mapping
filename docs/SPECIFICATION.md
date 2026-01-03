@@ -928,6 +928,33 @@ var fiscalYearSettings = {
 | renderFiscalYearPreview() | プレビュー表示 |
 | autoDetectFiscalYearFromCSV() | 予算CSV読込時に月情報から会計年度を自動検出・適用 |
 
+#### 店舗別会計年度設定
+
+店舗ごと・会社ごとに異なる会計年度を設定可能。
+
+```javascript
+var STORE_FISCAL_SETTINGS_KEY = 'rakumy_store_fiscal_settings';
+
+// 店舗別会計年度設定
+var storeFiscalSettings = {
+    '店舗A': { startMonth: 4, year: 2026, style: 'short', useDefault: false },
+    '店舗B': { startMonth: 1, year: 2026, style: 'short', useDefault: false }
+};
+```
+
+| 関数名 | 説明 |
+|--------|------|
+| populateFiscalStoreSelect() | 店舗選択プルダウンを更新 |
+| onFiscalStoreSelect() | 店舗選択変更時の処理 |
+| setStoreFiscalSetting() | 店舗別設定をセット |
+| saveStoreFiscalSettings() | 店舗別設定をLocalStorageに保存 |
+| loadStoreFiscalSettings() | 店舗別設定をLocalStorageから読み込み |
+| renderStoreFiscalSettingsList() | 店舗別設定一覧を描画 |
+| removeStoreFiscalSetting() | 店舗別設定を削除 |
+| showBulkFiscalSettingModal() | 複数店舗一括設定モーダル表示 |
+| applyBulkFiscalSettings() | 複数店舗に一括適用 |
+| getStoreFiscalSettings() | 特定店舗の会計年度設定を取得 |
+
 #### 月表示連動箇所
 
 全ての月表示部分がFISCAL_ORDERグローバル変数に連動：
