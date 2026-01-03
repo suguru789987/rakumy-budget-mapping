@@ -957,7 +957,10 @@
                                 インポートした予算データは自動的に履歴に保存されます。<br>
                                 履歴から読み込んで編集・確認・再エクスポートが可能です。
                             </div>
-                            <div style="display:flex;gap:8px;">
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                <button onclick="saveCurrentToHistory()" class="btn" style="padding:8px 15px;font-size:11px;background:#4caf50;color:#fff;border:none;border-radius:4px;">
+                                    💾 現在のデータを保存
+                                </button>
                                 <button onclick="clearAllBudgetHistory()" class="btn" style="padding:8px 15px;font-size:11px;background:#f44336;color:#fff;border:none;border-radius:4px;">
                                     🗑️ 全履歴削除
                                 </button>
@@ -3936,6 +3939,60 @@
             if (preview) preview.style.display = 'none';
 
             showStatus('info', '全ての取り込み予算履歴を削除しました');
+        }
+
+        // 現在のデータを履歴に保存（手動保存）
+        function saveCurrentToHistory() {
+            // 保存対象の店舗を選択
+            var storeNames = Object.keys(allStoresData);
+            if (storeNames.length === 0) {
+                showStatus('warn', '保存するデータがありません。先に予算CSVをインポートしてください。');
+                return;
+            }
+
+            // 複数店舗がある場合は選択肢を表示
+            var targetStore = currentStoreName;
+            if (storeNames.length > 1) {
+                var options = storeNames.map(function(name, i) {
+                    return (i + 1) + ': ' + name;
+                }).join('\n');
+                var choice = prompt('保存する店舗を選択してください:\n\n' + options + '\n\n0: 全店舗を保存\n\n番号を入力:', '0');
+
+                if (choice === null) return; // キャンセル
+
+                var choiceNum = parseInt(choice, 10);
+                if (choiceNum === 0) {
+                    // 全店舗を保存
+                    var savedCount = 0;
+                    storeNames.forEach(function(name) {
+                        var storeData = allStoresData[name];
+                        if (storeData) {
+                            addToBudgetHistory(name, storeData);
+                            savedCount++;
+                        }
+                    });
+                    renderBudgetHistoryList();
+                    showStatus('success', savedCount + '店舗の予算データを履歴に保存しました');
+                    return;
+                } else if (choiceNum >= 1 && choiceNum <= storeNames.length) {
+                    targetStore = storeNames[choiceNum - 1];
+                } else {
+                    showStatus('error', '無効な選択です');
+                    return;
+                }
+            }
+
+            // 単一店舗を保存
+            if (!targetStore || !allStoresData[targetStore]) {
+                showStatus('warn', '保存する店舗データがありません');
+                return;
+            }
+
+            // 現在のデータを保存
+            saveCurrentStoreData();
+            addToBudgetHistory(targetStore, allStoresData[targetStore]);
+            renderBudgetHistoryList();
+            showStatus('success', '「' + targetStore + '」の予算データを履歴に保存しました');
         }
 
         // ★ インポート完了時に全店舗のエクスポートデータを自動生成
