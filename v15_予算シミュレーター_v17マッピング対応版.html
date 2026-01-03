@@ -10042,7 +10042,10 @@
                 renderMasterPricesContent();
             }
 
-            showStatus('success', categoryLabel + 'を読み込みました: ' + item.name);
+            // ★★★ 全画面同期（読込時のみ連動反映）★★★
+            syncAllUnitPriceDisplays();
+
+            showStatus('success', categoryLabel + 'を読み込みました（全画面に反映済み）: ' + item.name);
         }
 
         function deleteMasterHistory(id) {
@@ -10368,37 +10371,15 @@
                 });
             }
 
-            // 更新を保存（履歴）
+            // 更新を保存（履歴のみ、他画面には反映しない）
             item.unitPrices = stores;
             item.stores = stores;
             history[itemIndex] = item;
             localStorage.setItem(MASTER_HISTORY_KEY, JSON.stringify(history));
 
-            // ★★★ DEFAULT_UNIT_PRICESにも反映（全画面連動）★★★
-            Object.keys(stores).forEach(function(storeName) {
-                if (storeName === '_default') return;
-                var storeData = stores[storeName];
-                if (!DEFAULT_UNIT_PRICES[storeName]) {
-                    DEFAULT_UNIT_PRICES[storeName] = { storeCode: '', total: 5000, lunch: 0, dinner: 5000 };
-                }
-                // 店番は現在のマスタから保持（履歴では更新しない）
-                var currentStoreCode = DEFAULT_UNIT_PRICES[storeName].storeCode || '';
-                DEFAULT_UNIT_PRICES[storeName].total = storeData.total || 5000;
-                DEFAULT_UNIT_PRICES[storeName].lunch = storeData.lunch || 0;
-                DEFAULT_UNIT_PRICES[storeName].dinner = storeData.dinner || (storeData.total || 5000);
-                DEFAULT_UNIT_PRICES[storeName].storeCode = currentStoreCode;
-                if (storeData.monthly) {
-                    DEFAULT_UNIT_PRICES[storeName].monthly = JSON.parse(JSON.stringify(storeData.monthly));
-                }
-            });
-
-            // 全画面同期
-            syncAllUnitPriceDisplays();
-
             closeMasterHistoryEdit();
             renderMasterHistoryList();
-            renderMasterPricesContent();
-            showStatus('success', 'マスタ履歴を更新し、全画面に反映しました: ' + item.name);
+            showStatus('success', 'マスタ履歴を保存しました: ' + item.name + '（読込ボタンで反映できます）');
         }
 
         function renderMasterStoresContent() {
