@@ -5159,8 +5159,8 @@
                 };
             }
 
-            // 表示更新
-            renderMasterPricesContent();
+            // ★ LocalStorageに保存 + 履歴自動保存 + 全画面同期
+            saveUnitPriceSettings();
 
             showStatus('success', '「' + storeName + '」の客単価をマスタデータに保存しました（平均: ¥' + fmt(avgTotal) + '）');
         }
@@ -5168,8 +5168,7 @@
         // ★★★ 編集した客単価をマスタに保存してからMQ試算実行 ★★★
         function saveAndExecuteSimMQ() {
             saveSimUnitPricesToMaster();
-            // マスタ履歴にも自動保存（LocalStorage永続化）
-            saveMasterDataToHistory();
+            // saveUnitPriceSettings()内で履歴保存と同期が実行される
             hideSimUnitPriceEditModal();
             executeSimMQAndShowResult();
         }
@@ -8484,7 +8483,7 @@
             }
         }
 
-        // 客単価設定を保存（LocalStorage）
+        // 客単価設定を保存（LocalStorage）+ 履歴自動保存 + 全画面同期
         function saveUnitPriceSettings() {
             try {
                 var priceData = {};
@@ -8493,15 +8492,40 @@
                         priceData[name] = {
                             total: DEFAULT_UNIT_PRICES[name].total,
                             lunch: DEFAULT_UNIT_PRICES[name].lunch,
-                            dinner: DEFAULT_UNIT_PRICES[name].dinner
+                            dinner: DEFAULT_UNIT_PRICES[name].dinner,
+                            monthly: DEFAULT_UNIT_PRICES[name].monthly || {}
                         };
                     }
                 });
                 localStorage.setItem('rakumy_unit_price_settings', JSON.stringify(priceData));
-                showStatus('success', '客単価設定を保存しました（' + Object.keys(priceData).length + '店舗）');
+
+                // ★ 履歴に自動保存（コリジョン防止：保存時点を記録）
+                saveMasterDataToHistory();
+
+                // ★ 関連画面のUI更新（双方向同期）
+                syncAllUnitPriceDisplays();
+
+                showStatus('success', '客単価設定を保存しました（' + Object.keys(priceData).length + '店舗）履歴にも保存されました');
             } catch (e) {
                 showStatus('error', '保存に失敗しました: ' + e.message);
             }
+        }
+
+        // ★★★ 全画面の客単価表示を同期更新 ★★★
+        function syncAllUnitPriceDisplays() {
+            // マスタ設定画面の客単価表示を更新
+            if (typeof renderMasterPricesContent === 'function') {
+                try { renderMasterPricesContent(); } catch(e) {}
+            }
+            // 予算設定のラクミー設定値画面を更新（存在する場合）
+            if (typeof renderMQUnitPriceTable === 'function') {
+                try { renderMQUnitPriceTable(); } catch(e) {}
+            }
+            // 予算試算の客単価テーブルを更新（存在する場合）
+            if (typeof renderSimUnitPriceTable === 'function') {
+                try { renderSimUnitPriceTable(); } catch(e) {}
+            }
+            console.log('★ 全画面の客単価表示を同期更新しました');
         }
 
         // 客単価設定を読込（LocalStorage）
