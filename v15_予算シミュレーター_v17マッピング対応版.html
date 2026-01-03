@@ -7670,22 +7670,18 @@
             // ヘッダー行
             csv.push(['店番', '店名', '客単価タイプ'].concat(months).join(','));
 
-            // 既存の店舗リストから出力
+            // 既存の店舗リストから出力（数値はブランク）
             var storeNames = Object.keys(DEFAULT_UNIT_PRICES).filter(function(name) { return name !== '_default'; });
             storeNames.forEach(function(storeName) {
                 var prices = DEFAULT_UNIT_PRICES[storeName];
                 var storeCode = prices.storeCode || '';  // 実際の店番（空欄可）
-                var monthlyData = prices.monthly || {};
 
                 types.forEach(function(typeName) {
-                    var typeKey = typeKeys[typeName];
-                    var defaultValue = prices[typeKey] || 0;
                     var row = [storeCode, storeName, typeName];
 
-                    // 12ヶ月分の値を追加
+                    // 12ヶ月分はブランクで出力（テンプレートとして）
                     for (var m = 0; m < 12; m++) {
-                        var monthValue = monthlyData[m] ? (monthlyData[m][typeKey] || defaultValue) : defaultValue;
-                        row.push(monthValue);
+                        row.push('');
                     }
                     csv.push(row.join(','));
                 });
