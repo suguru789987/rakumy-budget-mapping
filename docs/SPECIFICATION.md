@@ -886,13 +886,15 @@ var currentColumnGroups = { enabled: false, type: 'none' }; // none, quarter, ha
 
 | 変更項目 | 変更内容 |
 |---------|---------|
-| **会計年度設定UI** | 設定インポートタブ最上部に「会計年度設定」セクションを追加 |
+| **会計年度設定UI** | マスタ設定タブ最上部に「会計年度設定」セクションを配置 |
 | **開始月設定** | 1月〜12月の会計年度開始月選択（デフォルト: 4月） |
 | **対象年度設定** | 現在年度±5年の範囲から対象年度を選択 |
 | **表記スタイル** | 月のみ / 年月 / スラッシュの3形式から選択 |
 | **FISCAL_ORDER動的生成** | 設定に基づいてFISCAL_ORDERを動的に生成 |
+| **全画面月表示連動** | アプリ内の全月表示（テーブルヘッダー、プルダウン等）がFISCAL_ORDERに連動 |
 | **テンプレート対応** | 予算テンプレート・月別客単価テンプレートが会計年度設定を反映 |
 | **年度をまたぐ表示** | 4月開始の場合: 2025年4月〜2026年3月などの年またぎ対応 |
+| **CSV自動検出** | 顧客予算CSV取り込み時に月列情報から会計年度を自動検出・設定 |
 | **LocalStorage保存** | 会計年度設定の保存/読み込み（rakumy_fiscal_year_settings） |
 
 #### データ構造
@@ -915,6 +917,7 @@ var fiscalYearSettings = {
 | 関数名 | 説明 |
 |--------|------|
 | generateFiscalOrder() | 設定に基づきFISCAL_ORDERを生成 |
+| generateFiscalMonthIndices() | 会計年度設定に基づく月インデックス配列を生成（例: 4月開始→[3,4,5,...,0,1,2]） |
 | getFiscalYearInfo() | 年度範囲情報を取得（label, range） |
 | getFiscalMonthInfo(monthIndex) | 月インデックスから年・月を取得 |
 | updateFiscalYearSettings() | UI変更時の設定反映 |
@@ -923,6 +926,18 @@ var fiscalYearSettings = {
 | resetFiscalYearSettings() | 初期設定（4月開始）に戻す |
 | initFiscalYearSelector() | 年度セレクター初期化 |
 | renderFiscalYearPreview() | プレビュー表示 |
+| autoDetectFiscalYearFromCSV() | 予算CSV読込時に月情報から会計年度を自動検出・適用 |
+
+#### 月表示連動箇所
+
+全ての月表示部分がFISCAL_ORDERグローバル変数に連動：
+- MQシミュレーション結果テーブル
+- 予算一覧テーブル
+- 客単価設定テーブル
+- マスタ履歴プレビュー・編集モーダル
+- 月選択プルダウン（単月・複数月）
+- シミュレーション入力テーブル
+- 比較レポートテーブル
 
 ### v5.8（前バージョン）
 
