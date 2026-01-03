@@ -7601,16 +7601,13 @@
             var csv = [];
             var BOM = '\uFEFF';
 
-            // ヘッダー行（参考ファイルと同じ形式）
+            // ヘッダー行のみ
             csv.push('店番,店名');
 
-            // 既存の店舗リストから出力（_default除く）
-            var storeNames = Object.keys(DEFAULT_UNIT_PRICES).filter(function(name) { return name !== '_default'; });
-            storeNames.forEach(function(storeName) {
-                var prices = DEFAULT_UNIT_PRICES[storeName];
-                var storeCode = prices.storeCode || '';
-                csv.push([storeCode, storeName].join(','));
-            });
+            // ブランク行を50行追加（ユーザーが自由に入力できるテンプレート）
+            for (var i = 0; i < 50; i++) {
+                csv.push(',');
+            }
 
             var blob = new Blob([BOM + csv.join('\n')], { type: 'text/csv;charset=utf-8' });
             var link = document.createElement('a');
@@ -7618,7 +7615,7 @@
             link.download = '店番テンプレート_' + new Date().toISOString().slice(0,10) + '.csv';
             link.click();
 
-            showStatus('success', '店番テンプレートをダウンロードしました（' + storeNames.length + '店舗）');
+            showStatus('success', '店番テンプレートをダウンロードしました（ブランク50行）');
         }
 
         // ★★★ 予算項目コードテンプレートダウンロード ★★★
