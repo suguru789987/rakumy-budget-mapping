@@ -1398,8 +1398,14 @@
                             <label style="font-size:12px;color:#666;display:block;margin-bottom:3px;">テンプレート名</label>
                             <input type="text" id="templateSaveName" placeholder="例: カスタム予算テンプレート" style="padding:8px 12px;border:2px solid #1976d2;border-radius:6px;font-size:13px;width:250px;">
                         </div>
+                        <!-- 編集モード切替（列編集対応テンプレートのみ表示） -->
+                        <div id="editModeToggle" style="display:none;margin-top:18px;">
+                            <button id="btnColumnEdit" onclick="switchEditMode('column')" style="background:#7b1fa2;color:#fff;border:none;padding:8px 15px;border-radius:4px 0 0 4px;cursor:pointer;font-size:12px;">📊 列編集</button>
+                            <button id="btnRowEdit" onclick="switchEditMode('row')" style="background:#e1bee7;color:#7b1fa2;border:none;padding:8px 15px;border-radius:0 4px 4px 0;cursor:pointer;font-size:12px;">📝 行編集</button>
+                        </div>
                         <div style="display:flex;gap:10px;margin-top:18px;">
-                            <button class="btn" onclick="addTemplateRow()" style="background:#4caf50;color:#fff;padding:8px 15px;">➕ 行追加</button>
+                            <button id="btnAddColumn" onclick="addTemplateColumn()" style="display:none;background:#7b1fa2;color:#fff;padding:8px 15px;border:none;border-radius:4px;cursor:pointer;">➕ 列追加</button>
+                            <button id="btnAddRow" onclick="addTemplateRow()" style="background:#4caf50;color:#fff;padding:8px 15px;border:none;border-radius:4px;cursor:pointer;">➕ 行追加</button>
                             <button class="btn" onclick="saveTemplateToHistory()" style="background:#1976d2;color:#fff;padding:8px 15px;">💾 保存</button>
                             <button class="btn" onclick="downloadEditedTemplate()" style="background:#ff9800;color:#fff;padding:8px 15px;">📥 ダウンロード</button>
                         </div>
@@ -7769,12 +7775,16 @@
         var TEMPLATE_HISTORY_KEY = 'rakumy_template_history';
         var currentTemplateType = null;
         var currentTemplateData = [];
+        var currentTemplateHeaders = [];       // 編集可能なヘッダー
+        var currentOriginalHeaders = [];       // 元のヘッダー（インポートマッピング用）
+        var currentEditMode = 'row';           // 'column' or 'row'
 
         // テンプレートタイプ定義
         var TEMPLATE_TYPES = {
             budget: {
                 name: '予算テンプレート',
                 color: '#1565c0',
+                supportsColumnEdit: true,      // 列編集対応
                 headers: ['予算カテゴリ', '科目コード', '予算項目名', '1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
                 defaultRows: function() {
                     return [
@@ -7795,6 +7805,7 @@
             store: {
                 name: '店番テンプレート',
                 color: '#2e7d32',
+                supportsColumnEdit: true,      // 列編集対応
                 headers: ['店番', '店名'],
                 defaultRows: function() {
                     var rows = [];
@@ -7805,6 +7816,7 @@
             mapping: {
                 name: '予算項目コードテンプレート',
                 color: '#e65100',
+                supportsColumnEdit: false,     // 列編集非対応（行編集のみ）
                 headers: ['コード', '項目名', 'v17No', 'カテゴリ'],
                 defaultRows: function() {
                     var rows = [];
@@ -7818,6 +7830,7 @@
             unitprice: {
                 name: '月別客単価テンプレート',
                 color: '#1565c0',
+                supportsColumnEdit: true,      // 列編集対応
                 headers: ['店番', '店名', '客単価タイプ', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月', '1月', '2月', '3月'],
                 defaultRows: function() {
                     var rows = [];
@@ -7844,8 +7857,29 @@
             document.getElementById('templateEditorTitle').textContent = '📝 ' + tpl.name + ' 編集';
             document.getElementById('templateSaveName').value = tpl.name + '_' + new Date().toISOString().slice(0, 10);
 
+            // ヘッダーを初期化（編集用と元データ用）
+            currentTemplateHeaders = tpl.headers.slice();
+            currentOriginalHeaders = tpl.headers.slice();
+
             // デフォルトデータをロード
             currentTemplateData = tpl.defaultRows();
+
+            // 列編集対応テンプレートかどうかでUI切り替え
+            var modeToggle = document.getElementById('editModeToggle');
+            var btnAddColumn = document.getElementById('btnAddColumn');
+            var btnAddRow = document.getElementById('btnAddRow');
+
+            if (tpl.supportsColumnEdit) {
+                modeToggle.style.display = 'block';
+                currentEditMode = 'column';  // デフォルトは列編集
+                switchEditMode('column');
+            } else {
+                modeToggle.style.display = 'none';
+                btnAddColumn.style.display = 'none';
+                btnAddRow.style.display = 'inline-block';
+                currentEditMode = 'row';
+            }
+
             renderTemplateEditorContent();
             renderTemplateHistoryList();
 
@@ -7857,6 +7891,35 @@
             document.getElementById('templateEditorModal').style.display = 'none';
             currentTemplateType = null;
             currentTemplateData = [];
+            currentTemplateHeaders = [];
+            currentOriginalHeaders = [];
+            currentEditMode = 'row';
+        }
+
+        // 編集モード切り替え（列編集 / 行編集）
+        function switchEditMode(mode) {
+            currentEditMode = mode;
+            var btnColumnEdit = document.getElementById('btnColumnEdit');
+            var btnRowEdit = document.getElementById('btnRowEdit');
+            var btnAddColumn = document.getElementById('btnAddColumn');
+            var btnAddRow = document.getElementById('btnAddRow');
+
+            if (mode === 'column') {
+                btnColumnEdit.style.background = '#7b1fa2';
+                btnColumnEdit.style.color = '#fff';
+                btnRowEdit.style.background = '#e1bee7';
+                btnRowEdit.style.color = '#7b1fa2';
+                btnAddColumn.style.display = 'inline-block';
+                btnAddRow.style.display = 'none';
+            } else {
+                btnColumnEdit.style.background = '#e1bee7';
+                btnColumnEdit.style.color = '#7b1fa2';
+                btnRowEdit.style.background = '#7b1fa2';
+                btnRowEdit.style.color = '#fff';
+                btnAddColumn.style.display = 'none';
+                btnAddRow.style.display = 'inline-block';
+            }
+            renderTemplateEditorContent();
         }
 
         function switchTemplateTab(tab) {
@@ -7886,14 +7949,65 @@
         // テンプレート編集テーブルを描画
         function renderTemplateEditorContent() {
             if (!currentTemplateType) return;
-            var tpl = TEMPLATE_TYPES[currentTemplateType];
-            var headers = tpl.headers;
+
+            if (currentEditMode === 'column') {
+                renderColumnEditorContent();
+            } else {
+                renderRowEditorContent();
+            }
+        }
+
+        // 列編集モードの描画
+        function renderColumnEditorContent() {
+            var html = '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+            html += '<thead><tr style="background:#7b1fa2;color:#fff;">';
+            html += '<th style="padding:10px;border:1px solid #4a148c;width:50px;">No</th>';
+            html += '<th style="padding:10px;border:1px solid #4a148c;">現在の列名</th>';
+            html += '<th style="padding:10px;border:1px solid #4a148c;width:180px;">元の列名（マッピング用）</th>';
+            html += '<th style="padding:10px;border:1px solid #4a148c;width:100px;">順序</th>';
+            html += '<th style="padding:10px;border:1px solid #4a148c;width:60px;">操作</th>';
+            html += '</tr></thead><tbody>';
+
+            currentTemplateHeaders.forEach(function(header, idx) {
+                var originalHeader = currentOriginalHeaders[idx] || '';
+                html += '<tr style="background:' + (idx % 2 === 0 ? '#fff' : '#f3e5f5') + ';">';
+                html += '<td style="padding:8px;border:1px solid #e0e0e0;text-align:center;color:#7b1fa2;font-weight:bold;">' + (idx + 1) + '</td>';
+                html += '<td style="padding:4px;border:1px solid #e0e0e0;">';
+                html += '<input type="text" value="' + escapeHtml(header) + '" ';
+                html += 'onchange="updateTemplateHeader(' + idx + ',this.value)" ';
+                html += 'style="width:100%;padding:8px;border:2px solid #7b1fa2;border-radius:4px;font-size:12px;box-sizing:border-box;">';
+                html += '</td>';
+                html += '<td style="padding:8px;border:1px solid #e0e0e0;color:#666;font-size:11px;text-align:center;">' + escapeHtml(originalHeader) + '</td>';
+                html += '<td style="padding:4px;border:1px solid #e0e0e0;text-align:center;">';
+                html += '<button onclick="moveColumnUp(' + idx + ')" ' + (idx === 0 ? 'disabled' : '') + ' style="background:' + (idx === 0 ? '#ccc' : '#2196f3') + ';color:#fff;border:none;padding:4px 8px;border-radius:3px;cursor:pointer;margin:1px;">↑</button>';
+                html += '<button onclick="moveColumnDown(' + idx + ')" ' + (idx === currentTemplateHeaders.length - 1 ? 'disabled' : '') + ' style="background:' + (idx === currentTemplateHeaders.length - 1 ? '#ccc' : '#2196f3') + ';color:#fff;border:none;padding:4px 8px;border-radius:3px;cursor:pointer;margin:1px;">↓</button>';
+                html += '</td>';
+                html += '<td style="padding:4px;border:1px solid #e0e0e0;text-align:center;">';
+                if (currentTemplateHeaders.length > 1) {
+                    html += '<button onclick="deleteTemplateColumn(' + idx + ')" style="background:#f44336;color:#fff;border:none;padding:4px 8px;border-radius:3px;cursor:pointer;font-size:10px;">🗑️</button>';
+                }
+                html += '</td></tr>';
+            });
+
+            html += '</tbody></table>';
+
+            // 注意書き
+            html += '<div style="margin-top:15px;padding:12px;background:#fff3e0;border-radius:6px;border:1px solid #ff9800;font-size:11px;color:#e65100;">';
+            html += '⚠️ <b>注意:</b> 列名を変更するとインポート時のマッピングに影響します。「元の列名」がインポート時の認識に使用されます。';
+            html += '</div>';
+
+            document.getElementById('templateEditorContent').innerHTML = html;
+        }
+
+        // 行編集モードの描画
+        function renderRowEditorContent() {
+            var headers = currentTemplateHeaders;
 
             var html = '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
             html += '<thead><tr style="background:#1976d2;color:#fff;position:sticky;top:0;">';
             html += '<th style="padding:8px 4px;border:1px solid #0d47a1;width:40px;">No</th>';
             headers.forEach(function(h) {
-                html += '<th style="padding:8px 4px;border:1px solid #0d47a1;">' + h + '</th>';
+                html += '<th style="padding:8px 4px;border:1px solid #0d47a1;">' + escapeHtml(h) + '</th>';
             });
             html += '<th style="padding:8px 4px;border:1px solid #0d47a1;width:50px;">操作</th>';
             html += '</tr></thead><tbody>';
@@ -7901,13 +8015,15 @@
             currentTemplateData.forEach(function(row, idx) {
                 html += '<tr style="background:' + (idx % 2 === 0 ? '#fff' : '#f5f5f5') + ';">';
                 html += '<td style="padding:4px;border:1px solid #e0e0e0;text-align:center;color:#666;">' + (idx + 1) + '</td>';
-                row.forEach(function(cell, colIdx) {
+                // 列数が変わっている場合に対応
+                for (var colIdx = 0; colIdx < headers.length; colIdx++) {
+                    var cell = row[colIdx] || '';
                     html += '<td style="padding:2px;border:1px solid #e0e0e0;">';
-                    html += '<input type="text" value="' + escapeHtml(cell || '') + '" ';
+                    html += '<input type="text" value="' + escapeHtml(cell) + '" ';
                     html += 'onchange="updateTemplateCell(' + idx + ',' + colIdx + ',this.value)" ';
                     html += 'style="width:100%;padding:4px;border:none;font-size:11px;box-sizing:border-box;">';
                     html += '</td>';
-                });
+                }
                 html += '<td style="padding:2px;border:1px solid #e0e0e0;text-align:center;">';
                 html += '<button onclick="deleteTemplateRow(' + idx + ')" style="background:#f44336;color:#fff;border:none;padding:3px 8px;border-radius:3px;cursor:pointer;font-size:10px;">🗑️</button>';
                 html += '</td></tr>';
@@ -7915,6 +8031,83 @@
 
             html += '</tbody></table>';
             document.getElementById('templateEditorContent').innerHTML = html;
+        }
+
+        // 列名を更新
+        function updateTemplateHeader(idx, value) {
+            if (idx >= 0 && idx < currentTemplateHeaders.length) {
+                currentTemplateHeaders[idx] = value;
+            }
+        }
+
+        // 列を上に移動
+        function moveColumnUp(idx) {
+            if (idx <= 0) return;
+            // ヘッダーを入れ替え
+            var temp = currentTemplateHeaders[idx];
+            currentTemplateHeaders[idx] = currentTemplateHeaders[idx - 1];
+            currentTemplateHeaders[idx - 1] = temp;
+            // 元ヘッダーも入れ替え
+            var tempOrig = currentOriginalHeaders[idx];
+            currentOriginalHeaders[idx] = currentOriginalHeaders[idx - 1];
+            currentOriginalHeaders[idx - 1] = tempOrig;
+            // データも入れ替え
+            currentTemplateData.forEach(function(row) {
+                var tempCell = row[idx];
+                row[idx] = row[idx - 1];
+                row[idx - 1] = tempCell;
+            });
+            renderColumnEditorContent();
+        }
+
+        // 列を下に移動
+        function moveColumnDown(idx) {
+            if (idx >= currentTemplateHeaders.length - 1) return;
+            // ヘッダーを入れ替え
+            var temp = currentTemplateHeaders[idx];
+            currentTemplateHeaders[idx] = currentTemplateHeaders[idx + 1];
+            currentTemplateHeaders[idx + 1] = temp;
+            // 元ヘッダーも入れ替え
+            var tempOrig = currentOriginalHeaders[idx];
+            currentOriginalHeaders[idx] = currentOriginalHeaders[idx + 1];
+            currentOriginalHeaders[idx + 1] = tempOrig;
+            // データも入れ替え
+            currentTemplateData.forEach(function(row) {
+                var tempCell = row[idx];
+                row[idx] = row[idx + 1];
+                row[idx + 1] = tempCell;
+            });
+            renderColumnEditorContent();
+        }
+
+        // 列を追加
+        function addTemplateColumn() {
+            var newColName = '新規列' + (currentTemplateHeaders.length + 1);
+            currentTemplateHeaders.push(newColName);
+            currentOriginalHeaders.push(newColName);
+            // 各行にも空セルを追加
+            currentTemplateData.forEach(function(row) {
+                row.push('');
+            });
+            renderColumnEditorContent();
+            showStatus('success', '列を追加しました: ' + newColName);
+        }
+
+        // 列を削除
+        function deleteTemplateColumn(idx) {
+            if (currentTemplateHeaders.length <= 1) {
+                showStatus('error', '最低1列は必要です');
+                return;
+            }
+            var deletedName = currentTemplateHeaders[idx];
+            currentTemplateHeaders.splice(idx, 1);
+            currentOriginalHeaders.splice(idx, 1);
+            // 各行からも該当列を削除
+            currentTemplateData.forEach(function(row) {
+                row.splice(idx, 1);
+            });
+            renderColumnEditorContent();
+            showStatus('success', '列を削除しました: ' + deletedName);
         }
 
         function updateTemplateCell(rowIdx, colIdx, value) {
@@ -7925,9 +8118,9 @@
 
         function addTemplateRow() {
             if (!currentTemplateType) return;
-            var tpl = TEMPLATE_TYPES[currentTemplateType];
             var newRow = [];
-            for (var i = 0; i < tpl.headers.length; i++) newRow.push('');
+            // 現在のヘッダー数に合わせて行を追加
+            for (var i = 0; i < currentTemplateHeaders.length; i++) newRow.push('');
             currentTemplateData.push(newRow);
             renderTemplateEditorContent();
             showStatus('success', '行を追加しました');
@@ -7966,14 +8159,16 @@
                 history[currentTemplateType] = [];
             }
 
-            var tpl = TEMPLATE_TYPES[currentTemplateType];
+            // 編集後のヘッダーと元のヘッダーを保存
             history[currentTemplateType].unshift({
                 id: Date.now(),
                 name: name,
-                headers: tpl.headers,
+                headers: currentTemplateHeaders.slice(),           // 編集後のヘッダー
+                originalHeaders: currentOriginalHeaders.slice(),   // 元のヘッダー（マッピング用）
                 data: JSON.parse(JSON.stringify(currentTemplateData)),
                 createdAt: new Date().toISOString(),
-                rowCount: currentTemplateData.length
+                rowCount: currentTemplateData.length,
+                colCount: currentTemplateHeaders.length
             });
 
             // 最大20件保持
@@ -7999,17 +8194,20 @@
                 html = '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
                 html += '<thead><tr style="background:' + tpl.color + ';color:#fff;">';
                 html += '<th style="padding:10px;border:1px solid rgba(255,255,255,0.3);">テンプレート名</th>';
-                html += '<th style="padding:10px;border:1px solid rgba(255,255,255,0.3);width:80px;">行数</th>';
-                html += '<th style="padding:10px;border:1px solid rgba(255,255,255,0.3);width:150px;">作成日時</th>';
+                html += '<th style="padding:10px;border:1px solid rgba(255,255,255,0.3);width:70px;">列数</th>';
+                html += '<th style="padding:10px;border:1px solid rgba(255,255,255,0.3);width:70px;">行数</th>';
+                html += '<th style="padding:10px;border:1px solid rgba(255,255,255,0.3);width:140px;">作成日時</th>';
                 html += '<th style="padding:10px;border:1px solid rgba(255,255,255,0.3);width:220px;">操作</th>';
                 html += '</tr></thead><tbody>';
 
                 items.forEach(function(item, idx) {
                     var date = new Date(item.createdAt);
                     var dateStr = date.toLocaleDateString('ja-JP') + ' ' + date.toLocaleTimeString('ja-JP', {hour: '2-digit', minute: '2-digit'});
+                    var colCount = item.colCount || (item.headers ? item.headers.length : '-');
 
                     html += '<tr style="background:' + (idx % 2 === 0 ? '#fff' : '#f9f9f9') + ';">';
                     html += '<td style="padding:10px;border:1px solid #e0e0e0;font-weight:bold;">' + escapeHtml(item.name) + '</td>';
+                    html += '<td style="padding:10px;border:1px solid #e0e0e0;text-align:center;">' + colCount + '列</td>';
                     html += '<td style="padding:10px;border:1px solid #e0e0e0;text-align:center;">' + item.rowCount + '行</td>';
                     html += '<td style="padding:10px;border:1px solid #e0e0e0;color:#666;font-size:11px;">' + dateStr + '</td>';
                     html += '<td style="padding:8px;border:1px solid #e0e0e0;text-align:center;">';
@@ -8066,11 +8264,15 @@
             var item = items[idx];
             if (!item) return;
 
+            // ヘッダーと元ヘッダーを復元
+            currentTemplateHeaders = item.headers ? item.headers.slice() : TEMPLATE_TYPES[currentTemplateType].headers.slice();
+            currentOriginalHeaders = item.originalHeaders ? item.originalHeaders.slice() : currentTemplateHeaders.slice();
             currentTemplateData = JSON.parse(JSON.stringify(item.data));
+
             document.getElementById('templateSaveName').value = item.name + '_copy';
             renderTemplateEditorContent();
             switchTemplateTab('edit');
-            showStatus('success', 'テンプレートを読み込みました: ' + item.name);
+            showStatus('success', 'テンプレートを読み込みました: ' + item.name + ' (' + currentTemplateHeaders.length + '列)');
         }
 
         function downloadTemplateHistory(idx) {
@@ -8126,7 +8328,8 @@
             var tpl = TEMPLATE_TYPES[currentTemplateType];
             var csv = [];
             var BOM = '\uFEFF';
-            csv.push(tpl.headers.join(','));
+            // 編集後のヘッダーを使用
+            csv.push(currentTemplateHeaders.join(','));
             currentTemplateData.forEach(function(row) {
                 csv.push(row.map(function(cell) {
                     if (cell && (cell.indexOf(',') !== -1 || cell.indexOf('"') !== -1)) {
