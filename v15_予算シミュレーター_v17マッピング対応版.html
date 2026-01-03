@@ -559,9 +559,14 @@
                                 <strong>予算テンプレート</strong><br>
                                 空の予算CSVテンプレートをダウンロードできます
                             </div>
-                            <button class="btn btn-info" onclick="downloadBudgetTemplate()" style="padding:8px 16px;font-size:12px;">
-                                📄 予算テンプレートをダウンロード
-                            </button>
+                            <div style="display:flex;gap:8px;">
+                                <button class="btn" onclick="openTemplateEditor('budget')" style="background:#1565c0;color:#fff;padding:8px 16px;font-size:12px;">
+                                    ✏️ テンプレート編集
+                                </button>
+                                <button class="btn btn-info" onclick="downloadBudgetTemplate()" style="padding:8px 16px;font-size:12px;">
+                                    📄 ダウンロード
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -726,9 +731,14 @@
                                 <strong>店番テンプレート</strong><br>
                                 店番・店舗名のCSVテンプレートをダウンロードできます
                             </div>
-                            <button class="btn" style="background:#4caf50;color:#fff;padding:8px 16px;font-size:12px;" onclick="downloadStoreTemplate()">
-                                📄 店番テンプレートをダウンロード
-                            </button>
+                            <div style="display:flex;gap:8px;">
+                                <button class="btn" onclick="openTemplateEditor('store')" style="background:#2e7d32;color:#fff;padding:8px 16px;font-size:12px;">
+                                    ✏️ テンプレート編集
+                                </button>
+                                <button class="btn" style="background:#4caf50;color:#fff;padding:8px 16px;font-size:12px;" onclick="downloadStoreTemplate()">
+                                    📄 ダウンロード
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -756,9 +766,14 @@
                                 <strong>予算項目コードテンプレート</strong><br>
                                 現在のマッピング定義をCSVでダウンロードできます
                             </div>
-                            <button class="btn" style="background:#ff9800;color:#fff;padding:8px 16px;font-size:12px;" onclick="downloadMappingTemplate()">
-                                📄 項目コードテンプレートをダウンロード
-                            </button>
+                            <div style="display:flex;gap:8px;">
+                                <button class="btn" onclick="openTemplateEditor('mapping')" style="background:#e65100;color:#fff;padding:8px 16px;font-size:12px;">
+                                    ✏️ テンプレート編集
+                                </button>
+                                <button class="btn" style="background:#ff9800;color:#fff;padding:8px 16px;font-size:12px;" onclick="downloadMappingTemplate()">
+                                    📄 ダウンロード
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -796,9 +811,14 @@
                                 <strong>月別客単価テンプレート</strong><br>
                                 店舗別・月別（4月〜3月）の目標客単価をCSVでダウンロード/インポートできます
                             </div>
-                            <button class="btn" style="background:#2196f3;color:#fff;padding:8px 16px;font-size:12px;" onclick="downloadUnitPriceMonthlyTemplate()">
-                                📄 月別客単価テンプレートをダウンロード
-                            </button>
+                            <div style="display:flex;gap:8px;">
+                                <button class="btn" onclick="openTemplateEditor('unitprice')" style="background:#1565c0;color:#fff;padding:8px 16px;font-size:12px;">
+                                    ✏️ テンプレート編集
+                                </button>
+                                <button class="btn" style="background:#2196f3;color:#fff;padding:8px 16px;font-size:12px;" onclick="downloadUnitPriceMonthlyTemplate()">
+                                    📄 ダウンロード
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -1352,6 +1372,58 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- ===== テンプレート編集モーダル ===== -->
+        <div id="templateEditorModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:2000;overflow-y:auto;">
+            <div style="background:#fff;border-radius:12px;margin:30px auto;max-width:1100px;width:95%;box-shadow:0 4px 30px rgba(0,0,0,0.3);">
+                <!-- ヘッダー -->
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:20px 25px;border-bottom:2px solid #e0e0e0;background:#f5f5f5;border-radius:12px 12px 0 0;">
+                    <h3 id="templateEditorTitle" style="margin:0;font-size:18px;color:#1976d2;">📝 テンプレート編集</h3>
+                    <button onclick="closeTemplateEditor()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#666;">&times;</button>
+                </div>
+
+                <!-- タブ切り替え -->
+                <div style="display:flex;border-bottom:1px solid #e0e0e0;background:#fafafa;">
+                    <button id="templateTab-edit" onclick="switchTemplateTab('edit')" style="flex:1;padding:12px;border:none;background:#1976d2;color:#fff;cursor:pointer;font-weight:bold;">✏️ テンプレート編集</button>
+                    <button id="templateTab-history" onclick="switchTemplateTab('history')" style="flex:1;padding:12px;border:none;background:#e3f2fd;color:#1976d2;cursor:pointer;font-weight:bold;">📋 履歴一覧</button>
+                </div>
+
+                <!-- 編集タブ -->
+                <div id="templateEditTab" style="padding:20px 25px;">
+                    <!-- テンプレート名入力 -->
+                    <div style="margin-bottom:15px;display:flex;gap:15px;align-items:center;flex-wrap:wrap;">
+                        <div>
+                            <label style="font-size:12px;color:#666;display:block;margin-bottom:3px;">テンプレート名</label>
+                            <input type="text" id="templateSaveName" placeholder="例: カスタム予算テンプレート" style="padding:8px 12px;border:2px solid #1976d2;border-radius:6px;font-size:13px;width:250px;">
+                        </div>
+                        <div style="display:flex;gap:10px;margin-top:18px;">
+                            <button class="btn" onclick="addTemplateRow()" style="background:#4caf50;color:#fff;padding:8px 15px;">➕ 行追加</button>
+                            <button class="btn" onclick="saveTemplateToHistory()" style="background:#1976d2;color:#fff;padding:8px 15px;">💾 保存</button>
+                            <button class="btn" onclick="downloadEditedTemplate()" style="background:#ff9800;color:#fff;padding:8px 15px;">📥 ダウンロード</button>
+                        </div>
+                    </div>
+
+                    <!-- テンプレートテーブル -->
+                    <div id="templateEditorContent" style="max-height:500px;overflow-y:auto;border:1px solid #e0e0e0;border-radius:8px;"></div>
+                </div>
+
+                <!-- 履歴タブ -->
+                <div id="templateHistoryTab" style="display:none;padding:20px 25px;">
+                    <div id="templateHistoryList" style="max-height:550px;overflow-y:auto;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== テンプレート履歴プレビューモーダル ===== -->
+        <div id="templatePreviewModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:2100;overflow-y:auto;">
+            <div style="background:#fff;border-radius:12px;margin:30px auto;max-width:1000px;width:95%;box-shadow:0 4px 30px rgba(0,0,0,0.3);">
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:15px 20px;border-bottom:2px solid #e0e0e0;background:#e8f5e9;border-radius:12px 12px 0 0;">
+                    <h3 id="templatePreviewTitle" style="margin:0;font-size:16px;color:#2e7d32;">👁️ テンプレートプレビュー</h3>
+                    <button onclick="closeTemplatePreview()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#666;">&times;</button>
+                </div>
+                <div id="templatePreviewContent" style="padding:20px;max-height:500px;overflow-y:auto;"></div>
             </div>
         </div>
 
@@ -7691,6 +7763,387 @@
             link.click();
 
             showStatus('success', '月別客単価テンプレートをダウンロードしました（' + storeNames.length + '店舗 × 3タイプ = ' + (storeNames.length * 3) + '行）');
+        }
+
+        // ★★★ テンプレート編集機能 ★★★
+        var TEMPLATE_HISTORY_KEY = 'rakumy_template_history';
+        var currentTemplateType = null;
+        var currentTemplateData = [];
+
+        // テンプレートタイプ定義
+        var TEMPLATE_TYPES = {
+            budget: {
+                name: '予算テンプレート',
+                color: '#1565c0',
+                headers: ['予算カテゴリ', '科目コード', '予算項目名', '1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
+                defaultRows: function() {
+                    return [
+                        { category: '売上高', code: '101', name: '店舗売上高' },
+                        { category: '売上高', code: '102', name: 'ドリンク売上' },
+                        { category: '売上高', code: '103', name: 'その他売上高' },
+                        { category: '売上高', code: '104', name: '売上高合計（税抜）' },
+                        { category: '売上原価', code: '201', name: '食材期首棚' },
+                        { category: '売上原価', code: '202', name: '食材仕入高' },
+                        { category: '売上原価', code: '203', name: '食材期末棚' },
+                        { category: '売上原価', code: '204', name: '食材原価' },
+                        { category: '人件費', code: '301', name: '給料手当' },
+                        { category: '人件費', code: '304', name: '雑給' },
+                        { category: '人件費', code: '311', name: '人件費合計' }
+                    ].map(function(r) { return [r.category, r.code, r.name, '', '', '', '', '', '', '', '', '', '', '', '']; });
+                }
+            },
+            store: {
+                name: '店番テンプレート',
+                color: '#2e7d32',
+                headers: ['店番', '店名'],
+                defaultRows: function() {
+                    var rows = [];
+                    for (var i = 0; i < 10; i++) rows.push(['', '']);
+                    return rows;
+                }
+            },
+            mapping: {
+                name: '予算項目コードテンプレート',
+                color: '#e65100',
+                headers: ['コード', '項目名', 'v17No', 'カテゴリ'],
+                defaultRows: function() {
+                    var rows = [];
+                    Object.keys(CUSTOMER_CODE_MAP).slice(0, 15).forEach(function(code) {
+                        var item = CUSTOMER_CODE_MAP[code];
+                        rows.push([code, item.name, String(item.v15No), item.category || '']);
+                    });
+                    return rows;
+                }
+            },
+            unitprice: {
+                name: '月別客単価テンプレート',
+                color: '#1565c0',
+                headers: ['店番', '店名', '客単価タイプ', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月', '1月', '2月', '3月'],
+                defaultRows: function() {
+                    var rows = [];
+                    var types = ['総合', 'ランチ', 'ディナー'];
+                    for (var i = 0; i < 3; i++) {
+                        types.forEach(function(t) {
+                            rows.push(['', '', t, '', '', '', '', '', '', '', '', '', '', '', '']);
+                        });
+                    }
+                    return rows;
+                }
+            }
+        };
+
+        // テンプレート編集モーダルを開く
+        function openTemplateEditor(type) {
+            if (!TEMPLATE_TYPES[type]) {
+                showStatus('error', '不明なテンプレートタイプです');
+                return;
+            }
+            currentTemplateType = type;
+            var tpl = TEMPLATE_TYPES[type];
+
+            document.getElementById('templateEditorTitle').textContent = '📝 ' + tpl.name + ' 編集';
+            document.getElementById('templateSaveName').value = tpl.name + '_' + new Date().toISOString().slice(0, 10);
+
+            // デフォルトデータをロード
+            currentTemplateData = tpl.defaultRows();
+            renderTemplateEditorContent();
+            renderTemplateHistoryList();
+
+            switchTemplateTab('edit');
+            document.getElementById('templateEditorModal').style.display = 'block';
+        }
+
+        function closeTemplateEditor() {
+            document.getElementById('templateEditorModal').style.display = 'none';
+            currentTemplateType = null;
+            currentTemplateData = [];
+        }
+
+        function switchTemplateTab(tab) {
+            var editTab = document.getElementById('templateEditTab');
+            var historyTab = document.getElementById('templateHistoryTab');
+            var editBtn = document.getElementById('templateTab-edit');
+            var historyBtn = document.getElementById('templateTab-history');
+
+            if (tab === 'edit') {
+                editTab.style.display = 'block';
+                historyTab.style.display = 'none';
+                editBtn.style.background = '#1976d2';
+                editBtn.style.color = '#fff';
+                historyBtn.style.background = '#e3f2fd';
+                historyBtn.style.color = '#1976d2';
+            } else {
+                editTab.style.display = 'none';
+                historyTab.style.display = 'block';
+                editBtn.style.background = '#e3f2fd';
+                editBtn.style.color = '#1976d2';
+                historyBtn.style.background = '#1976d2';
+                historyBtn.style.color = '#fff';
+                renderTemplateHistoryList();
+            }
+        }
+
+        // テンプレート編集テーブルを描画
+        function renderTemplateEditorContent() {
+            if (!currentTemplateType) return;
+            var tpl = TEMPLATE_TYPES[currentTemplateType];
+            var headers = tpl.headers;
+
+            var html = '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
+            html += '<thead><tr style="background:#1976d2;color:#fff;position:sticky;top:0;">';
+            html += '<th style="padding:8px 4px;border:1px solid #0d47a1;width:40px;">No</th>';
+            headers.forEach(function(h) {
+                html += '<th style="padding:8px 4px;border:1px solid #0d47a1;">' + h + '</th>';
+            });
+            html += '<th style="padding:8px 4px;border:1px solid #0d47a1;width:50px;">操作</th>';
+            html += '</tr></thead><tbody>';
+
+            currentTemplateData.forEach(function(row, idx) {
+                html += '<tr style="background:' + (idx % 2 === 0 ? '#fff' : '#f5f5f5') + ';">';
+                html += '<td style="padding:4px;border:1px solid #e0e0e0;text-align:center;color:#666;">' + (idx + 1) + '</td>';
+                row.forEach(function(cell, colIdx) {
+                    html += '<td style="padding:2px;border:1px solid #e0e0e0;">';
+                    html += '<input type="text" value="' + escapeHtml(cell || '') + '" ';
+                    html += 'onchange="updateTemplateCell(' + idx + ',' + colIdx + ',this.value)" ';
+                    html += 'style="width:100%;padding:4px;border:none;font-size:11px;box-sizing:border-box;">';
+                    html += '</td>';
+                });
+                html += '<td style="padding:2px;border:1px solid #e0e0e0;text-align:center;">';
+                html += '<button onclick="deleteTemplateRow(' + idx + ')" style="background:#f44336;color:#fff;border:none;padding:3px 8px;border-radius:3px;cursor:pointer;font-size:10px;">🗑️</button>';
+                html += '</td></tr>';
+            });
+
+            html += '</tbody></table>';
+            document.getElementById('templateEditorContent').innerHTML = html;
+        }
+
+        function updateTemplateCell(rowIdx, colIdx, value) {
+            if (currentTemplateData[rowIdx]) {
+                currentTemplateData[rowIdx][colIdx] = value;
+            }
+        }
+
+        function addTemplateRow() {
+            if (!currentTemplateType) return;
+            var tpl = TEMPLATE_TYPES[currentTemplateType];
+            var newRow = [];
+            for (var i = 0; i < tpl.headers.length; i++) newRow.push('');
+            currentTemplateData.push(newRow);
+            renderTemplateEditorContent();
+            showStatus('success', '行を追加しました');
+        }
+
+        function deleteTemplateRow(idx) {
+            if (currentTemplateData.length <= 1) {
+                showStatus('error', '最低1行は必要です');
+                return;
+            }
+            currentTemplateData.splice(idx, 1);
+            renderTemplateEditorContent();
+            showStatus('success', '行を削除しました');
+        }
+
+        // テンプレート履歴管理
+        function getTemplateHistory() {
+            try {
+                var saved = localStorage.getItem(TEMPLATE_HISTORY_KEY);
+                return saved ? JSON.parse(saved) : {};
+            } catch (e) {
+                return {};
+            }
+        }
+
+        function saveTemplateToHistory() {
+            if (!currentTemplateType) return;
+            var name = document.getElementById('templateSaveName').value.trim();
+            if (!name) {
+                showStatus('error', 'テンプレート名を入力してください');
+                return;
+            }
+
+            var history = getTemplateHistory();
+            if (!history[currentTemplateType]) {
+                history[currentTemplateType] = [];
+            }
+
+            var tpl = TEMPLATE_TYPES[currentTemplateType];
+            history[currentTemplateType].unshift({
+                id: Date.now(),
+                name: name,
+                headers: tpl.headers,
+                data: JSON.parse(JSON.stringify(currentTemplateData)),
+                createdAt: new Date().toISOString(),
+                rowCount: currentTemplateData.length
+            });
+
+            // 最大20件保持
+            if (history[currentTemplateType].length > 20) {
+                history[currentTemplateType] = history[currentTemplateType].slice(0, 20);
+            }
+
+            localStorage.setItem(TEMPLATE_HISTORY_KEY, JSON.stringify(history));
+            renderTemplateHistoryList();
+            showStatus('success', 'テンプレートを保存しました: ' + name);
+        }
+
+        function renderTemplateHistoryList() {
+            if (!currentTemplateType) return;
+            var history = getTemplateHistory();
+            var items = history[currentTemplateType] || [];
+            var tpl = TEMPLATE_TYPES[currentTemplateType];
+
+            var html = '';
+            if (items.length === 0) {
+                html = '<div style="text-align:center;padding:40px;color:#999;">保存されたテンプレートはありません</div>';
+            } else {
+                html = '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+                html += '<thead><tr style="background:' + tpl.color + ';color:#fff;">';
+                html += '<th style="padding:10px;border:1px solid rgba(255,255,255,0.3);">テンプレート名</th>';
+                html += '<th style="padding:10px;border:1px solid rgba(255,255,255,0.3);width:80px;">行数</th>';
+                html += '<th style="padding:10px;border:1px solid rgba(255,255,255,0.3);width:150px;">作成日時</th>';
+                html += '<th style="padding:10px;border:1px solid rgba(255,255,255,0.3);width:220px;">操作</th>';
+                html += '</tr></thead><tbody>';
+
+                items.forEach(function(item, idx) {
+                    var date = new Date(item.createdAt);
+                    var dateStr = date.toLocaleDateString('ja-JP') + ' ' + date.toLocaleTimeString('ja-JP', {hour: '2-digit', minute: '2-digit'});
+
+                    html += '<tr style="background:' + (idx % 2 === 0 ? '#fff' : '#f9f9f9') + ';">';
+                    html += '<td style="padding:10px;border:1px solid #e0e0e0;font-weight:bold;">' + escapeHtml(item.name) + '</td>';
+                    html += '<td style="padding:10px;border:1px solid #e0e0e0;text-align:center;">' + item.rowCount + '行</td>';
+                    html += '<td style="padding:10px;border:1px solid #e0e0e0;color:#666;font-size:11px;">' + dateStr + '</td>';
+                    html += '<td style="padding:8px;border:1px solid #e0e0e0;text-align:center;">';
+                    html += '<button onclick="previewTemplateHistory(' + idx + ')" style="background:#4caf50;color:#fff;border:none;padding:5px 10px;border-radius:4px;cursor:pointer;margin:2px;font-size:11px;">👁️ 表示</button>';
+                    html += '<button onclick="loadTemplateHistory(' + idx + ')" style="background:#1976d2;color:#fff;border:none;padding:5px 10px;border-radius:4px;cursor:pointer;margin:2px;font-size:11px;">📂 読込</button>';
+                    html += '<button onclick="downloadTemplateHistory(' + idx + ')" style="background:#ff9800;color:#fff;border:none;padding:5px 10px;border-radius:4px;cursor:pointer;margin:2px;font-size:11px;">📥 DL</button>';
+                    html += '<button onclick="deleteTemplateHistory(' + idx + ')" style="background:#f44336;color:#fff;border:none;padding:5px 10px;border-radius:4px;cursor:pointer;margin:2px;font-size:11px;">🗑️</button>';
+                    html += '</td></tr>';
+                });
+
+                html += '</tbody></table>';
+            }
+
+            document.getElementById('templateHistoryList').innerHTML = html;
+        }
+
+        function previewTemplateHistory(idx) {
+            if (!currentTemplateType) return;
+            var history = getTemplateHistory();
+            var items = history[currentTemplateType] || [];
+            var item = items[idx];
+            if (!item) return;
+
+            document.getElementById('templatePreviewTitle').textContent = '👁️ プレビュー: ' + item.name;
+
+            var html = '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
+            html += '<thead><tr style="background:#2e7d32;color:#fff;">';
+            item.headers.forEach(function(h) {
+                html += '<th style="padding:8px 4px;border:1px solid #1b5e20;">' + h + '</th>';
+            });
+            html += '</tr></thead><tbody>';
+
+            item.data.forEach(function(row, rowIdx) {
+                html += '<tr style="background:' + (rowIdx % 2 === 0 ? '#fff' : '#f5f5f5') + ';">';
+                row.forEach(function(cell) {
+                    html += '<td style="padding:6px 4px;border:1px solid #e0e0e0;">' + escapeHtml(cell || '') + '</td>';
+                });
+                html += '</tr>';
+            });
+
+            html += '</tbody></table>';
+            document.getElementById('templatePreviewContent').innerHTML = html;
+            document.getElementById('templatePreviewModal').style.display = 'block';
+        }
+
+        function closeTemplatePreview() {
+            document.getElementById('templatePreviewModal').style.display = 'none';
+        }
+
+        function loadTemplateHistory(idx) {
+            if (!currentTemplateType) return;
+            var history = getTemplateHistory();
+            var items = history[currentTemplateType] || [];
+            var item = items[idx];
+            if (!item) return;
+
+            currentTemplateData = JSON.parse(JSON.stringify(item.data));
+            document.getElementById('templateSaveName').value = item.name + '_copy';
+            renderTemplateEditorContent();
+            switchTemplateTab('edit');
+            showStatus('success', 'テンプレートを読み込みました: ' + item.name);
+        }
+
+        function downloadTemplateHistory(idx) {
+            if (!currentTemplateType) return;
+            var history = getTemplateHistory();
+            var items = history[currentTemplateType] || [];
+            var item = items[idx];
+            if (!item) return;
+
+            var csv = [];
+            var BOM = '\uFEFF';
+            csv.push(item.headers.join(','));
+            item.data.forEach(function(row) {
+                csv.push(row.map(function(cell) {
+                    if (cell && (cell.indexOf(',') !== -1 || cell.indexOf('"') !== -1)) {
+                        return '"' + cell.replace(/"/g, '""') + '"';
+                    }
+                    return cell || '';
+                }).join(','));
+            });
+
+            var blob = new Blob([BOM + csv.join('\n')], { type: 'text/csv;charset=utf-8' });
+            var link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = item.name + '_' + new Date().toISOString().slice(0, 10) + '.csv';
+            link.click();
+
+            showStatus('success', 'テンプレートをダウンロードしました: ' + item.name);
+        }
+
+        function deleteTemplateHistory(idx) {
+            if (!currentTemplateType) return;
+            if (!confirm('このテンプレートを削除しますか？')) return;
+
+            var history = getTemplateHistory();
+            var items = history[currentTemplateType] || [];
+            if (items[idx]) {
+                var name = items[idx].name;
+                items.splice(idx, 1);
+                history[currentTemplateType] = items;
+                localStorage.setItem(TEMPLATE_HISTORY_KEY, JSON.stringify(history));
+                renderTemplateHistoryList();
+                showStatus('success', 'テンプレートを削除しました: ' + name);
+            }
+        }
+
+        function downloadEditedTemplate() {
+            if (!currentTemplateType || currentTemplateData.length === 0) {
+                showStatus('error', 'テンプレートデータがありません');
+                return;
+            }
+
+            var tpl = TEMPLATE_TYPES[currentTemplateType];
+            var csv = [];
+            var BOM = '\uFEFF';
+            csv.push(tpl.headers.join(','));
+            currentTemplateData.forEach(function(row) {
+                csv.push(row.map(function(cell) {
+                    if (cell && (cell.indexOf(',') !== -1 || cell.indexOf('"') !== -1)) {
+                        return '"' + cell.replace(/"/g, '""') + '"';
+                    }
+                    return cell || '';
+                }).join(','));
+            });
+
+            var blob = new Blob([BOM + csv.join('\n')], { type: 'text/csv;charset=utf-8' });
+            var link = document.createElement('a');
+            var name = document.getElementById('templateSaveName').value.trim() || tpl.name;
+            link.href = URL.createObjectURL(blob);
+            link.download = name + '_' + new Date().toISOString().slice(0, 10) + '.csv';
+            link.click();
+
+            showStatus('success', '編集中のテンプレートをダウンロードしました');
         }
 
         // ★★★ 月別客単価インポート関連 ★★★
