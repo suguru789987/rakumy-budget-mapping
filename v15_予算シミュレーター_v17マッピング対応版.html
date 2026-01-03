@@ -7351,15 +7351,18 @@
 
                 // CUSTOMER_CODE_MAPから項目を取得
                 var items = [];
-                for (var code in CUSTOMER_CODE_MAP) {
+                var keys = Object.keys(CUSTOMER_CODE_MAP);
+                for (var i = 0; i < keys.length; i++) {
+                    var code = keys[i];
                     var item = CUSTOMER_CODE_MAP[code];
+                    if (!item) continue;
                     if (filterCategory && item.budgetCategory !== filterCategory) continue;
                     items.push({
                         code: code,
-                        name: item.name,
-                        category: item.category,
-                        budgetCategory: item.budgetCategory || item.category,
-                        v15No: item.v15No,
+                        name: item.name || '',
+                        category: item.category || '',
+                        budgetCategory: item.budgetCategory || item.category || '',
+                        v15No: item.v15No || 0,
                         sortOrder: item.sortOrder || 0,
                         inputStyle: item.inputStyle || '',
                         screen: item.screen || ''
@@ -7390,7 +7393,6 @@
             });
 
             // 件数表示
-            console.log('[renderItemMappingList] items.length:', items.length);
             var countElem = document.getElementById('mappingItemCount');
             if (countElem) {
                 countElem.textContent = '（' + items.length + '件）';
@@ -7398,7 +7400,6 @@
 
             if (items.length === 0) {
                 container.innerHTML = '<div style="padding:20px;text-align:center;color:#666;">該当する項目がありません</div>';
-                console.log('[renderItemMappingList] 項目が0件のため終了');
                 return;
             }
 
@@ -7729,21 +7730,6 @@
             renderItemMappingList();
             showStatus('success', '項目を削除しました: ' + item.name);
         }
-
-        // showCategoryOrderPanelとshowItemOrderPanelを更新（itemMappingPanelも非表示に）
-        var _originalShowCategoryOrderPanel = showCategoryOrderPanel;
-        showCategoryOrderPanel = function() {
-            document.getElementById('itemMappingPanel').style.display = 'none';
-            document.getElementById('btnItemMapping').style.background = '#607d8b';
-            _originalShowCategoryOrderPanel();
-        };
-
-        var _originalShowItemOrderPanel = showItemOrderPanel;
-        showItemOrderPanel = function() {
-            document.getElementById('itemMappingPanel').style.display = 'none';
-            document.getElementById('btnItemMapping').style.background = '#607d8b';
-            _originalShowItemOrderPanel();
-        };
 
         // ===== 項目マッピング編集機能ここまで =====
 
