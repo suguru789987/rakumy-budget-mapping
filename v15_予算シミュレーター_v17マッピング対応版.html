@@ -1622,10 +1622,16 @@
                             </div>
                         </div>
 
-                        <!-- MQ再計算ボタン -->
-                        <div style="text-align:center;">
+                        <!-- MQ再計算・マスタ保存ボタン -->
+                        <div style="text-align:center;display:flex;gap:15px;justify-content:center;flex-wrap:wrap;">
+                            <button onclick="resetMQUnitPricesToDefault()" class="btn" style="padding:12px 25px;font-size:14px;background:#9e9e9e;border:none;border-radius:6px;color:#fff;font-weight:bold;">
+                                🔄 デフォルトに戻す
+                            </button>
                             <button onclick="recalculateMQ()" class="btn btn-primary" style="padding:12px 50px;font-size:16px;background:#ff9800;border:none;border-radius:6px;color:#fff;font-weight:bold;">
                                 MQ再計算
+                            </button>
+                            <button onclick="saveMQUnitPricesToMaster()" class="btn" style="padding:12px 25px;font-size:14px;background:#4caf50;border:none;border-radius:6px;color:#fff;font-weight:bold;">
+                                💾 マスタに保存
                             </button>
                         </div>
 
@@ -11747,6 +11753,85 @@
             // UIを更新
             initUnitPricesForStore(currentStoreName);
             showStatus('info', 'デフォルト値にリセットしました（' + currentStoreName + '）');
+        }
+
+        // ★★★ ラクミー設定値タブ用：マスタデフォルトにリセット ★★★
+        function resetMQUnitPricesToDefault() {
+            if (!currentStoreName) {
+                showStatus('warn', '店舗が選択されていません');
+                return;
+            }
+
+            if (!confirm('「' + currentStoreName + '」の客単価をマスタのデフォルト値にリセットしますか？')) {
+                return;
+            }
+
+            resetUnitPricesToDefault();
+        }
+
+        // ★★★ ラクミー設定値タブ用：客単価をマスタに保存 ★★★
+        function saveMQUnitPricesToMaster() {
+            if (!currentStoreName) {
+                showStatus('warn', '店舗が選択されていません');
+                return;
+            }
+
+            if (activeMonths.length === 0) {
+                showStatus('warn', 'データがありません');
+                return;
+            }
+
+            // 現在の入力値を取得
+            var totalSum = 0, lunchSum = 0, dinnerSum = 0;
+            var monthlyData = {};
+
+            for (var i = 0; i < activeMonths.length; i++) {
+                var m = activeMonths[i];
+                var totalEl = document.getElementById('mqP_total_' + m);
+                var lunchEl = document.getElementById('mqP_lunch_' + m);
+                var dinnerEl = document.getElementById('mqP_dinner_' + m);
+
+                var total = totalEl ? parseInt(totalEl.value) || 0 : 0;
+                var lunch = lunchEl ? parseInt(lunchEl.value) || 0 : 0;
+                var dinner = dinnerEl ? parseInt(dinnerEl.value) || 0 : 0;
+
+                totalSum += total;
+                lunchSum += lunch;
+                dinnerSum += dinner;
+
+                monthlyData[m] = { total: total, lunch: lunch, dinner: dinner };
+            }
+
+            // 平均値を計算
+            var monthCount = activeMonths.length;
+            var avgTotal = Math.round(totalSum / monthCount);
+            var avgLunch = Math.round(lunchSum / monthCount);
+            var avgDinner = Math.round(dinnerSum / monthCount);
+
+            // DEFAULT_UNIT_PRICESに保存
+            if (!DEFAULT_UNIT_PRICES[currentStoreName]) {
+                DEFAULT_UNIT_PRICES[currentStoreName] = { storeCode: '', total: avgTotal, lunch: avgLunch, dinner: avgDinner };
+            } else {
+                DEFAULT_UNIT_PRICES[currentStoreName].total = avgTotal;
+                DEFAULT_UNIT_PRICES[currentStoreName].lunch = avgLunch;
+                DEFAULT_UNIT_PRICES[currentStoreName].dinner = avgDinner;
+            }
+
+            // 月別データも保存
+            DEFAULT_UNIT_PRICES[currentStoreName].monthly = {};
+            for (var m in monthlyData) {
+                DEFAULT_UNIT_PRICES[currentStoreName].monthly[m] = monthlyData[m];
+            }
+
+            // LocalStorageに保存
+            saveUnitPriceSettings();
+
+            // マスタ設定タブの表示を更新（表示されていれば）
+            if (typeof renderUnitPriceSummary === 'function') {
+                renderUnitPriceSummary();
+            }
+
+            showStatus('success', '「' + currentStoreName + '」の客単価をマスタに保存しました（平均: ¥' + fmt(avgTotal) + '）');
         }
 
         // 旧関数互換用
