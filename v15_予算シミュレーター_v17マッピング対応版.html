@@ -9895,7 +9895,7 @@
                     }
                     storeNames.slice(0, 5).forEach(function(name, i) {
                         var prices = stores[name];
-                        var storeCode = prices.storeCode || '-';
+                        var storeCode = getCurrentStoreCode(name);
                         html += '<div style="font-size:11px;padding:2px 0;border-bottom:1px solid #eee;">';
                         html += '<span style="color:#4caf50;font-weight:bold;">' + storeCode + '</span> ';
                         html += escapeHtml(name);
@@ -9919,7 +9919,7 @@
                     html += '<div style="font-size:10px;color:#666;margin-bottom:8px;">💰 客単価一覧（先頭3店舗・月別）:</div>';
                     storeNames.slice(0, 3).forEach(function(name, i) {
                         var prices = stores[name];
-                        var storeCode = prices.storeCode || '-';
+                        var storeCode = getCurrentStoreCode(name);
                         html += '<div style="margin-bottom:10px;padding:8px;background:#e3f2fd;border-radius:4px;">';
                         html += '<div style="font-weight:bold;color:#1565c0;margin-bottom:5px;">';
                         html += '<span style="color:#4caf50;">' + storeCode + '</span> ';
@@ -10056,6 +10056,15 @@
             showStatus('success', 'マスタ履歴を削除しました');
         }
 
+        // ★★★ 店番を現在のマスタから取得（履歴と店番マスタを連動）★★★
+        function getCurrentStoreCode(storeName) {
+            // 現在の店番マスタ(DEFAULT_UNIT_PRICES)から店番を取得
+            if (DEFAULT_UNIT_PRICES[storeName] && DEFAULT_UNIT_PRICES[storeName].storeCode) {
+                return DEFAULT_UNIT_PRICES[storeName].storeCode;
+            }
+            return '-';
+        }
+
         // ★★★ マスタ履歴フルプレビュー（店別月別表示）★★★
         function showMasterHistoryFullPreview(id) {
             var history = getMasterHistory();
@@ -10121,9 +10130,9 @@
                     var bgColor = idx % 2 === 0 ? '#fff' : '#f5f5f5';
                     html += '<tr style="background:' + bgColor + ';border-bottom:1px solid #e0e0e0;">';
 
-                    // 店番・店名（固定列）
+                    // 店番・店名（固定列）- 店番は現在のマスタから取得
                     html += '<td style="padding:8px;position:sticky;left:0;background:' + bgColor + ';border-right:2px solid #2196f3;">';
-                    var displayCode = prices.storeCode || '-';
+                    var displayCode = getCurrentStoreCode(storeName);
                     html += '<span style="color:#4caf50;font-weight:bold;">' + displayCode + '</span> ';
                     html += escapeHtml(storeName);
                     html += '</td>';
@@ -10157,7 +10166,7 @@
                     var prices = stores[name];
                     var bgColor = idx % 2 === 0 ? '#fff' : '#e8f5e9';
                     html += '<tr style="background:' + bgColor + ';">';
-                    html += '<td style="padding:8px;text-align:center;font-weight:bold;color:#4caf50;">' + (prices.storeCode || '-') + '</td>';
+                    html += '<td style="padding:8px;text-align:center;font-weight:bold;color:#4caf50;">' + getCurrentStoreCode(name) + '</td>';
                     html += '<td style="padding:8px;">' + escapeHtml(name) + '</td>';
                     html += '</tr>';
                 });
@@ -10264,7 +10273,7 @@
 
                     // 店番・店名
                     html += '<td style="padding:6px;position:sticky;left:0;background:' + bgColor + ';border-right:2px solid #2196f3;">';
-                    html += '<span style="color:#4caf50;font-weight:bold;">' + (prices.storeCode || '-') + '</span> ';
+                    html += '<span style="color:#4caf50;font-weight:bold;">' + getCurrentStoreCode(storeName) + '</span> ';
                     html += '<span style="font-size:10px;">' + escapeHtml(storeName.length > 12 ? storeName.substring(0,12) + '...' : storeName) + '</span>';
                     html += '</td>';
 
