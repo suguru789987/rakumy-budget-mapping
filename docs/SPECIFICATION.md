@@ -1224,6 +1224,17 @@ function forEachMonth(callback, monthsArray) {
 | mqInputs | カレンダー月 | `mqInputs[calMonth]` |
 | result.monthlyG/F | カレンダー月 | `result.monthlyG[calMonth]` |
 
+### モーダルz-index階層修正（2026-01-04）
+
+| 変更項目 | 変更内容 |
+|---------|---------|
+| **問題背景** | 編集モーダルが親モーダル（リストモーダル）と同じz-index: 1001のため、後ろに表示される問題 |
+| **itemMappingEditModal** | z-index: 1001 → 1010 に修正 |
+| **storeEditModal** | z-index: 1001 → 1010 に修正 |
+| **unitPriceEditModal** | z-index: 1001 → 1010 に修正 |
+| **simUnitPriceEditModal** | z-index: 1001 → 1010 に修正 |
+| **z-index階層定義** | レベル1(1000): 基本モーダル、レベル2(1001): リストモーダル、レベル3(1002): プレビュー、レベル4(1010): 編集モーダル |
+
 ### v5.8（前バージョン）
 
 - 顧客CSV対応版・変換ロジック強化
