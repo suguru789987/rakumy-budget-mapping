@@ -9783,28 +9783,54 @@
                 return escapeHtml(item.name);
             }
 
-            // プルダウン選択
-            html += '<div style="display:flex;gap:10px;align-items:center;margin-bottom:15px;flex-wrap:wrap;">';
-            html += '<select id="historySelect" onchange="previewHistoryData(this.value)" style="padding:8px 12px;border:2px solid #7b1fa2;border-radius:6px;font-size:13px;min-width:300px;background:#fff;">';
-            html += '<option value="">-- 履歴を選択 --</option>';
-            history.forEach(function(item) {
-                var selected = selectedHistoryId === item.id ? ' selected' : '';
-                html += '<option value="' + item.id + '"' + selected + '>' + getItemLabel(item) + '</option>';
+            // 履歴一覧テーブル
+            html += '<div style="max-height:400px;overflow-y:auto;">';
+            html += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+            html += '<thead><tr style="background:#7b1fa2;color:#fff;">';
+            html += '<th style="padding:10px;text-align:left;">保存名</th>';
+            html += '<th style="padding:10px;text-align:center;width:100px;">データ件数</th>';
+            html += '<th style="padding:10px;text-align:center;width:260px;">操作</th>';
+            html += '</tr></thead><tbody>';
+
+            history.forEach(function(item, idx) {
+                var bgColor = idx % 2 === 0 ? '#fff' : '#fafafa';
+                html += '<tr style="background:' + bgColor + ';border-bottom:1px solid #e0e0e0;">';
+
+                // 保存名
+                html += '<td style="padding:10px;">';
+                html += '<div style="font-weight:bold;color:#7b1fa2;">' + escapeHtml(item.name) + '</div>';
+                html += '<div style="font-size:10px;color:#999;">保存: ' + new Date(item.savedAt).toLocaleString('ja-JP') + '</div>';
+                html += '</td>';
+
+                // データ件数
+                html += '<td style="padding:10px;text-align:center;">';
+                if (selectedHistoryCategory === 'all') {
+                    html += '<div style="font-size:10px;">🏪' + item.storeCount + ' 📋' + (item.codeMapCount + item.nameMapCount) + '</div>';
+                } else if (selectedHistoryCategory === 'stores') {
+                    html += '<span style="background:#4caf50;color:#fff;padding:2px 8px;border-radius:10px;font-size:10px;">🏪 ' + item.storeCount + '件</span>';
+                } else if (selectedHistoryCategory === 'items') {
+                    html += '<span style="background:#ff9800;color:#fff;padding:2px 8px;border-radius:10px;font-size:10px;">📋 ' + (item.codeMapCount + item.nameMapCount) + '件</span>';
+                } else if (selectedHistoryCategory === 'prices') {
+                    html += '<span style="background:#2196f3;color:#fff;padding:2px 8px;border-radius:10px;font-size:10px;">💰 ' + item.storeCount + '店舗</span>';
+                }
+                html += '</td>';
+
+                // 操作ボタン
+                html += '<td style="padding:8px;text-align:center;">';
+                html += '<div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap;">';
+                html += '<button onclick="showMasterHistoryFullPreview(' + item.id + ')" style="background:#2196f3;color:#fff;border:none;padding:5px 10px;border-radius:4px;cursor:pointer;font-size:11px;">👁 表示</button>';
+                html += '<button onclick="editMasterHistory(' + item.id + ')" style="background:#ff9800;color:#fff;border:none;padding:5px 10px;border-radius:4px;cursor:pointer;font-size:11px;">✏️ 編集</button>';
+                html += '<button onclick="loadMasterFromHistory(' + item.id + ')" style="background:#4caf50;color:#fff;border:none;padding:5px 10px;border-radius:4px;cursor:pointer;font-size:11px;">📥 読込</button>';
+                html += '<button onclick="deleteMasterHistory(' + item.id + ')" style="background:#f44336;color:#fff;border:none;padding:5px 10px;border-radius:4px;cursor:pointer;font-size:11px;">🗑 削除</button>';
+                html += '</div>';
+                html += '</td>';
+                html += '</tr>';
             });
-            html += '</select>';
-            html += '<button onclick="loadSelectedHistory()" style="background:#4caf50;color:#fff;border:none;padding:8px 15px;border-radius:4px;cursor:pointer;font-size:12px;">📥 読込</button>';
-            html += '<button onclick="deleteSelectedHistory()" style="background:#f44336;color:#fff;border:none;padding:8px 15px;border-radius:4px;cursor:pointer;font-size:12px;">🗑 削除</button>';
+
+            html += '</tbody></table>';
             html += '</div>';
 
-            // 選択中の履歴情報を表示
-            html += '<div id="historyPreview"></div>';
-
             container.innerHTML = html;
-
-            // 選択中の履歴があればプレビュー表示
-            if (selectedHistoryId) {
-                previewHistoryData(selectedHistoryId);
-            }
         }
 
         function previewHistoryData(idStr) {
@@ -10028,6 +10054,319 @@
 
             renderMasterHistoryList();
             showStatus('success', 'マスタ履歴を削除しました');
+        }
+
+        // ★★★ マスタ履歴フルプレビュー（店別月別表示）★★★
+        function showMasterHistoryFullPreview(id) {
+            var history = getMasterHistory();
+            var item = history.find(function(h) { return h.id === id; });
+            if (!item) {
+                showStatus('error', '履歴が見つかりません');
+                return;
+            }
+
+            var MONTH_NAMES = ['4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月', '1月', '2月', '3月'];
+            var stores = item.unitPrices || item.stores;
+            var storeNames = Object.keys(stores).filter(function(n) { return n !== '_default'; });
+
+            var html = '<div id="masterHistoryFullPreviewModal" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:1100;overflow-y:auto;">';
+            html += '<div style="background:#fff;border-radius:12px;margin:30px auto;max-width:95%;width:1100px;box-shadow:0 4px 30px rgba(0,0,0,0.4);">';
+
+            // ヘッダー
+            html += '<div style="background:linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%);color:#fff;padding:20px;border-radius:12px 12px 0 0;display:flex;justify-content:space-between;align-items:center;">';
+            html += '<div>';
+            html += '<h3 style="margin:0;font-size:18px;">👁 マスタ履歴プレビュー</h3>';
+            html += '<div style="font-size:12px;opacity:0.9;margin-top:5px;">' + escapeHtml(item.name) + '</div>';
+            html += '</div>';
+            html += '<button onclick="closeMasterHistoryFullPreview()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;padding:8px 15px;border-radius:4px;cursor:pointer;font-size:14px;">✕ 閉じる</button>';
+            html += '</div>';
+
+            // コンテンツ
+            html += '<div style="padding:20px;">';
+
+            // サマリー
+            html += '<div style="display:flex;gap:15px;margin-bottom:20px;flex-wrap:wrap;">';
+            html += '<div style="background:#e8f5e9;padding:12px 20px;border-radius:8px;border-left:4px solid #4caf50;">';
+            html += '<div style="font-size:11px;color:#2e7d32;">店舗数</div>';
+            html += '<div style="font-size:24px;font-weight:bold;color:#4caf50;">' + storeNames.length + '</div>';
+            html += '</div>';
+            html += '<div style="background:#fff3e0;padding:12px 20px;border-radius:8px;border-left:4px solid #ff9800;">';
+            html += '<div style="font-size:11px;color:#e65100;">予算項目コード</div>';
+            html += '<div style="font-size:24px;font-weight:bold;color:#ff9800;">' + (item.codeMapCount + item.nameMapCount) + '</div>';
+            html += '</div>';
+            html += '<div style="background:#e3f2fd;padding:12px 20px;border-radius:8px;border-left:4px solid #2196f3;">';
+            html += '<div style="font-size:11px;color:#1565c0;">保存日時</div>';
+            html += '<div style="font-size:14px;font-weight:bold;color:#2196f3;">' + new Date(item.savedAt).toLocaleString('ja-JP') + '</div>';
+            html += '</div>';
+            html += '</div>';
+
+            // 客単価カテゴリの場合：店別月別テーブル
+            if (selectedHistoryCategory === 'prices' || selectedHistoryCategory === 'all') {
+                html += '<h4 style="color:#2196f3;margin:0 0 15px 0;">💰 客単価一覧（店別月別）</h4>';
+                html += '<div style="overflow-x:auto;max-height:500px;overflow-y:auto;">';
+                html += '<table style="width:100%;border-collapse:collapse;font-size:11px;min-width:900px;">';
+
+                // ヘッダー行
+                html += '<thead style="position:sticky;top:0;z-index:10;"><tr style="background:#2196f3;color:#fff;">';
+                html += '<th style="padding:8px;text-align:left;position:sticky;left:0;background:#2196f3;min-width:180px;">店番 / 店名</th>';
+                html += '<th style="padding:8px;text-align:center;min-width:70px;">平均</th>';
+                MONTH_NAMES.forEach(function(m) {
+                    html += '<th style="padding:8px;text-align:center;min-width:55px;">' + m + '</th>';
+                });
+                html += '</tr></thead><tbody>';
+
+                // 各店舗の行
+                storeNames.forEach(function(storeName, idx) {
+                    var prices = stores[storeName];
+                    var bgColor = idx % 2 === 0 ? '#fff' : '#f5f5f5';
+                    html += '<tr style="background:' + bgColor + ';border-bottom:1px solid #e0e0e0;">';
+
+                    // 店番・店名（固定列）
+                    html += '<td style="padding:8px;position:sticky;left:0;background:' + bgColor + ';border-right:2px solid #2196f3;">';
+                    html += '<span style="color:#4caf50;font-weight:bold;">' + (prices.storeCode || String(idx+1).padStart(3,'0')) + '</span> ';
+                    html += escapeHtml(storeName);
+                    html += '</td>';
+
+                    // 平均（デフォルト値）
+                    html += '<td style="padding:8px;text-align:right;font-weight:bold;color:#1565c0;">' + (prices.total || 5000).toLocaleString() + '</td>';
+
+                    // 月別データ
+                    for (var mi = 0; mi < 12; mi++) {
+                        var monthData = prices.monthly ? prices.monthly[mi] : null;
+                        var val = monthData ? (monthData.total || prices.total || 5000) : (prices.total || 5000);
+                        var isCustom = monthData && monthData.total !== prices.total;
+                        html += '<td style="padding:8px;text-align:right;' + (isCustom ? 'color:#e65100;font-weight:bold;' : 'color:#666;') + '">';
+                        html += val.toLocaleString();
+                        html += '</td>';
+                    }
+                    html += '</tr>';
+                });
+
+                html += '</tbody></table>';
+                html += '</div>';
+            }
+
+            // 店番マスタカテゴリの場合
+            if (selectedHistoryCategory === 'stores') {
+                html += '<h4 style="color:#4caf50;margin:0 0 15px 0;">🏪 店番マスタ一覧</h4>';
+                html += '<div style="overflow-y:auto;max-height:400px;">';
+                html += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+                html += '<thead><tr style="background:#4caf50;color:#fff;"><th style="padding:8px;width:100px;">店番</th><th style="padding:8px;text-align:left;">店名</th></tr></thead><tbody>';
+                storeNames.forEach(function(name, idx) {
+                    var prices = stores[name];
+                    var bgColor = idx % 2 === 0 ? '#fff' : '#e8f5e9';
+                    html += '<tr style="background:' + bgColor + ';">';
+                    html += '<td style="padding:8px;text-align:center;font-weight:bold;color:#4caf50;">' + (prices.storeCode || String(idx+1).padStart(3,'0')) + '</td>';
+                    html += '<td style="padding:8px;">' + escapeHtml(name) + '</td>';
+                    html += '</tr>';
+                });
+                html += '</tbody></table></div>';
+            }
+
+            // 予算項目コードカテゴリの場合
+            if (selectedHistoryCategory === 'items') {
+                html += '<h4 style="color:#ff9800;margin:0 0 15px 0;">📋 予算項目コード一覧</h4>';
+                html += '<div style="overflow-y:auto;max-height:400px;">';
+                html += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+                html += '<thead><tr style="background:#ff9800;color:#fff;"><th style="padding:8px;width:80px;">コード</th><th style="padding:8px;text-align:left;">項目名</th><th style="padding:8px;width:80px;">v17No</th><th style="padding:8px;text-align:left;">カテゴリ</th></tr></thead><tbody>';
+                var codeKeys = Object.keys(item.codeMap || {});
+                codeKeys.forEach(function(code, idx) {
+                    var mapItem = item.codeMap[code];
+                    var bgColor = idx % 2 === 0 ? '#fff' : '#fff3e0';
+                    html += '<tr style="background:' + bgColor + ';">';
+                    html += '<td style="padding:8px;text-align:center;font-weight:bold;color:#ff9800;">' + code + '</td>';
+                    html += '<td style="padding:8px;">' + escapeHtml(mapItem.name) + '</td>';
+                    html += '<td style="padding:8px;text-align:center;">' + mapItem.v17No + '</td>';
+                    html += '<td style="padding:8px;">' + escapeHtml(mapItem.budgetCategory || mapItem.category || '-') + '</td>';
+                    html += '</tr>';
+                });
+                html += '</tbody></table></div>';
+            }
+
+            // フッター操作ボタン
+            html += '<div style="margin-top:20px;padding-top:15px;border-top:2px solid #e0e0e0;display:flex;justify-content:center;gap:15px;">';
+            html += '<button onclick="loadMasterFromHistory(' + id + ');closeMasterHistoryFullPreview();" style="background:#4caf50;color:#fff;border:none;padding:12px 25px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:bold;">📥 このデータを読み込む</button>';
+            html += '<button onclick="closeMasterHistoryFullPreview()" style="background:#9e9e9e;color:#fff;border:none;padding:12px 25px;border-radius:6px;cursor:pointer;font-size:14px;">閉じる</button>';
+            html += '</div>';
+
+            html += '</div></div></div>';
+
+            // モーダルを表示
+            var existing = document.getElementById('masterHistoryFullPreviewModal');
+            if (existing) existing.remove();
+            document.body.insertAdjacentHTML('beforeend', html);
+        }
+
+        function closeMasterHistoryFullPreview() {
+            var modal = document.getElementById('masterHistoryFullPreviewModal');
+            if (modal) modal.remove();
+        }
+
+        // ★★★ マスタ履歴編集機能 ★★★
+        var editingHistoryId = null;
+
+        function editMasterHistory(id) {
+            var history = getMasterHistory();
+            var item = history.find(function(h) { return h.id === id; });
+            if (!item) {
+                showStatus('error', '履歴が見つかりません');
+                return;
+            }
+
+            editingHistoryId = id;
+
+            var MONTH_NAMES = ['4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月', '1月', '2月', '3月'];
+            var stores = item.unitPrices || item.stores;
+            var storeNames = Object.keys(stores).filter(function(n) { return n !== '_default'; });
+
+            var html = '<div id="masterHistoryEditModal" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:1100;overflow-y:auto;">';
+            html += '<div style="background:#fff;border-radius:12px;margin:30px auto;max-width:95%;width:1100px;box-shadow:0 4px 30px rgba(0,0,0,0.4);">';
+
+            // ヘッダー
+            html += '<div style="background:linear-gradient(135deg, #ff9800 0%, #e65100 100%);color:#fff;padding:20px;border-radius:12px 12px 0 0;display:flex;justify-content:space-between;align-items:center;">';
+            html += '<div>';
+            html += '<h3 style="margin:0;font-size:18px;">✏️ マスタ履歴編集</h3>';
+            html += '<div style="font-size:12px;opacity:0.9;margin-top:5px;">' + escapeHtml(item.name) + '</div>';
+            html += '</div>';
+            html += '<button onclick="closeMasterHistoryEdit()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;padding:8px 15px;border-radius:4px;cursor:pointer;font-size:14px;">✕ 閉じる</button>';
+            html += '</div>';
+
+            // コンテンツ
+            html += '<div style="padding:20px;">';
+
+            // 保存名編集
+            html += '<div style="margin-bottom:20px;">';
+            html += '<label style="font-weight:bold;color:#e65100;display:block;margin-bottom:8px;">保存名</label>';
+            html += '<input type="text" id="editHistoryName" value="' + escapeHtml(item.name) + '" style="width:100%;max-width:400px;padding:10px;border:2px solid #ff9800;border-radius:6px;font-size:14px;">';
+            html += '</div>';
+
+            // 客単価編集テーブル（客単価カテゴリ時のみ）
+            if (selectedHistoryCategory === 'prices' || selectedHistoryCategory === 'all') {
+                html += '<h4 style="color:#2196f3;margin:0 0 15px 0;">💰 客単価編集（店別月別）</h4>';
+                html += '<div style="overflow-x:auto;max-height:450px;overflow-y:auto;">';
+                html += '<table style="width:100%;border-collapse:collapse;font-size:11px;min-width:900px;">';
+
+                // ヘッダー行
+                html += '<thead style="position:sticky;top:0;z-index:10;"><tr style="background:#2196f3;color:#fff;">';
+                html += '<th style="padding:8px;text-align:left;position:sticky;left:0;background:#2196f3;min-width:180px;">店番 / 店名</th>';
+                html += '<th style="padding:8px;text-align:center;min-width:80px;">デフォルト</th>';
+                MONTH_NAMES.forEach(function(m, mi) {
+                    html += '<th style="padding:8px;text-align:center;min-width:65px;">' + m + '</th>';
+                });
+                html += '</tr></thead><tbody>';
+
+                // 各店舗の行
+                storeNames.forEach(function(storeName, idx) {
+                    var prices = stores[storeName];
+                    var bgColor = idx % 2 === 0 ? '#fff' : '#f5f5f5';
+                    html += '<tr style="background:' + bgColor + ';border-bottom:1px solid #e0e0e0;">';
+
+                    // 店番・店名
+                    html += '<td style="padding:6px;position:sticky;left:0;background:' + bgColor + ';border-right:2px solid #2196f3;">';
+                    html += '<span style="color:#4caf50;font-weight:bold;">' + (prices.storeCode || String(idx+1).padStart(3,'0')) + '</span> ';
+                    html += '<span style="font-size:10px;">' + escapeHtml(storeName.length > 12 ? storeName.substring(0,12) + '...' : storeName) + '</span>';
+                    html += '</td>';
+
+                    // デフォルト値
+                    var defVal = prices.total || 5000;
+                    html += '<td style="padding:4px;text-align:center;">';
+                    html += '<input type="number" data-store="' + encodeURIComponent(storeName) + '" data-field="total" value="' + defVal + '" style="width:60px;padding:4px;border:1px solid #ccc;border-radius:3px;text-align:right;font-size:10px;">';
+                    html += '</td>';
+
+                    // 月別
+                    for (var mi = 0; mi < 12; mi++) {
+                        var monthData = prices.monthly ? prices.monthly[mi] : null;
+                        var val = monthData ? (monthData.total || defVal) : defVal;
+                        html += '<td style="padding:4px;text-align:center;">';
+                        html += '<input type="number" data-store="' + encodeURIComponent(storeName) + '" data-month="' + mi + '" value="' + val + '" style="width:50px;padding:4px;border:1px solid #ccc;border-radius:3px;text-align:right;font-size:10px;">';
+                        html += '</td>';
+                    }
+                    html += '</tr>';
+                });
+
+                html += '</tbody></table>';
+                html += '</div>';
+            }
+
+            // 保存ボタン
+            html += '<div style="margin-top:20px;padding-top:15px;border-top:2px solid #e0e0e0;display:flex;justify-content:center;gap:15px;">';
+            html += '<button onclick="saveMasterHistoryEdit()" style="background:#4caf50;color:#fff;border:none;padding:12px 25px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:bold;">💾 変更を保存</button>';
+            html += '<button onclick="closeMasterHistoryEdit()" style="background:#9e9e9e;color:#fff;border:none;padding:12px 25px;border-radius:6px;cursor:pointer;font-size:14px;">キャンセル</button>';
+            html += '</div>';
+
+            html += '</div></div></div>';
+
+            // モーダルを表示
+            var existing = document.getElementById('masterHistoryEditModal');
+            if (existing) existing.remove();
+            document.body.insertAdjacentHTML('beforeend', html);
+        }
+
+        function closeMasterHistoryEdit() {
+            editingHistoryId = null;
+            var modal = document.getElementById('masterHistoryEditModal');
+            if (modal) modal.remove();
+        }
+
+        function saveMasterHistoryEdit() {
+            if (!editingHistoryId) return;
+
+            var history = getMasterHistory();
+            var itemIndex = history.findIndex(function(h) { return h.id === editingHistoryId; });
+            if (itemIndex === -1) {
+                showStatus('error', '履歴が見つかりません');
+                return;
+            }
+
+            var item = history[itemIndex];
+
+            // 保存名を更新
+            var nameInput = document.getElementById('editHistoryName');
+            if (nameInput) {
+                item.name = nameInput.value || item.name;
+            }
+
+            // 客単価データを更新
+            var stores = item.unitPrices || item.stores;
+            var modal = document.getElementById('masterHistoryEditModal');
+            if (modal) {
+                // デフォルト値の更新
+                var defaultInputs = modal.querySelectorAll('input[data-field="total"]');
+                defaultInputs.forEach(function(input) {
+                    var storeName = decodeURIComponent(input.getAttribute('data-store'));
+                    var val = parseInt(input.value) || 5000;
+                    if (stores[storeName]) {
+                        stores[storeName].total = val;
+                    }
+                });
+
+                // 月別値の更新
+                var monthInputs = modal.querySelectorAll('input[data-month]');
+                monthInputs.forEach(function(input) {
+                    var storeName = decodeURIComponent(input.getAttribute('data-store'));
+                    var month = parseInt(input.getAttribute('data-month'));
+                    var val = parseInt(input.value) || 5000;
+                    if (stores[storeName]) {
+                        if (!stores[storeName].monthly) {
+                            stores[storeName].monthly = {};
+                        }
+                        if (!stores[storeName].monthly[month]) {
+                            stores[storeName].monthly[month] = {};
+                        }
+                        stores[storeName].monthly[month].total = val;
+                    }
+                });
+            }
+
+            // 更新を保存
+            item.unitPrices = stores;
+            item.stores = stores;
+            history[itemIndex] = item;
+            localStorage.setItem(MASTER_HISTORY_KEY, JSON.stringify(history));
+
+            closeMasterHistoryEdit();
+            renderMasterHistoryList();
+            showStatus('success', 'マスタ履歴を更新しました: ' + item.name);
         }
 
         function renderMasterStoresContent() {
