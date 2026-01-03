@@ -1612,28 +1612,25 @@
                             </button>
                         </div>
 
-                        <!-- 月別目標客単価入力テーブル（動的生成） -->
-                        <div style="background:#f5f5f5;border-radius:6px;padding:12px;margin-bottom:15px;">
-                            <div style="font-size:11px;color:#333;font-weight:bold;margin-bottom:10px;">月別目標客単価（<span id="mqMonthCountDisplay">0</span>ヶ月分・前年実績をデフォルト値として設定）</div>
-                            <div style="overflow-x:auto;">
+                        <!-- 月別目標客単価入力テーブル（動的生成）+ 保存ボタン -->
+                        <div style="background:#e8f5e9;border-radius:8px;padding:15px;margin-bottom:20px;border:2px solid #4caf50;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px;">
+                                <div style="font-size:12px;color:#2e7d32;font-weight:bold;">📊 月別目標客単価（<span id="mqMonthCountDisplay">0</span>ヶ月分・前年実績をデフォルト値として設定）</div>
+                                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                    <button onclick="resetMQUnitPricesToDefault()" class="btn" style="padding:6px 12px;font-size:11px;background:#9e9e9e;border:none;border-radius:4px;color:#fff;font-weight:bold;">
+                                        🔄 リセット
+                                    </button>
+                                    <button onclick="saveMQUnitPricesToMaster()" class="btn" style="padding:6px 12px;font-size:11px;background:#2e7d32;border:none;border-radius:4px;color:#fff;font-weight:bold;">
+                                        💾 マスタに保存
+                                    </button>
+                                </div>
+                            </div>
+                            <div style="overflow-x:auto;background:#fff;border-radius:6px;padding:10px;">
                                 <table class="annual-table" style="font-size:11px;" id="mqUnitPriceTable">
                                     <!-- JavaScriptで動的生成 -->
                                 </table>
                             </div>
-                        </div>
-
-                        <!-- Step 1: 客単価編集アクション -->
-                        <div style="background:#f5f5f5;border-radius:8px;padding:12px 15px;margin-bottom:15px;border-left:4px solid #2196f3;">
-                            <div style="display:flex;align-items:center;gap:15px;flex-wrap:wrap;">
-                                <span style="font-size:12px;font-weight:bold;color:#1976d2;white-space:nowrap;">📝 客単価編集:</span>
-                                <button onclick="resetMQUnitPricesToDefault()" class="btn" style="padding:8px 16px;font-size:12px;background:#9e9e9e;border:none;border-radius:4px;color:#fff;font-weight:bold;">
-                                    🔄 デフォルトに戻す
-                                </button>
-                                <button onclick="saveMQUnitPricesToMaster()" class="btn" style="padding:8px 16px;font-size:12px;background:#4caf50;border:none;border-radius:4px;color:#fff;font-weight:bold;">
-                                    💾 マスタに保存
-                                </button>
-                                <span style="font-size:10px;color:#666;">※編集した客単価をマスタ設定に反映</span>
-                            </div>
+                            <div style="font-size:10px;color:#558b2f;margin-top:8px;text-align:right;">※「マスタに保存」で編集内容をマスタ設定タブに反映</div>
                         </div>
 
                         <!-- Step 2: MQ再計算（メインアクション） -->
