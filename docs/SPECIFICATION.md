@@ -841,6 +841,47 @@ if (total === 0) return;
 | closeHistoryPreview関数 | プレビューパネルを閉じる |
 | データ確認フロー | プレビューでデータ内容を確認→「このデータを読み込み」で確定 |
 
+### インポート列マッピング機能強化（2026-01-03）
+
+| 変更項目 | 変更内容 |
+|---------|---------|
+| **予算インポートタブへ移動** | 列マッピング設定UIを設定インポートタブから予算インポートタブに移動 |
+| **プリセット選択** | 顧客プリセット選択ドロップダウンを予算テンプレート行に配置 |
+| **列無効化機能** | オプション列（月列）の有効/無効切り替えチェックボックスを追加 |
+| **列グループ化機能** | グループ化なし/四半期(Q1-Q4)/半期(上期・下期)の選択オプション |
+| **クイック無効化** | 四半期/半期グループ単位での一括有効/無効トグルボタン |
+| **カスタム列機能** | 顧客CSV独自列を「その他データ」として追加・保持する機能 |
+| **CSVフォーマット設定** | ヘッダー行位置/文字コード/区切り文字の設定UI |
+| **データ変換設定** | 数値カンマ区切り/空白値扱い/金額単位/前後空白の設定UI |
+
+#### データ構造追加
+
+```javascript
+// フォーマット設定
+var currentFormatSettings = {
+    headerRow: 1,           // ヘッダー行（1から）
+    encoding: 'auto',       // auto, utf8, shiftjis
+    delimiter: 'auto',      // auto, comma, tab, semicolon
+    numberFormat: 'auto',   // auto, comma, none
+    emptyValue: 'zero',     // zero, null, skip
+    amountUnit: 1,          // 1, 1000, 10000
+    trimSpaces: true,       // 前後空白除去
+    dateFormat: 'auto'      // auto, ymd, mdy, dmy
+};
+
+// 無効化列
+var currentDisabledColumns = { month1: true, month2: true, ... };
+
+// カスタム列
+var currentCustomColumns = [
+    { key: 'manager', csvName: '担当者名' },
+    { key: 'note', csvName: '備考' }
+];
+
+// 列グループ設定
+var currentColumnGroups = { enabled: false, type: 'none' }; // none, quarter, half
+```
+
 ### v5.8（前バージョン）
 
 - 顧客CSV対応版・変換ロジック強化

@@ -552,9 +552,10 @@
                 <div class="import-section" style="border-left:4px solid #2196f3;">
                     <h2 style="color:#1565c0;font-size:18px;margin-bottom:20px;">📥 顧客予算CSVをインポート</h2>
 
-                    <!-- 予算テンプレートダウンロードボタン -->
+                    <!-- 予算テンプレート＆列マッピング設定 -->
                     <div style="margin-bottom:20px;padding:15px;background:#e3f2fd;border-radius:8px;border:1px solid #90caf9;">
-                        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                        <!-- 予算テンプレート行 -->
+                        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #90caf9;">
                             <div style="font-size:12px;color:#1565c0;">
                                 <strong>予算テンプレート</strong><br>
                                 空の予算CSVテンプレートをダウンロードできます
@@ -568,6 +569,27 @@
                                 </button>
                             </div>
                         </div>
+                        <!-- 列マッピング設定行 -->
+                        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                            <div style="font-size:12px;color:#7b1fa2;">
+                                <strong>🔄 列マッピング設定</strong><br>
+                                <span style="font-size:10px;color:#666;">顧客CSVの列名をラクミー形式にマッピング</span><br>
+                                <span id="currentMappingIndicator" style="color:#9c27b0;font-size:11px;font-weight:bold;">適用中: 標準（デフォルト）</span>
+                            </div>
+                            <div style="display:flex;gap:8px;align-items:center;">
+                                <select id="columnMappingPresetSelect" style="padding:6px 10px;border:2px solid #9c27b0;border-radius:4px;font-size:11px;min-width:150px;" onchange="loadColumnMappingPreset()">
+                                    <option value="">-- 標準（デフォルト） --</option>
+                                </select>
+                                <button class="btn" onclick="showColumnMappingEditor()" style="background:#9c27b0;color:#fff;padding:6px 12px;font-size:11px;">
+                                    ✏️ 編集
+                                </button>
+                                <button class="btn" onclick="showNewPresetModal()" style="background:#7b1fa2;color:#fff;padding:6px 12px;font-size:11px;">
+                                    ➕ 新規
+                                </button>
+                            </div>
+                        </div>
+                        <!-- マッピングサマリー（隠し要素、互換性用） -->
+                        <div id="mappingSummaryContent" style="display:none;"></div>
                     </div>
 
                 <!-- ドラッグ＆ドロップエリア -->
@@ -842,39 +864,6 @@
                     </div>
                 </div>
 
-                <!-- ★★★ インポート列マッピング設定セクション ★★★ -->
-                <div class="import-section" style="border-left:4px solid #9c27b0;">
-                    <h2 style="color:#7b1fa2;font-size:18px;margin-bottom:20px;">🔄 インポート列マッピング設定</h2>
-                    <p style="color:#666;font-size:11px;margin-bottom:15px;">
-                        顧客ごとに異なるCSV列名をラクミー内部形式にマッピングします。予算CSVインポート時に適用されます。
-                    </p>
-
-                    <!-- 顧客プリセット選択・管理 -->
-                    <div style="background:#f3e5f5;padding:15px;border-radius:8px;margin-bottom:15px;border:1px solid #ce93d8;">
-                        <div style="display:flex;gap:15px;align-items:center;flex-wrap:wrap;">
-                            <div style="display:flex;align-items:center;gap:8px;">
-                                <label style="font-weight:bold;font-size:12px;color:#7b1fa2;">顧客プリセット:</label>
-                                <select id="columnMappingPresetSelect" style="padding:8px 12px;border:2px solid #9c27b0;border-radius:4px;font-size:12px;min-width:180px;" onchange="loadColumnMappingPreset()">
-                                    <option value="">-- 標準（デフォルト） --</option>
-                                </select>
-                            </div>
-                            <button class="btn" style="background:#9c27b0;color:#fff;padding:8px 15px;font-size:12px;" onclick="showColumnMappingEditor()">
-                                ✏️ マッピング編集
-                            </button>
-                            <button class="btn" style="background:#7b1fa2;color:#fff;padding:8px 15px;font-size:12px;" onclick="showNewPresetModal()">
-                                ➕ 新規プリセット
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- 現在のマッピング設定サマリー -->
-                    <div id="columnMappingSummary" style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:15px;">
-                        <div style="font-weight:bold;color:#7b1fa2;margin-bottom:10px;">📋 現在のマッピング設定</div>
-                        <div id="mappingSummaryContent" style="font-size:11px;color:#666;">
-                            標準マッピングが適用されています（顧客CSV列名＝ラクミー列名）
-                        </div>
-                    </div>
-                </div>
             </div><!-- /import-subtab-settings -->
 
             <!-- ===== マスタ設定サブタブ ===== -->
@@ -8439,25 +8428,39 @@
         var COLUMN_MAPPING_KEY = 'rakumy_column_mapping';
         var currentMappingPresetId = null;
         var currentColumnMapping = {};
+        var currentDisabledColumns = {};  // 無効化された列
+        var currentCustomColumns = [];    // カスタム列
+        var currentColumnGroups = {};     // 列グループ設定
+        var currentFormatSettings = {};   // フォーマット設定
 
         // ラクミー内部列名の定義（予算CSV用）
         var RAKUMY_BUDGET_COLUMNS = [
-            { key: 'category', name: '予算カテゴリ', required: true },
-            { key: 'code', name: '科目コード', required: true },
-            { key: 'itemName', name: '予算項目名', required: true },
-            { key: 'month1', name: '1月', required: false },
-            { key: 'month2', name: '2月', required: false },
-            { key: 'month3', name: '3月', required: false },
-            { key: 'month4', name: '4月', required: false },
-            { key: 'month5', name: '5月', required: false },
-            { key: 'month6', name: '6月', required: false },
-            { key: 'month7', name: '7月', required: false },
-            { key: 'month8', name: '8月', required: false },
-            { key: 'month9', name: '9月', required: false },
-            { key: 'month10', name: '10月', required: false },
-            { key: 'month11', name: '11月', required: false },
-            { key: 'month12', name: '12月', required: false }
+            { key: 'category', name: '予算カテゴリ', required: true, group: 'basic' },
+            { key: 'code', name: '科目コード', required: true, group: 'basic' },
+            { key: 'itemName', name: '予算項目名', required: true, group: 'basic' },
+            { key: 'month1', name: '1月', required: false, group: 'q1', quarter: 1 },
+            { key: 'month2', name: '2月', required: false, group: 'q1', quarter: 1 },
+            { key: 'month3', name: '3月', required: false, group: 'q1', quarter: 1 },
+            { key: 'month4', name: '4月', required: false, group: 'q2', quarter: 2 },
+            { key: 'month5', name: '5月', required: false, group: 'q2', quarter: 2 },
+            { key: 'month6', name: '6月', required: false, group: 'q2', quarter: 2 },
+            { key: 'month7', name: '7月', required: false, group: 'q3', quarter: 3 },
+            { key: 'month8', name: '8月', required: false, group: 'q3', quarter: 3 },
+            { key: 'month9', name: '9月', required: false, group: 'q3', quarter: 3 },
+            { key: 'month10', name: '10月', required: false, group: 'q4', quarter: 4 },
+            { key: 'month11', name: '11月', required: false, group: 'q4', quarter: 4 },
+            { key: 'month12', name: '12月', required: false, group: 'q4', quarter: 4 }
         ];
+
+        // 列グループ定義
+        var COLUMN_GROUPS = {
+            q1: { name: 'Q1（1-3月）', months: ['month1', 'month2', 'month3'] },
+            q2: { name: 'Q2（4-6月）', months: ['month4', 'month5', 'month6'] },
+            q3: { name: 'Q3（7-9月）', months: ['month7', 'month8', 'month9'] },
+            q4: { name: 'Q4（10-12月）', months: ['month10', 'month11', 'month12'] },
+            h1: { name: '上期（1-6月）', months: ['month1', 'month2', 'month3', 'month4', 'month5', 'month6'] },
+            h2: { name: '下期（7-12月）', months: ['month7', 'month8', 'month9', 'month10', 'month11', 'month12'] }
+        };
 
         // デフォルトマッピング（ラクミー列名 = 顧客列名）
         function getDefaultColumnMapping() {
@@ -8466,6 +8469,37 @@
                 mapping[col.key] = col.name;  // デフォルトは同じ名前
             });
             return mapping;
+        }
+
+        // デフォルト無効列（空）
+        function getDefaultDisabledColumns() {
+            return {};
+        }
+
+        // デフォルトカスタム列（空）
+        function getDefaultCustomColumns() {
+            return [];
+        }
+
+        // デフォルト列グループ設定
+        function getDefaultColumnGroups() {
+            return { enabled: false, type: 'none' };  // none, quarter, half
+        }
+
+        // デフォルトフォーマット設定
+        function getDefaultFormatSettings() {
+            return {
+                // フェーズ1: 基本フォーマット
+                headerRow: 1,              // ヘッダー行（1から始まる）
+                encoding: 'auto',          // auto, utf8, shiftjis
+                delimiter: 'auto',         // auto, comma, tab, semicolon
+                // フェーズ2: データ変換
+                numberFormat: 'auto',      // auto, comma, none（カンマ区切り数値の扱い）
+                emptyValue: 'zero',        // zero, null, skip（空白値の扱い）
+                amountUnit: 1,             // 1, 1000, 10000（金額単位: 円, 千円, 万円）
+                trimSpaces: true,          // 前後空白を除去
+                dateFormat: 'auto'         // auto, ymd, mdy, dmy
+            };
         }
 
         // マッピングプリセット管理
@@ -8507,7 +8541,12 @@
             if (!presetId) {
                 currentMappingPresetId = null;
                 currentColumnMapping = getDefaultColumnMapping();
+                currentDisabledColumns = getDefaultDisabledColumns();
+                currentCustomColumns = getDefaultCustomColumns();
+                currentColumnGroups = getDefaultColumnGroups();
+                currentFormatSettings = getDefaultFormatSettings();
                 updateMappingSummary('標準マッピングが適用されています（顧客CSV列名＝ラクミー列名）');
+                updateMappingIndicator('標準（デフォルト）');
                 return;
             }
 
@@ -8517,8 +8556,21 @@
             if (preset) {
                 currentMappingPresetId = preset.id;
                 currentColumnMapping = JSON.parse(JSON.stringify(preset.mapping));
+                currentDisabledColumns = preset.disabledColumns ? JSON.parse(JSON.stringify(preset.disabledColumns)) : getDefaultDisabledColumns();
+                currentCustomColumns = preset.customColumns ? JSON.parse(JSON.stringify(preset.customColumns)) : getDefaultCustomColumns();
+                currentColumnGroups = preset.columnGroups ? JSON.parse(JSON.stringify(preset.columnGroups)) : getDefaultColumnGroups();
+                currentFormatSettings = preset.formatSettings ? JSON.parse(JSON.stringify(preset.formatSettings)) : getDefaultFormatSettings();
                 updateMappingSummary('プリセット「' + preset.name + '」が適用されています');
+                updateMappingIndicator(preset.name);
                 showStatus('success', 'プリセットを読み込みました: ' + preset.name);
+            }
+        }
+
+        // 予算インポートタブのマッピングインジケーターを更新
+        function updateMappingIndicator(presetName) {
+            var indicator = document.getElementById('currentMappingIndicator');
+            if (indicator) {
+                indicator.textContent = '適用中: ' + presetName;
             }
         }
 
@@ -8568,6 +8620,10 @@
                 id: 'preset_' + Date.now(),
                 name: name,
                 mapping: getDefaultColumnMapping(),
+                disabledColumns: getDefaultDisabledColumns(),
+                customColumns: getDefaultCustomColumns(),
+                columnGroups: getDefaultColumnGroups(),
+                formatSettings: getDefaultFormatSettings(),
                 createdAt: new Date().toISOString()
             };
             presets.push(newPreset);
@@ -8575,9 +8631,14 @@
 
             currentMappingPresetId = newPreset.id;
             currentColumnMapping = JSON.parse(JSON.stringify(newPreset.mapping));
+            currentDisabledColumns = JSON.parse(JSON.stringify(newPreset.disabledColumns));
+            currentCustomColumns = JSON.parse(JSON.stringify(newPreset.customColumns));
+            currentColumnGroups = JSON.parse(JSON.stringify(newPreset.columnGroups));
+            currentFormatSettings = JSON.parse(JSON.stringify(newPreset.formatSettings));
 
             closeNewPresetModal();
             refreshPresetSelect();
+            updateMappingIndicator(name);
             showColumnMappingEditor();
             showStatus('success', 'プリセットを作成しました: ' + name);
         }
@@ -8596,6 +8657,10 @@
             if (preset) {
                 document.getElementById('mappingPresetName').value = preset.name;
                 currentColumnMapping = JSON.parse(JSON.stringify(preset.mapping));
+                currentDisabledColumns = preset.disabledColumns ? JSON.parse(JSON.stringify(preset.disabledColumns)) : getDefaultDisabledColumns();
+                currentCustomColumns = preset.customColumns ? JSON.parse(JSON.stringify(preset.customColumns)) : getDefaultCustomColumns();
+                currentColumnGroups = preset.columnGroups ? JSON.parse(JSON.stringify(preset.columnGroups)) : getDefaultColumnGroups();
+                currentFormatSettings = preset.formatSettings ? JSON.parse(JSON.stringify(preset.formatSettings)) : getDefaultFormatSettings();
             }
 
             renderColumnMappingContent();
@@ -8607,36 +8672,307 @@
         }
 
         function renderColumnMappingContent() {
-            var html = '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+            var html = '';
+
+            // ===== 0. CSVフォーマット設定 =====
+            html += '<div style="background:#e3f2fd;padding:12px;border-radius:8px;margin-bottom:15px;border:1px solid #64b5f6;">';
+            html += '<div style="font-weight:bold;color:#1565c0;margin-bottom:12px;">📄 CSVフォーマット設定</div>';
+
+            // フェーズ1: 基本フォーマット
+            html += '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:12px;margin-bottom:12px;">';
+
+            // ヘッダー行位置
+            html += '<div style="background:#fff;padding:8px;border-radius:4px;border:1px solid #90caf9;">';
+            html += '<label style="font-size:11px;color:#1565c0;font-weight:bold;display:block;margin-bottom:4px;">ヘッダー行</label>';
+            html += '<select onchange="updateFormatSetting(\'headerRow\', parseInt(this.value))" style="width:100%;padding:4px;border:1px solid #90caf9;border-radius:3px;font-size:11px;">';
+            for (var i = 1; i <= 10; i++) {
+                html += '<option value="' + i + '"' + (currentFormatSettings.headerRow === i ? ' selected' : '') + '>' + i + '行目</option>';
+            }
+            html += '</select></div>';
+
+            // 文字コード
+            html += '<div style="background:#fff;padding:8px;border-radius:4px;border:1px solid #90caf9;">';
+            html += '<label style="font-size:11px;color:#1565c0;font-weight:bold;display:block;margin-bottom:4px;">文字コード</label>';
+            html += '<select onchange="updateFormatSetting(\'encoding\', this.value)" style="width:100%;padding:4px;border:1px solid #90caf9;border-radius:3px;font-size:11px;">';
+            html += '<option value="auto"' + (currentFormatSettings.encoding === 'auto' ? ' selected' : '') + '>自動検出</option>';
+            html += '<option value="utf8"' + (currentFormatSettings.encoding === 'utf8' ? ' selected' : '') + '>UTF-8</option>';
+            html += '<option value="shiftjis"' + (currentFormatSettings.encoding === 'shiftjis' ? ' selected' : '') + '>Shift-JIS</option>';
+            html += '</select></div>';
+
+            // 区切り文字
+            html += '<div style="background:#fff;padding:8px;border-radius:4px;border:1px solid #90caf9;">';
+            html += '<label style="font-size:11px;color:#1565c0;font-weight:bold;display:block;margin-bottom:4px;">区切り文字</label>';
+            html += '<select onchange="updateFormatSetting(\'delimiter\', this.value)" style="width:100%;padding:4px;border:1px solid #90caf9;border-radius:3px;font-size:11px;">';
+            html += '<option value="auto"' + (currentFormatSettings.delimiter === 'auto' ? ' selected' : '') + '>自動検出</option>';
+            html += '<option value="comma"' + (currentFormatSettings.delimiter === 'comma' ? ' selected' : '') + '>カンマ (,)</option>';
+            html += '<option value="tab"' + (currentFormatSettings.delimiter === 'tab' ? ' selected' : '') + '>タブ</option>';
+            html += '<option value="semicolon"' + (currentFormatSettings.delimiter === 'semicolon' ? ' selected' : '') + '>セミコロン (;)</option>';
+            html += '</select></div>';
+
+            html += '</div>';
+
+            // フェーズ2: データ変換
+            html += '<div style="border-top:1px solid #90caf9;padding-top:12px;">';
+            html += '<div style="font-size:11px;color:#1565c0;font-weight:bold;margin-bottom:8px;">データ変換設定</div>';
+            html += '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:10px;">';
+
+            // 数値フォーマット
+            html += '<div style="background:#fff;padding:8px;border-radius:4px;border:1px solid #90caf9;">';
+            html += '<label style="font-size:10px;color:#1565c0;font-weight:bold;display:block;margin-bottom:4px;">数値カンマ区切り</label>';
+            html += '<select onchange="updateFormatSetting(\'numberFormat\', this.value)" style="width:100%;padding:4px;border:1px solid #90caf9;border-radius:3px;font-size:10px;">';
+            html += '<option value="auto"' + (currentFormatSettings.numberFormat === 'auto' ? ' selected' : '') + '>自動（1,000→1000）</option>';
+            html += '<option value="comma"' + (currentFormatSettings.numberFormat === 'comma' ? ' selected' : '') + '>カンマ除去する</option>';
+            html += '<option value="none"' + (currentFormatSettings.numberFormat === 'none' ? ' selected' : '') + '>そのまま</option>';
+            html += '</select></div>';
+
+            // 空白値の扱い
+            html += '<div style="background:#fff;padding:8px;border-radius:4px;border:1px solid #90caf9;">';
+            html += '<label style="font-size:10px;color:#1565c0;font-weight:bold;display:block;margin-bottom:4px;">空白値の扱い</label>';
+            html += '<select onchange="updateFormatSetting(\'emptyValue\', this.value)" style="width:100%;padding:4px;border:1px solid #90caf9;border-radius:3px;font-size:10px;">';
+            html += '<option value="zero"' + (currentFormatSettings.emptyValue === 'zero' ? ' selected' : '') + '>0として扱う</option>';
+            html += '<option value="null"' + (currentFormatSettings.emptyValue === 'null' ? ' selected' : '') + '>空のまま</option>';
+            html += '<option value="skip"' + (currentFormatSettings.emptyValue === 'skip' ? ' selected' : '') + '>行をスキップ</option>';
+            html += '</select></div>';
+
+            // 金額単位
+            html += '<div style="background:#fff;padding:8px;border-radius:4px;border:1px solid #90caf9;">';
+            html += '<label style="font-size:10px;color:#1565c0;font-weight:bold;display:block;margin-bottom:4px;">金額単位</label>';
+            html += '<select onchange="updateFormatSetting(\'amountUnit\', parseInt(this.value))" style="width:100%;padding:4px;border:1px solid #90caf9;border-radius:3px;font-size:10px;">';
+            html += '<option value="1"' + (currentFormatSettings.amountUnit === 1 ? ' selected' : '') + '>円（そのまま）</option>';
+            html += '<option value="1000"' + (currentFormatSettings.amountUnit === 1000 ? ' selected' : '') + '>千円（×1000）</option>';
+            html += '<option value="10000"' + (currentFormatSettings.amountUnit === 10000 ? ' selected' : '') + '>万円（×10000）</option>';
+            html += '</select></div>';
+
+            // 前後空白除去
+            html += '<div style="background:#fff;padding:8px;border-radius:4px;border:1px solid #90caf9;">';
+            html += '<label style="font-size:10px;color:#1565c0;font-weight:bold;display:block;margin-bottom:4px;">前後空白</label>';
+            html += '<select onchange="updateFormatSetting(\'trimSpaces\', this.value === \'true\')" style="width:100%;padding:4px;border:1px solid #90caf9;border-radius:3px;font-size:10px;">';
+            html += '<option value="true"' + (currentFormatSettings.trimSpaces ? ' selected' : '') + '>除去する</option>';
+            html += '<option value="false"' + (!currentFormatSettings.trimSpaces ? ' selected' : '') + '>そのまま</option>';
+            html += '</select></div>';
+
+            html += '</div></div>';
+            html += '</div>';
+
+            // ===== 1. 列グループ化設定 =====
+            html += '<div style="background:#e8f5e9;padding:12px;border-radius:8px;margin-bottom:15px;border:1px solid #81c784;">';
+            html += '<div style="font-weight:bold;color:#2e7d32;margin-bottom:10px;">📊 列グループ化設定</div>';
+            html += '<div style="display:flex;gap:15px;flex-wrap:wrap;">';
+            html += '<label style="display:flex;align-items:center;gap:5px;cursor:pointer;">';
+            html += '<input type="radio" name="columnGroupType" value="none" ' + (currentColumnGroups.type === 'none' ? 'checked' : '') + ' onchange="setColumnGroupType(\'none\')">';
+            html += '<span>グループ化なし（12ヶ月）</span></label>';
+            html += '<label style="display:flex;align-items:center;gap:5px;cursor:pointer;">';
+            html += '<input type="radio" name="columnGroupType" value="quarter" ' + (currentColumnGroups.type === 'quarter' ? 'checked' : '') + ' onchange="setColumnGroupType(\'quarter\')">';
+            html += '<span>四半期グループ（Q1-Q4）</span></label>';
+            html += '<label style="display:flex;align-items:center;gap:5px;cursor:pointer;">';
+            html += '<input type="radio" name="columnGroupType" value="half" ' + (currentColumnGroups.type === 'half' ? 'checked' : '') + ' onchange="setColumnGroupType(\'half\')">';
+            html += '<span>半期グループ（上期・下期）</span></label>';
+            html += '</div>';
+            // クイック無効化ボタン
+            if (currentColumnGroups.type !== 'none') {
+                html += '<div style="margin-top:10px;padding-top:10px;border-top:1px solid #81c784;">';
+                html += '<span style="font-size:11px;color:#666;margin-right:10px;">クイック無効化:</span>';
+                if (currentColumnGroups.type === 'quarter') {
+                    ['q1', 'q2', 'q3', 'q4'].forEach(function(q) {
+                        var allDisabled = COLUMN_GROUPS[q].months.every(function(m) { return currentDisabledColumns[m]; });
+                        html += '<button class="btn" style="padding:4px 10px;font-size:10px;margin-right:5px;background:' + (allDisabled ? '#ef5350' : '#66bb6a') + ';color:#fff;" ';
+                        html += 'onclick="toggleQuarterGroup(\'' + q + '\')">' + COLUMN_GROUPS[q].name + '</button>';
+                    });
+                } else if (currentColumnGroups.type === 'half') {
+                    ['h1', 'h2'].forEach(function(h) {
+                        var allDisabled = COLUMN_GROUPS[h].months.every(function(m) { return currentDisabledColumns[m]; });
+                        html += '<button class="btn" style="padding:4px 10px;font-size:10px;margin-right:5px;background:' + (allDisabled ? '#ef5350' : '#66bb6a') + ';color:#fff;" ';
+                        html += 'onclick="toggleHalfGroup(\'' + h + '\')">' + COLUMN_GROUPS[h].name + '</button>';
+                    });
+                }
+                html += '</div>';
+            }
+            html += '</div>';
+
+            // ===== 2. 標準列マッピングテーブル =====
+            html += '<div style="font-weight:bold;color:#7b1fa2;margin-bottom:8px;">📋 標準列マッピング</div>';
+            html += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
             html += '<thead><tr style="background:#9c27b0;color:#fff;">';
-            html += '<th style="padding:10px;border:1px solid #7b1fa2;">ラクミー列名</th>';
-            html += '<th style="padding:10px;border:1px solid #7b1fa2;width:40px;"></th>';
-            html += '<th style="padding:10px;border:1px solid #7b1fa2;">顧客CSV列名</th>';
-            html += '<th style="padding:10px;border:1px solid #7b1fa2;width:60px;">必須</th>';
+            html += '<th style="padding:8px;border:1px solid #7b1fa2;width:50px;">有効</th>';
+            html += '<th style="padding:8px;border:1px solid #7b1fa2;">ラクミー列名</th>';
+            html += '<th style="padding:8px;border:1px solid #7b1fa2;width:30px;"></th>';
+            html += '<th style="padding:8px;border:1px solid #7b1fa2;">顧客CSV列名</th>';
+            html += '<th style="padding:8px;border:1px solid #7b1fa2;width:50px;">状態</th>';
             html += '</tr></thead><tbody>';
 
+            var lastGroup = '';
             RAKUMY_BUDGET_COLUMNS.forEach(function(col, idx) {
                 var customerCol = currentColumnMapping[col.key] || col.name;
-                html += '<tr style="background:' + (idx % 2 === 0 ? '#fff' : '#f9f9f9') + ';">';
-                html += '<td style="padding:10px;border:1px solid #e0e0e0;font-weight:bold;color:#7b1fa2;">' + col.name + '</td>';
-                html += '<td style="padding:10px;border:1px solid #e0e0e0;text-align:center;color:#9c27b0;">→</td>';
+                var isDisabled = currentDisabledColumns[col.key];
+                var rowStyle = isDisabled ? 'background:#f5f5f5;opacity:0.6;' : (idx % 2 === 0 ? 'background:#fff;' : 'background:#f9f9f9;');
+
+                // グループヘッダー表示
+                if (currentColumnGroups.type !== 'none' && col.group !== 'basic' && col.group !== lastGroup) {
+                    lastGroup = col.group;
+                    var groupName = currentColumnGroups.type === 'quarter' ? COLUMN_GROUPS[col.group].name :
+                                   (col.group === 'q1' || col.group === 'q2' ? COLUMN_GROUPS.h1.name : COLUMN_GROUPS.h2.name);
+                    if (currentColumnGroups.type === 'quarter' || (currentColumnGroups.type === 'half' && (col.group === 'q1' || col.group === 'q3'))) {
+                        html += '<tr style="background:#e1bee7;"><td colspan="5" style="padding:6px 10px;font-weight:bold;color:#7b1fa2;font-size:11px;">';
+                        html += groupName + '</td></tr>';
+                    }
+                }
+
+                html += '<tr style="' + rowStyle + '">';
+                // 有効チェックボックス
+                html += '<td style="padding:6px;border:1px solid #e0e0e0;text-align:center;">';
+                if (col.required) {
+                    html += '<span style="color:#4caf50;">✓</span>';
+                } else {
+                    html += '<input type="checkbox" ' + (isDisabled ? '' : 'checked') + ' onchange="toggleColumnDisabled(\'' + col.key + '\')" style="cursor:pointer;">';
+                }
+                html += '</td>';
+                // ラクミー列名
+                html += '<td style="padding:6px;border:1px solid #e0e0e0;font-weight:bold;color:' + (isDisabled ? '#999' : '#7b1fa2') + ';">' + col.name + '</td>';
+                html += '<td style="padding:6px;border:1px solid #e0e0e0;text-align:center;color:#9c27b0;">→</td>';
+                // 顧客CSV列名入力
                 html += '<td style="padding:4px;border:1px solid #e0e0e0;">';
                 html += '<input type="text" value="' + escapeHtml(customerCol) + '" ';
                 html += 'data-key="' + col.key + '" ';
+                html += (isDisabled ? 'disabled ' : '');
                 html += 'onchange="updateColumnMapping(\'' + col.key + '\', this.value)" ';
-                html += 'style="width:100%;padding:8px;border:2px solid #ce93d8;border-radius:4px;font-size:12px;box-sizing:border-box;">';
+                html += 'style="width:100%;padding:6px;border:2px solid ' + (isDisabled ? '#e0e0e0' : '#ce93d8') + ';border-radius:4px;font-size:11px;box-sizing:border-box;' + (isDisabled ? 'background:#f5f5f5;' : '') + '">';
                 html += '</td>';
-                html += '<td style="padding:10px;border:1px solid #e0e0e0;text-align:center;">';
-                html += col.required ? '<span style="color:#f44336;font-weight:bold;">必須</span>' : '<span style="color:#999;">-</span>';
+                // 状態
+                html += '<td style="padding:6px;border:1px solid #e0e0e0;text-align:center;font-size:10px;">';
+                if (col.required) {
+                    html += '<span style="color:#f44336;font-weight:bold;">必須</span>';
+                } else if (isDisabled) {
+                    html += '<span style="color:#999;">無効</span>';
+                } else {
+                    html += '<span style="color:#4caf50;">有効</span>';
+                }
                 html += '</td></tr>';
             });
-
             html += '</tbody></table>';
+
+            // ===== 3. カスタム列セクション =====
+            html += '<div style="margin-top:20px;padding:12px;background:#fff3e0;border-radius:8px;border:1px solid #ffb74d;">';
+            html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">';
+            html += '<div style="font-weight:bold;color:#e65100;">📝 カスタム列（その他データ）</div>';
+            html += '<button class="btn" style="padding:5px 12px;font-size:11px;background:#ff9800;color:#fff;" onclick="addCustomColumn()">➕ 列を追加</button>';
+            html += '</div>';
+            html += '<p style="font-size:10px;color:#666;margin-bottom:10px;">顧客CSVにのみ存在する追加列を定義できます。インポート時に「その他データ」として保持されます。</p>';
+
+            if (currentCustomColumns.length === 0) {
+                html += '<div style="text-align:center;color:#999;font-size:11px;padding:15px;">カスタム列はありません</div>';
+            } else {
+                html += '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
+                html += '<thead><tr style="background:#ffb74d;color:#fff;">';
+                html += '<th style="padding:6px;border:1px solid #f57c00;">内部キー</th>';
+                html += '<th style="padding:6px;border:1px solid #f57c00;">顧客CSV列名</th>';
+                html += '<th style="padding:6px;border:1px solid #f57c00;width:60px;">操作</th>';
+                html += '</tr></thead><tbody>';
+                currentCustomColumns.forEach(function(cc, idx) {
+                    html += '<tr style="background:' + (idx % 2 === 0 ? '#fff' : '#fff8e1') + ';">';
+                    html += '<td style="padding:4px;border:1px solid #ffe0b2;">';
+                    html += '<input type="text" value="' + escapeHtml(cc.key) + '" onchange="updateCustomColumnKey(' + idx + ', this.value)" ';
+                    html += 'style="width:100%;padding:4px;border:1px solid #ffcc80;border-radius:3px;font-size:10px;">';
+                    html += '</td>';
+                    html += '<td style="padding:4px;border:1px solid #ffe0b2;">';
+                    html += '<input type="text" value="' + escapeHtml(cc.csvName) + '" onchange="updateCustomColumnCsvName(' + idx + ', this.value)" ';
+                    html += 'style="width:100%;padding:4px;border:1px solid #ffcc80;border-radius:3px;font-size:10px;">';
+                    html += '</td>';
+                    html += '<td style="padding:4px;border:1px solid #ffe0b2;text-align:center;">';
+                    html += '<button class="btn" style="padding:2px 8px;font-size:10px;background:#f44336;color:#fff;" onclick="removeCustomColumn(' + idx + ')">削除</button>';
+                    html += '</td></tr>';
+                });
+                html += '</tbody></table>';
+            }
+            html += '</div>';
+
             document.getElementById('columnMappingContent').innerHTML = html;
         }
 
         function updateColumnMapping(key, value) {
             currentColumnMapping[key] = value.trim();
+        }
+
+        // 列の有効/無効を切り替え
+        function toggleColumnDisabled(key) {
+            if (currentDisabledColumns[key]) {
+                delete currentDisabledColumns[key];
+            } else {
+                currentDisabledColumns[key] = true;
+            }
+            renderColumnMappingContent();
+        }
+
+        // 列グループタイプを設定
+        function setColumnGroupType(type) {
+            currentColumnGroups.type = type;
+            renderColumnMappingContent();
+        }
+
+        // フォーマット設定を更新
+        function updateFormatSetting(key, value) {
+            currentFormatSettings[key] = value;
+        }
+
+        // 四半期グループの一括トグル
+        function toggleQuarterGroup(quarterKey) {
+            var months = COLUMN_GROUPS[quarterKey].months;
+            var allDisabled = months.every(function(m) { return currentDisabledColumns[m]; });
+
+            months.forEach(function(m) {
+                if (allDisabled) {
+                    delete currentDisabledColumns[m];
+                } else {
+                    currentDisabledColumns[m] = true;
+                }
+            });
+            renderColumnMappingContent();
+        }
+
+        // 半期グループの一括トグル
+        function toggleHalfGroup(halfKey) {
+            var months = COLUMN_GROUPS[halfKey].months;
+            var allDisabled = months.every(function(m) { return currentDisabledColumns[m]; });
+
+            months.forEach(function(m) {
+                if (allDisabled) {
+                    delete currentDisabledColumns[m];
+                } else {
+                    currentDisabledColumns[m] = true;
+                }
+            });
+            renderColumnMappingContent();
+        }
+
+        // カスタム列を追加
+        function addCustomColumn() {
+            var newKey = 'custom_' + (currentCustomColumns.length + 1);
+            currentCustomColumns.push({
+                key: newKey,
+                csvName: '新規列' + (currentCustomColumns.length + 1)
+            });
+            renderColumnMappingContent();
+        }
+
+        // カスタム列の内部キーを更新
+        function updateCustomColumnKey(idx, value) {
+            if (currentCustomColumns[idx]) {
+                currentCustomColumns[idx].key = value.trim().replace(/\s+/g, '_');
+            }
+        }
+
+        // カスタム列のCSV列名を更新
+        function updateCustomColumnCsvName(idx, value) {
+            if (currentCustomColumns[idx]) {
+                currentCustomColumns[idx].csvName = value.trim();
+            }
+        }
+
+        // カスタム列を削除
+        function removeCustomColumn(idx) {
+            if (confirm('このカスタム列を削除しますか？')) {
+                currentCustomColumns.splice(idx, 1);
+                renderColumnMappingContent();
+            }
         }
 
         function saveColumnMappingPreset() {
@@ -8654,11 +8990,16 @@
             if (idx !== -1) {
                 presets[idx].name = name;
                 presets[idx].mapping = JSON.parse(JSON.stringify(currentColumnMapping));
+                presets[idx].disabledColumns = JSON.parse(JSON.stringify(currentDisabledColumns));
+                presets[idx].customColumns = JSON.parse(JSON.stringify(currentCustomColumns));
+                presets[idx].columnGroups = JSON.parse(JSON.stringify(currentColumnGroups));
+                presets[idx].formatSettings = JSON.parse(JSON.stringify(currentFormatSettings));
                 presets[idx].updatedAt = new Date().toISOString();
                 saveColumnMappingPresets(presets);
 
                 refreshPresetSelect();
                 updateMappingSummary('プリセット「' + name + '」が適用されています');
+                updateMappingIndicator(name);
                 closeColumnMappingEditor();
                 showStatus('success', 'マッピングを保存しました: ' + name);
             }
@@ -8678,9 +9019,14 @@
 
                 currentMappingPresetId = null;
                 currentColumnMapping = getDefaultColumnMapping();
+                currentDisabledColumns = getDefaultDisabledColumns();
+                currentCustomColumns = getDefaultCustomColumns();
+                currentColumnGroups = getDefaultColumnGroups();
+                currentFormatSettings = getDefaultFormatSettings();
 
                 refreshPresetSelect();
                 updateMappingSummary('標準マッピングが適用されています（顧客CSV列名＝ラクミー列名）');
+                updateMappingIndicator('標準（デフォルト）');
                 closeColumnMappingEditor();
                 showStatus('success', 'プリセットを削除しました: ' + name);
             }
@@ -8690,7 +9036,13 @@
         function applyColumnMapping(csvHeaders) {
             var result = {};
 
+            // 標準列のマッピング
             RAKUMY_BUDGET_COLUMNS.forEach(function(col) {
+                // 無効化された列はスキップ
+                if (currentDisabledColumns[col.key]) {
+                    return;
+                }
+
                 var customerColName = currentColumnMapping[col.key] || col.name;
                 var idx = csvHeaders.findIndex(function(h) {
                     return h.trim() === customerColName.trim();
@@ -8703,14 +9055,29 @@
                 }
             });
 
+            // カスタム列のマッピング
+            currentCustomColumns.forEach(function(cc) {
+                var idx = csvHeaders.findIndex(function(h) {
+                    return h.trim() === cc.csvName.trim();
+                });
+                if (idx !== -1) {
+                    result['custom_' + cc.key] = idx;
+                }
+            });
+
             return result;
         }
 
         // 初期化
         function initColumnMapping() {
             currentColumnMapping = getDefaultColumnMapping();
+            currentDisabledColumns = getDefaultDisabledColumns();
+            currentCustomColumns = getDefaultCustomColumns();
+            currentColumnGroups = getDefaultColumnGroups();
+            currentFormatSettings = getDefaultFormatSettings();
             refreshPresetSelect();
             updateMappingSummary('標準マッピングが適用されています（顧客CSV列名＝ラクミー列名）');
+            updateMappingIndicator('標準（デフォルト）');
         }
 
         // ★★★ 月別客単価インポート関連 ★★★
