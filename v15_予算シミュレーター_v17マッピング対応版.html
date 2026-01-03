@@ -961,6 +961,10 @@
                                 <button onclick="saveCurrentToHistory()" class="btn" style="padding:8px 15px;font-size:11px;background:#4caf50;color:#fff;border:none;border-radius:4px;">
                                     💾 現在のデータを保存
                                 </button>
+                                <label class="btn" style="padding:8px 15px;font-size:11px;background:#ff9800;color:#fff;border:none;border-radius:4px;cursor:pointer;">
+                                    📦 アーカイブ読込
+                                    <input type="file" accept=".json" onchange="importBudgetArchive(event)" style="display:none;">
+                                </label>
                                 <button onclick="clearAllBudgetHistory()" class="btn" style="padding:8px 15px;font-size:11px;background:#f44336;color:#fff;border:none;border-radius:4px;">
                                     🗑️ 全履歴削除
                                 </button>
@@ -3698,6 +3702,7 @@
                 html += '    <div style="display:flex;gap:5px;justify-content:center;flex-wrap:wrap;">';
                 html += '      <button onclick="showBudgetPreview(\'' + entry.id + '\')" class="btn" style="padding:5px 10px;font-size:10px;background:#9c27b0;color:#fff;border:none;border-radius:3px;" title="予算表をプレビュー">📊 予算表</button>';
                 html += '      <button onclick="loadBudgetFromHistory(\'' + entry.id + '\')" class="btn" style="padding:5px 10px;font-size:10px;background:#4caf50;color:#fff;border:none;border-radius:3px;" title="この履歴を読み込んで予算設定画面で表示・編集">📂 読込</button>';
+                html += '      <button onclick="archiveBudgetHistory(\'' + entry.id + '\')" class="btn" style="padding:5px 10px;font-size:10px;background:#ff9800;color:#fff;border:none;border-radius:3px;" title="JSONファイルとしてダウンロード">📦 保存</button>';
                 html += '      <button onclick="showHistoryDetail(\'' + entry.id + '\')" class="btn" style="padding:5px 10px;font-size:10px;background:#2196f3;color:#fff;border:none;border-radius:3px;" title="履歴の詳細を確認">👁️ 詳細</button>';
                 html += '      <button onclick="deleteBudgetHistory(\'' + entry.id + '\')" class="btn" style="padding:5px 10px;font-size:10px;background:#f44336;color:#fff;border:none;border-radius:3px;" title="この履歴を削除">🗑️</button>';
                 html += '    </div>';
@@ -3868,8 +3873,10 @@
                 var bgColor = categoryColors[cat] || '#fafafa';
 
                 items.forEach(function(item, idx) {
-                    var v17No = item.v17No;
-                    var rowData = annualData[v17No] || {};
+                    // rowDataは item.rowData に直接格納されている
+                    // または annualData[v15No] にある
+                    var v15No = item.v15No;
+                    var rowData = item.rowData || annualData[v15No] || {};
 
                     bodyHtml += '<tr style="background:' + (idx % 2 === 0 ? bgColor : '#fff') + ';border-bottom:1px solid #e0e0e0;">';
                     bodyHtml += '<td style="padding:6px;text-align:center;font-size:10px;color:#666;">' + rowNum + '</td>';
@@ -3878,7 +3885,7 @@
 
                     var total = 0;
                     for (var m = 0; m < activeMonths.length; m++) {
-                        var mi = activeMonths[m];
+                        // rowDataのキーは月のインデックス(0,1,2...)
                         var val = rowData[m] || 0;
                         total += val;
                         bodyHtml += '<td style="padding:6px;text-align:right;">' + (val ? Math.round(val).toLocaleString() : '-') + '</td>';
@@ -3901,6 +3908,93 @@
             var modal = document.getElementById('budgetPreviewModal');
             if (modal) modal.style.display = 'none';
             document.body.style.overflow = '';
+        }
+
+        // 履歴をJSONファイルとしてアーカイブ保存
+        function archiveBudgetHistory(historyId) {
+            var history = loadBudgetHistory();
+            var entry = history.find(function(e) { return e.id === historyId; });
+            if (!entry) {
+                showStatus('error', '履歴が見つかりません');
+                return;
+            }
+
+            // ファイル名を生成
+            var dateStr = entry.dateTime.replace(/[:\s]/g, '_');
+            var fileName = 'budget_archive_' + entry.storeName.replace(/\s/g, '_') + '_' + dateStr + '.json';
+
+            // JSONデータを生成
+            var archiveData = {
+                version: '1.0',
+                exportedAt: new Date().toISOString(),
+                storeName: entry.storeName,
+                importedAt: entry.dateTime,
+                monthCount: entry.monthCount,
+                itemCount: entry.itemCount,
+                data: entry.data
+            };
+
+            // ダウンロード
+            var blob = new Blob([JSON.stringify(archiveData, null, 2)], { type: 'application/json' });
+            var url = URL.createObjectURL(blob);
+            var link = document.createElement('a');
+            link.href = url;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            showStatus('success', '「' + entry.storeName + '」の予算データをアーカイブ保存しました');
+        }
+
+        // アーカイブファイルから履歴をインポート
+        function importBudgetArchive(event) {
+            var file = event.target.files[0];
+            if (!file) return;
+
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    var archiveData = JSON.parse(e.target.result);
+
+                    // バリデーション
+                    if (!archiveData.storeName || !archiveData.data) {
+                        showStatus('error', '無効なアーカイブファイルです');
+                        return;
+                    }
+
+                    // 履歴に追加
+                    var history = loadBudgetHistory();
+
+                    var entry = {
+                        id: Date.now().toString() + '_imported_' + archiveData.storeName.replace(/\s/g, '_'),
+                        storeName: archiveData.storeName,
+                        dateTime: archiveData.importedAt || new Date().toISOString().slice(0, 19).replace('T', ' '),
+                        monthCount: archiveData.monthCount || (archiveData.data.activeMonths || []).length,
+                        itemCount: archiveData.itemCount || (archiveData.data.matchedItems || []).length,
+                        data: archiveData.data,
+                        savedAt: new Date().toISOString(),
+                        importedFrom: file.name
+                    };
+
+                    history.unshift(entry);
+                    if (history.length > 50) history = history.slice(0, 50);
+
+                    saveBudgetHistory(history);
+                    renderBudgetHistoryList();
+                    updateBudgetHistoryCount();
+                    updateHistoryStoreFilter();
+
+                    showStatus('success', 'アーカイブ「' + archiveData.storeName + '」を履歴に読み込みました');
+                } catch (err) {
+                    showStatus('error', 'アーカイブ読み込みエラー: ' + err.message);
+                }
+            };
+            reader.readAsText(file, 'UTF-8');
+
+            // inputをリセット（同じファイルを再度選択可能に）
+            event.target.value = '';
         }
 
         // 履歴を削除
