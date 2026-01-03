@@ -3700,12 +3700,11 @@
                 html += '  <td style="padding:10px;text-align:center;">' + entry.itemCount + '項目</td>';
                 html += '  <td style="padding:10px;text-align:center;">';
                 html += '    <div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap;">';
-                html += '      <button onclick="showBudgetPreview(\'' + entry.id + '\')" class="btn" style="padding:5px 8px;font-size:10px;background:#9c27b0;color:#fff;border:none;border-radius:3px;" title="予算表をプレビュー">📊</button>';
-                html += '      <button onclick="loadBudgetFromHistory(\'' + entry.id + '\')" class="btn" style="padding:5px 8px;font-size:10px;background:#4caf50;color:#fff;border:none;border-radius:3px;" title="この履歴を読み込んで予算設定画面で表示・編集">📂</button>';
-                html += '      <button onclick="duplicateBudgetHistory(\'' + entry.id + '\')" class="btn" style="padding:5px 8px;font-size:10px;background:#ff9800;color:#fff;border:none;border-radius:3px;" title="この履歴を複製して保存">💾</button>';
-                html += '      <button onclick="archiveBudgetHistory(\'' + entry.id + '\')" class="btn" style="padding:5px 8px;font-size:10px;background:#607d8b;color:#fff;border:none;border-radius:3px;" title="JSONファイルとしてダウンロード">📥</button>';
-                html += '      <button onclick="showHistoryDetail(\'' + entry.id + '\')" class="btn" style="padding:5px 8px;font-size:10px;background:#2196f3;color:#fff;border:none;border-radius:3px;" title="履歴の詳細を確認">👁️</button>';
-                html += '      <button onclick="deleteBudgetHistory(\'' + entry.id + '\')" class="btn" style="padding:5px 8px;font-size:10px;background:#f44336;color:#fff;border:none;border-radius:3px;" title="この履歴を削除">🗑️</button>';
+                html += '      <button onclick="showBudgetPreview(\'' + entry.id + '\')" class="btn" style="padding:4px 8px;font-size:10px;background:#9c27b0;color:#fff;border:none;border-radius:3px;">予算表</button>';
+                html += '      <button onclick="loadBudgetFromHistory(\'' + entry.id + '\')" class="btn" style="padding:4px 8px;font-size:10px;background:#4caf50;color:#fff;border:none;border-radius:3px;">読込</button>';
+                html += '      <button onclick="duplicateBudgetHistory(\'' + entry.id + '\')" class="btn" style="padding:4px 8px;font-size:10px;background:#ff9800;color:#fff;border:none;border-radius:3px;">保存</button>';
+                html += '      <button onclick="archiveBudgetHistory(\'' + entry.id + '\')" class="btn" style="padding:4px 8px;font-size:10px;background:#607d8b;color:#fff;border:none;border-radius:3px;">DL</button>';
+                html += '      <button onclick="deleteBudgetHistory(\'' + entry.id + '\')" class="btn" style="padding:4px 8px;font-size:10px;background:#f44336;color:#fff;border:none;border-radius:3px;">削除</button>';
                 html += '    </div>';
                 html += '  </td>';
                 html += '</tr>';
