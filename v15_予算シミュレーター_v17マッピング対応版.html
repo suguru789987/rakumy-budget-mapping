@@ -852,6 +852,36 @@
                         1行目: 店番,店舗名,客単価タイプ,4月,5月,6月,7月,8月,9月,10月,11月,12月,1月,2月,3月<br>
                         2行目以降: 001,店舗名,総合,5000,5000,5000,... / 001,店舗名,ランチ,1000,... / 001,店舗名,ディナー,5000,...
                     </div>
+
+                    <!-- 客単価編集セクション -->
+                    <div style="margin-top:20px;padding:15px;background:#e1f5fe;border-radius:8px;border:1px solid #81d4fa;">
+                        <h3 style="color:#0277bd;font-size:14px;margin:0 0 10px 0;">💰 客単価マスタ設定</h3>
+                        <p style="color:#666;font-size:11px;margin-bottom:15px;">
+                            店舗別のデフォルト客単価を編集できます。この設定は予算インポート時の初期値として使用されます。
+                        </p>
+
+                        <!-- 操作ボタン群 -->
+                        <div style="margin-bottom:15px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+                            <button id="toggleUnitPriceSummaryBtn" class="btn" style="background:#2196f3;color:#fff;padding:10px 20px;font-size:12px;" onclick="toggleUnitPriceSummary()">
+                                📋 客単価編集
+                            </button>
+                            <button class="btn" style="background:#2196f3;color:#fff;padding:10px 20px;font-size:12px;" onclick="saveUnitPriceSettings()">
+                                💾 客単価設定を保存
+                            </button>
+                        </div>
+
+                        <!-- 客単価一覧（初期非表示） -->
+                        <div id="unitPriceSummaryList" style="display:none;background:#fff;border:1px solid #e0e0e0;border-radius:8px;">
+                            <!-- JavaScript で描画 -->
+                        </div>
+
+                        <div id="unitPriceSummaryGuide" style="display:none;margin-top:15px;padding:10px;background:#e3f2fd;border-radius:8px;font-size:11px;color:#0277bd;border:1px solid #81d4fa;">
+                            <strong>操作ガイド:</strong><br>
+                            ・<strong>✏️ 編集</strong>: 店舗の客単価（総合/ランチ/ディナー）を編集<br>
+                            ・<strong>🗑️ 削除</strong>: 客単価設定を削除（デフォルト値に戻る）<br>
+                            ・設定はLocalStorageに保存され、次回起動時に自動的に復元されます。
+                        </div>
+                    </div>
                 </div>
 
                 <!-- マスタ設定セクション -->
@@ -1065,6 +1095,57 @@
                                 キャンセル
                             </button>
                             <button onclick="saveStore()" style="background:#4caf50;color:#fff;border:none;padding:12px 25px;border-radius:6px;font-size:13px;font-weight:bold;cursor:pointer;">
+                                💾 保存
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 客単価編集モーダル -->
+            <div id="unitPriceEditModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1001;overflow-y:auto;">
+                <div style="background:#fff;border-radius:12px;margin:50px auto;max-width:500px;width:95%;box-shadow:0 4px 20px rgba(0,0,0,0.3);">
+                    <div style="background:linear-gradient(135deg, #2196f3 0%, #1565c0 100%);color:#fff;padding:20px;border-radius:12px 12px 0 0;display:flex;justify-content:space-between;align-items:center;">
+                        <h3 id="unitPriceModalTitle" style="margin:0;font-size:18px;">💰 客単価編集</h3>
+                        <button onclick="hideUnitPriceModal()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;padding:8px 15px;border-radius:4px;cursor:pointer;">✕ 閉じる</button>
+                    </div>
+                    <div style="padding:25px;">
+                        <input type="hidden" id="unitPriceEditStoreName" value="">
+
+                        <!-- 店舗名（表示のみ） -->
+                        <div style="margin-bottom:20px;">
+                            <label style="display:block;font-weight:bold;font-size:12px;color:#333;margin-bottom:8px;">店舗名</label>
+                            <div id="unitPriceStoreNameDisplay" style="padding:12px;background:#f5f5f5;border:2px solid #ddd;border-radius:6px;font-size:14px;color:#333;"></div>
+                        </div>
+
+                        <!-- 客単価（合計） -->
+                        <div style="margin-bottom:20px;">
+                            <label style="display:block;font-weight:bold;font-size:12px;color:#333;margin-bottom:8px;">目標客単価（合計）</label>
+                            <input type="number" id="unitPriceEditTotal" placeholder="例: 5000" style="width:100%;padding:12px;border:2px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;">
+                            <p style="font-size:10px;color:#666;margin-top:5px;">ランチ+ディナーの加重平均値</p>
+                        </div>
+
+                        <!-- 客単価（ランチ・ディナー） -->
+                        <div style="display:flex;gap:15px;margin-bottom:20px;">
+                            <div style="flex:1;">
+                                <label style="display:block;font-weight:bold;font-size:12px;color:#333;margin-bottom:8px;">ランチ客単価</label>
+                                <input type="number" id="unitPriceEditLunch" placeholder="0" style="width:100%;padding:12px;border:2px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;">
+                            </div>
+                            <div style="flex:1;">
+                                <label style="display:block;font-weight:bold;font-size:12px;color:#333;margin-bottom:8px;">ディナー客単価</label>
+                                <input type="number" id="unitPriceEditDinner" placeholder="5000" style="width:100%;padding:12px;border:2px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;">
+                            </div>
+                        </div>
+
+                        <!-- ボタン -->
+                        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:25px;">
+                            <button onclick="resetUnitPriceToDefault()" style="background:#ff9800;color:#fff;border:none;padding:12px 25px;border-radius:6px;font-size:13px;font-weight:bold;cursor:pointer;">
+                                🔄 デフォルトに戻す
+                            </button>
+                            <button onclick="hideUnitPriceModal()" style="background:#9e9e9e;color:#fff;border:none;padding:12px 25px;border-radius:6px;font-size:13px;font-weight:bold;cursor:pointer;">
+                                キャンセル
+                            </button>
+                            <button onclick="saveUnitPrice()" style="background:#2196f3;color:#fff;border:none;padding:12px 25px;border-radius:6px;font-size:13px;font-weight:bold;cursor:pointer;">
                                 💾 保存
                             </button>
                         </div>
@@ -7373,6 +7454,235 @@
             }
         }
 
+        // ★★★ 客単価マスタ編集機能 ★★★
+
+        // 客単価一覧の表示/非表示を切り替え
+        function toggleUnitPriceSummary() {
+            var container = document.getElementById('unitPriceSummaryList');
+            var guide = document.getElementById('unitPriceSummaryGuide');
+            var btn = document.getElementById('toggleUnitPriceSummaryBtn');
+            if (!container) return;
+
+            if (container.style.display === 'none') {
+                // 表示
+                renderUnitPriceSummary();
+                container.style.display = 'block';
+                if (guide) guide.style.display = 'block';
+                if (btn) {
+                    btn.innerHTML = '✕ 客単価編集を閉じる';
+                    btn.style.background = '#757575';
+                }
+            } else {
+                // 非表示
+                container.style.display = 'none';
+                if (guide) guide.style.display = 'none';
+                if (btn) {
+                    btn.innerHTML = '📋 客単価編集';
+                    btn.style.background = '#2196f3';
+                }
+            }
+        }
+
+        // 客単価一覧を描画
+        function renderUnitPriceSummary() {
+            var container = document.getElementById('unitPriceSummaryList');
+            if (!container) return;
+
+            // 店舗リストを取得（_defaultを除く）
+            var storeNames = Object.keys(DEFAULT_UNIT_PRICES).filter(function(name) {
+                return name !== '_default';
+            });
+
+            // sortOrder順または店番順でソート
+            storeNames.sort(function(a, b) {
+                var storeA = DEFAULT_UNIT_PRICES[a];
+                var storeB = DEFAULT_UNIT_PRICES[b];
+                var orderA = storeA.sortOrder !== undefined ? storeA.sortOrder : 9999;
+                var orderB = storeB.sortOrder !== undefined ? storeB.sortOrder : 9999;
+                if (orderA !== orderB) return orderA - orderB;
+                var codeA = storeA.storeCode || 'zzzz';
+                var codeB = storeB.storeCode || 'zzzz';
+                if (codeA !== codeB) return codeA.localeCompare(codeB, undefined, { numeric: true });
+                return a.localeCompare(b);
+            });
+
+            if (storeNames.length === 0) {
+                container.innerHTML = '<div style="padding:20px;text-align:center;color:#666;">登録店舗がありません</div>';
+                return;
+            }
+
+            var html = '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+            html += '<thead><tr style="background:#bbdefb;">';
+            html += '<th style="padding:10px;text-align:center;width:80px;">店番</th>';
+            html += '<th style="padding:10px;text-align:left;">店名</th>';
+            html += '<th style="padding:10px;text-align:right;width:90px;">総合</th>';
+            html += '<th style="padding:10px;text-align:right;width:90px;">ランチ</th>';
+            html += '<th style="padding:10px;text-align:right;width:90px;">ディナー</th>';
+            html += '<th style="padding:10px;text-align:center;width:120px;">操作</th>';
+            html += '</tr></thead><tbody>';
+
+            storeNames.forEach(function(storeName, idx) {
+                var store = DEFAULT_UNIT_PRICES[storeName];
+                var storeCode = store.storeCode || '';
+                var bgColor = idx % 2 === 0 ? '#fff' : '#f5f5f5';
+
+                html += '<tr style="background:' + bgColor + ';border-bottom:1px solid #e0e0e0;">';
+
+                // 店番
+                html += '<td style="padding:8px;text-align:center;">';
+                if (storeCode) {
+                    html += '<code style="background:#e3f2fd;padding:3px 8px;border-radius:3px;color:#1565c0;">' + storeCode + '</code>';
+                } else {
+                    html += '<span style="color:#999;font-size:10px;">-</span>';
+                }
+                html += '</td>';
+
+                // 店名
+                html += '<td style="padding:8px;">' + escapeHtml(storeName) + '</td>';
+
+                // 客単価（総合）
+                html += '<td style="padding:8px;text-align:right;font-weight:bold;color:#1565c0;">' + (store.total || 0).toLocaleString() + '円</td>';
+
+                // 客単価（ランチ）
+                html += '<td style="padding:8px;text-align:right;color:#666;">' + (store.lunch || 0).toLocaleString() + '円</td>';
+
+                // 客単価（ディナー）
+                html += '<td style="padding:8px;text-align:right;color:#666;">' + (store.dinner || 0).toLocaleString() + '円</td>';
+
+                // 操作ボタン
+                html += '<td style="padding:8px;text-align:center;">';
+                html += '<button onclick="showUnitPriceEditModal(\'' + escapeHtml(storeName).replace(/'/g, "\\'") + '\')" style="background:#2196f3;color:#fff;border:none;padding:4px 10px;border-radius:3px;cursor:pointer;font-size:10px;margin-right:4px;">✏️ 編集</button>';
+                html += '<button onclick="confirmDeleteUnitPrice(\'' + escapeHtml(storeName).replace(/'/g, "\\'") + '\')" style="background:#f44336;color:#fff;border:none;padding:4px 10px;border-radius:3px;cursor:pointer;font-size:10px;">🗑️</button>';
+                html += '</td>';
+
+                html += '</tr>';
+            });
+
+            html += '</tbody></table>';
+            html += '<div style="padding:10px;text-align:right;color:#666;font-size:11px;">合計: ' + storeNames.length + '店舗</div>';
+            container.innerHTML = html;
+        }
+
+        // 客単価編集モーダル表示
+        function showUnitPriceEditModal(storeName) {
+            var store = DEFAULT_UNIT_PRICES[storeName];
+            if (!store) {
+                alert('店舗が見つかりません: ' + storeName);
+                return;
+            }
+
+            document.getElementById('unitPriceEditStoreName').value = storeName;
+            document.getElementById('unitPriceStoreNameDisplay').textContent = storeName;
+            document.getElementById('unitPriceModalTitle').textContent = '💰 客単価編集: ' + storeName;
+
+            // フォームに値を設定
+            document.getElementById('unitPriceEditTotal').value = store.total || 5000;
+            document.getElementById('unitPriceEditLunch').value = store.lunch || 0;
+            document.getElementById('unitPriceEditDinner').value = store.dinner || 5000;
+
+            document.getElementById('unitPriceEditModal').style.display = 'block';
+        }
+
+        // 客単価編集モーダルを非表示
+        function hideUnitPriceModal() {
+            document.getElementById('unitPriceEditModal').style.display = 'none';
+        }
+
+        // 客単価を保存
+        function saveUnitPrice() {
+            var storeName = document.getElementById('unitPriceEditStoreName').value;
+            if (!storeName || !DEFAULT_UNIT_PRICES[storeName]) {
+                alert('店舗が見つかりません');
+                return;
+            }
+
+            var total = parseInt(document.getElementById('unitPriceEditTotal').value) || 5000;
+            var lunch = parseInt(document.getElementById('unitPriceEditLunch').value) || 0;
+            var dinner = parseInt(document.getElementById('unitPriceEditDinner').value) || 5000;
+
+            DEFAULT_UNIT_PRICES[storeName].total = total;
+            DEFAULT_UNIT_PRICES[storeName].lunch = lunch;
+            DEFAULT_UNIT_PRICES[storeName].dinner = dinner;
+
+            hideUnitPriceModal();
+            renderUnitPriceSummary();
+            updateCurrentStoreList();
+            showStatus('success', '客単価を更新しました: ' + storeName);
+        }
+
+        // 客単価をデフォルトに戻す
+        function resetUnitPriceToDefault() {
+            var storeName = document.getElementById('unitPriceEditStoreName').value;
+            if (!storeName) return;
+
+            if (confirm('「' + storeName + '」の客単価をデフォルト値（総合:5000円、ランチ:0円、ディナー:5000円）に戻しますか？')) {
+                DEFAULT_UNIT_PRICES[storeName].total = 5000;
+                DEFAULT_UNIT_PRICES[storeName].lunch = 0;
+                DEFAULT_UNIT_PRICES[storeName].dinner = 5000;
+
+                // フォームも更新
+                document.getElementById('unitPriceEditTotal').value = 5000;
+                document.getElementById('unitPriceEditLunch').value = 0;
+                document.getElementById('unitPriceEditDinner').value = 5000;
+
+                renderUnitPriceSummary();
+                updateCurrentStoreList();
+                showStatus('success', '客単価をデフォルトに戻しました: ' + storeName);
+            }
+        }
+
+        // 客単価削除確認
+        function confirmDeleteUnitPrice(storeName) {
+            if (confirm('「' + storeName + '」の客単価設定をデフォルト値（総合:5000円）に戻しますか？')) {
+                DEFAULT_UNIT_PRICES[storeName].total = 5000;
+                DEFAULT_UNIT_PRICES[storeName].lunch = 0;
+                DEFAULT_UNIT_PRICES[storeName].dinner = 5000;
+                renderUnitPriceSummary();
+                updateCurrentStoreList();
+                showStatus('success', '客単価をデフォルトに戻しました: ' + storeName);
+            }
+        }
+
+        // 客単価設定を保存（LocalStorage）
+        function saveUnitPriceSettings() {
+            try {
+                var priceData = {};
+                Object.keys(DEFAULT_UNIT_PRICES).forEach(function(name) {
+                    if (name !== '_default') {
+                        priceData[name] = {
+                            total: DEFAULT_UNIT_PRICES[name].total,
+                            lunch: DEFAULT_UNIT_PRICES[name].lunch,
+                            dinner: DEFAULT_UNIT_PRICES[name].dinner
+                        };
+                    }
+                });
+                localStorage.setItem('rakumy_unit_price_settings', JSON.stringify(priceData));
+                showStatus('success', '客単価設定を保存しました（' + Object.keys(priceData).length + '店舗）');
+            } catch (e) {
+                showStatus('error', '保存に失敗しました: ' + e.message);
+            }
+        }
+
+        // 客単価設定を読込（LocalStorage）
+        function loadUnitPriceSettings() {
+            try {
+                var saved = localStorage.getItem('rakumy_unit_price_settings');
+                if (saved) {
+                    var priceData = JSON.parse(saved);
+                    Object.keys(priceData).forEach(function(name) {
+                        if (name !== '_default' && DEFAULT_UNIT_PRICES[name]) {
+                            DEFAULT_UNIT_PRICES[name].total = priceData[name].total;
+                            DEFAULT_UNIT_PRICES[name].lunch = priceData[name].lunch;
+                            DEFAULT_UNIT_PRICES[name].dinner = priceData[name].dinner;
+                        }
+                    });
+                    console.log('[loadUnitPriceSettings] 客単価設定を読み込みました:', Object.keys(priceData).length + '店舗');
+                }
+            } catch (e) {
+                console.error('[loadUnitPriceSettings] エラー:', e);
+            }
+        }
+
         // ★★★ マッピングドロップ処理 ★★★
         function handleMappingDrop(event) {
             event.preventDefault();
@@ -12709,6 +13019,8 @@
             loadCategorySettings();
             // 店番設定の読み込み
             loadStoreSettings();
+            // 客単価設定の読み込み
+            loadUnitPriceSettings();
             // 項目マッピング一覧は設定タブ表示時に描画されるため、ここでは初期化のみ
             renderMappingCategoryFilter();
         });
